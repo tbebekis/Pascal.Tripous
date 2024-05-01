@@ -1,0 +1,88 @@
+object BlobForm: TBlobForm
+  Left = 297
+  Height = 368
+  Top = 141
+  Width = 789
+  Caption = 'Blobs'
+  ClientHeight = 368
+  ClientWidth = 789
+  LCLVersion = '3.0.0.3'
+  object Grid: TDBGrid
+    Left = 0
+    Height = 368
+    Top = 0
+    Width = 413
+    Align = alLeft
+    Color = clWindow
+    Columns = <>
+    TabOrder = 0
+  end
+  object Splitter1: TSplitter
+    Left = 413
+    Height = 368
+    Top = 0
+    Width = 5
+  end
+  object Panel2: TPanel
+    Left = 418
+    Height = 368
+    Top = 0
+    Width = 371
+    Align = alClient
+    ClientHeight = 368
+    ClientWidth = 371
+    TabOrder = 2
+    object imgImage: TDBImage
+      Left = 1
+      Height = 167
+      Top = 1
+      Width = 369
+      Align = alTop
+      Center = True
+      PopupMenu = mnuImage
+      Proportional = True
+    end
+    object Splitter2: TSplitter
+      Cursor = crVSplit
+      Left = 1
+      Height = 5
+      Top = 168
+      Width = 369
+      Align = alTop
+      ResizeAnchor = akTop
+    end
+    object mmoMemo: TDBMemo
+      Left = 1
+      Height = 194
+      Top = 173
+      Width = 369
+      Align = alClient
+      TabOrder = 1
+    end
+  end
+  object mnuImage: TPopupMenu
+    Left = 528
+    Top = 48
+    object mnuImageLoadFromFile: TMenuItem
+      Caption = 'Load from File'
+    end
+    object mnuImageSaveToFile: TMenuItem
+      Caption = 'Save to File'
+    end
+    object Separator1: TMenuItem
+      Caption = '-'
+    end
+    object mnuImagePasteFromClipboard: TMenuItem
+      Caption = 'Paste from Clipboard'
+    end
+    object mnuImageCopyToClipboard: TMenuItem
+      Caption = 'Copy to Clipboard'
+    end
+    object Separator2: TMenuItem
+      Caption = '-'
+    end
+    object mnuImageClear: TMenuItem
+      Caption = 'Clear'
+    end
+  end
+end

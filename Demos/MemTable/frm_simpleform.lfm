@@ -1,0 +1,21 @@
+object SimpleForm: TSimpleForm
+  Left = 616
+  Height = 346
+  Top = 261
+  Width = 462
+  Caption = 'SimpleForm'
+  ClientHeight = 346
+  ClientWidth = 462
+  Position = poMainFormCenter
+  LCLVersion = '3.0.0.3'
+  object Grid: TDBGrid
+    Left = 0
+    Height = 346
+    Top = 0
+    Width = 462
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    TabOrder = 0
+  end
+end

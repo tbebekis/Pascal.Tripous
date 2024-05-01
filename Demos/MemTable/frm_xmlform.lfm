@@ -1,0 +1,98 @@
+object XmlForm: TXmlForm
+  Left = 902
+  Height = 534
+  Top = 344
+  Width = 950
+  Caption = 'XML'
+  ClientHeight = 534
+  ClientWidth = 950
+  LCLVersion = '3.0.0.3'
+  object Panel1: TPanel
+    Left = 0
+    Height = 82
+    Top = 0
+    Width = 950
+    Align = alTop
+    ClientHeight = 82
+    ClientWidth = 950
+    TabOrder = 0
+    object edtRowCount: TEdit
+      Left = 56
+      Height = 23
+      Top = 8
+      Width = 80
+      TabOrder = 0
+      Text = '5'
+    end
+    object Label1: TLabel
+      Left = 16
+      Height = 15
+      Top = 14
+      Width = 28
+      Caption = 'Rows'
+    end
+    object btnInitializeData: TButton
+      Left = 18
+      Height = 25
+      Top = 40
+      Width = 118
+      Caption = 'Initialize'
+      TabOrder = 1
+    end
+    object btnToXmlText: TButton
+      Left = 216
+      Height = 25
+      Top = 40
+      Width = 118
+      Caption = 'To Xml Text'
+      TabOrder = 2
+    end
+  end
+  object Pager: TPageControl
+    Left = 0
+    Height = 452
+    Top = 82
+    Width = 950
+    ActivePage = tabLog
+    Align = alClient
+    TabIndex = 1
+    TabOrder = 1
+    object tabGrid: TTabSheet
+      Caption = 'Grid'
+      ClientHeight = 424
+      ClientWidth = 942
+      object Grid: TDBGrid
+        Left = 0
+        Height = 424
+        Top = 0
+        Width = 942
+        Align = alClient
+        Color = clWindow
+        Columns = <>
+        TabOrder = 0
+      end
+    end
+    object tabLog: TTabSheet
+      Caption = 'Log'
+      ClientHeight = 424
+      ClientWidth = 942
+      object mmoLog: TMemo
+        Left = 0
+        Height = 424
+        Top = 0
+        Width = 942
+        Align = alClient
+        Font.CharSet = ANSI_CHARSET
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Lines.Strings = (
+          'mmoLog'
+        )
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+    end
+  end
+end

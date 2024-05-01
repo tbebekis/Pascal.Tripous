@@ -1,0 +1,92 @@
+object FilterForm: TFilterForm
+  Left = 552
+  Height = 370
+  Top = 248
+  Width = 559
+  Caption = 'Filter'
+  ClientHeight = 370
+  ClientWidth = 559
+  LCLVersion = '3.0.0.3'
+  object Panel1: TPanel
+    Left = 0
+    Height = 112
+    Top = 0
+    Width = 559
+    Align = alTop
+    ClientHeight = 112
+    ClientWidth = 559
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 14
+      Height = 15
+      Top = 11
+      Width = 26
+      Caption = 'Filter'
+    end
+    object edtFilter: TEdit
+      Left = 48
+      Height = 23
+      Top = 8
+      Width = 496
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 0
+    end
+    object btnApplyFilter: TButton
+      Left = 44
+      Height = 25
+      Top = 41
+      Width = 104
+      Caption = 'Apply Filter'
+      TabOrder = 1
+    end
+    object btnCancelFilter: TButton
+      Left = 44
+      Height = 25
+      Top = 72
+      Width = 104
+      Caption = 'Cancel Filter'
+      TabOrder = 2
+    end
+    object btnUseFilterEvent: TButton
+      Left = 224
+      Height = 25
+      Top = 41
+      Width = 104
+      Caption = 'Filter Event'
+      TabOrder = 3
+    end
+    object btnCancelFilterEvent: TButton
+      Left = 224
+      Height = 25
+      Top = 72
+      Width = 104
+      Caption = 'Cance Filter Event'
+      TabOrder = 4
+    end
+    object Label2: TLabel
+      Left = 336
+      Height = 15
+      Top = 48
+      Width = 58
+      Caption = 'Amount > '
+    end
+    object edtAmount: TEdit
+      Left = 400
+      Height = 23
+      Top = 43
+      Width = 80
+      TabOrder = 5
+      Text = '50000'
+    end
+  end
+  object Grid: TDBGrid
+    Left = 0
+    Height = 258
+    Top = 112
+    Width = 559
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    TabOrder = 1
+  end
+end

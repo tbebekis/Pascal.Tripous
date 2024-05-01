@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="App.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="53" Y="20"/>
+        <UsageCount Value="215"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_mainform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_MainForm"/>
+        <TopLine Value="87"/>
+        <CursorPos X="95" Y="99"/>
+        <UsageCount Value="215"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_simpleform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SimpleForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_SimpleForm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="7" Y="14"/>
+        <UsageCount Value="215"/>
+      </Unit>
+      <Unit>
+        <Filename Value="o_app.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="o_App"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="54" Y="23"/>
+        <UsageCount Value="214"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_masterdetailform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MasterDetailForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_MasterDetailForm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="65"/>
+        <CursorPos X="27" Y="66"/>
+        <UsageCount Value="214"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_sortform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SortForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_SortForm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="17" Y="15"/>
+        <UsageCount Value="213"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_statusfilterform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="StatusFilterForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_StatusFilterForm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="34" Y="131"/>
+        <UsageCount Value="207"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_rangeform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="RangeForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_RangeForm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="78" Y="101"/>
+        <UsageCount Value="205"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_locatelookupform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="LocateLookupForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_LocateLookupForm"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="107" Y="6"/>
+        <UsageCount Value="205"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_blobform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="BlobForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_BlobForm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="58"/>
+        <CursorPos X="46" Y="74"/>
+        <UsageCount Value="200"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_filterform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FilterForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_FilterForm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="108"/>
+        <CursorPos X="41" Y="118"/>
+        <UsageCount Value="237"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.filterparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous.FilterParser"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="217"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous.MemTable"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="33"/>
+        <CursorPos X="32" Y="54"/>
+        <UsageCount Value="217"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1965"/>
+        <CursorPos Y="1968"/>
+        <UsageCount Value="215"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_xmlform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="XmlForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_XmlForm"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="22"/>
+        <CursorPos X="38" Y="138"/>
+        <UsageCount Value="354"/>
+      </Unit>
+      <Unit>
+        <Filename Value="o_memtable.pas"/>
+        <UnitName Value="o_MemTable"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1150"/>
+        <CursorPos X="34" Y="1153"/>
+        <UsageCount Value="95"/>
+      </Unit>
+      <Unit>
+        <Filename Value="o_filterparser.pas"/>
+        <UnitName Value="o_FilterParser"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1229"/>
+        <CursorPos X="41" Y="1252"/>
+        <UsageCount Value="52"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
+        <UnitName Value="DB"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="375"/>
+        <CursorPos X="19" Y="380"/>
+        <UsageCount Value="107"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\bufdataset.pas"/>
+        <UnitName Value="BufDataset"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="2639"/>
+        <CursorPos X="33" Y="2643"/>
+        <UsageCount Value="103"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="571"/>
+        <CursorPos X="26" Y="589"/>
+        <UsageCount Value="109"/>
+      </Unit>
+      <Unit>
+        <Filename Value="G:\My Drive\Dev\Lazarus\MemTable_Miscs\tpk_DB.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="5" Y="8"/>
+        <UsageCount Value="48"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\fields.inc"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="945"/>
+        <CursorPos X="40" Y="955"/>
+        <UsageCount Value="62"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="G:\My Drive\Dev\Lazarus\MemTable_Miscs\tpk_Utls.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="744"/>
+        <CursorPos Y="769"/>
+        <UsageCount Value="76"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="317"/>
+        <CursorPos X="25" Y="326"/>
+        <UsageCount Value="147"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\util.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="37" Y="6"/>
+        <UsageCount Value="101"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\lists.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="718"/>
+        <CursorPos X="35" Y="727"/>
+        <UsageCount Value="38"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\streams.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="33"/>
+        <CursorPos Y="41"/>
+        <UsageCount Value="31"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.memtable - 00.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1220"/>
+        <CursorPos X="3" Y="1191"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dbconst.pas"/>
+        <UnitName Value="DBConst"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="46"/>
+        <CursorPos X="50" Y="74"/>
+        <UsageCount Value="8"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.memtable - 03.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="332"/>
+        <CursorPos Y="411"/>
+        <UsageCount Value="2"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\components\lazutils\laz2_xmlwrite.pas"/>
+        <UnitName Value="Laz2_XMLWrite"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="19" Y="18"/>
+        <UsageCount Value="2"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\intfh.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="10" Y="34"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\datasource.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="678"/>
+        <CursorPos X="3" Y="689"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\lcl\dbgrids.pas"/>
+        <UnitName Value="DBGrids"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="4010"/>
+        <CursorPos X="83" Y="4034"/>
+        <UsageCount Value="7"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="3">
+      <Position>
+        <Filename Value="frm_mainform.pas"/>
+        <Caret Line="37" Column="20" TopLine="15"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="3202" Column="68" TopLine="3186"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="54" Column="32" TopLine="33"/>
+      </Position>
+      <Position>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
+        <Caret Line="380" Column="19" TopLine="375"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>
