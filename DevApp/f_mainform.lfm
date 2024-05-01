@@ -1,0 +1,33 @@
+object MainForm: TMainForm
+  Left = 1260
+  Height = 441
+  Top = 577
+  Width = 651
+  Caption = 'MainForm'
+  ClientHeight = 441
+  ClientWidth = 651
+  Position = poScreenCenter
+  LCLVersion = '3.0.0.3'
+  object btnTest: TButton
+    Left = 16
+    Height = 25
+    Top = 8
+    Width = 75
+    Caption = 'btnTest'
+    TabOrder = 0
+  end
+  object Grid: TDBGrid
+    Left = 66
+    Height = 260
+    Top = 137
+    Width = 520
+    Color = clWindow
+    Columns = <>
+    DataSource = dsGrid
+    TabOrder = 1
+  end
+  object dsGrid: TDataSource
+    Left = 40
+    Top = 75
+  end
+end
