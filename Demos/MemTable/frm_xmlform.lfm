@@ -1,58 +1,66 @@
 object XmlForm: TXmlForm
-  Left = 902
+  Left = 531
   Height = 534
-  Top = 344
-  Width = 950
+  Top = 155
+  Width = 1086
   Caption = 'XML'
   ClientHeight = 534
-  ClientWidth = 950
+  ClientWidth = 1086
   LCLVersion = '3.0.0.3'
   object Panel1: TPanel
     Left = 0
     Height = 82
     Top = 0
-    Width = 950
+    Width = 1086
     Align = alTop
     ClientHeight = 82
-    ClientWidth = 950
+    ClientWidth = 1086
     TabOrder = 0
     object edtRowCount: TEdit
-      Left = 56
+      Left = 127
       Height = 23
-      Top = 8
+      Top = 7
       Width = 80
       TabOrder = 0
       Text = '5'
     end
     object Label1: TLabel
-      Left = 16
+      Left = 92
       Height = 15
-      Top = 14
+      Top = 11
       Width = 28
       Caption = 'Rows'
     end
     object btnInitializeData: TButton
-      Left = 18
+      Left = 8
       Height = 25
-      Top = 40
-      Width = 118
+      Top = 6
+      Width = 78
       Caption = 'Initialize'
       TabOrder = 1
     end
     object btnToXmlText: TButton
-      Left = 216
+      Left = 288
       Height = 25
-      Top = 40
+      Top = 11
       Width = 118
       Caption = 'To Xml Text'
       TabOrder = 2
+    end
+    object btnFromXmlText: TButton
+      Left = 288
+      Height = 25
+      Top = 39
+      Width = 118
+      Caption = 'From Xml Text'
+      TabOrder = 3
     end
   end
   object Pager: TPageControl
     Left = 0
     Height = 452
     Top = 82
-    Width = 950
+    Width = 1086
     ActivePage = tabLog
     Align = alClient
     TabIndex = 1
@@ -60,12 +68,12 @@ object XmlForm: TXmlForm
     object tabGrid: TTabSheet
       Caption = 'Grid'
       ClientHeight = 424
-      ClientWidth = 942
+      ClientWidth = 1078
       object Grid: TDBGrid
         Left = 0
         Height = 424
         Top = 0
-        Width = 942
+        Width = 1078
         Align = alClient
         Color = clWindow
         Columns = <>
@@ -75,12 +83,12 @@ object XmlForm: TXmlForm
     object tabLog: TTabSheet
       Caption = 'Log'
       ClientHeight = 424
-      ClientWidth = 942
+      ClientWidth = 1078
       object mmoLog: TMemo
         Left = 0
         Height = 424
         Top = 0
-        Width = 942
+        Width = 1078
         Align = alClient
         Font.CharSet = ANSI_CHARSET
         Font.Name = 'Courier New'

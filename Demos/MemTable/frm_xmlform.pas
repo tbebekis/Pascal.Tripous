@@ -21,7 +21,6 @@ uses
 
   ,TypInfo
 
-  ,O_App
   ,Tripous.MemTable
   ;
 
@@ -32,6 +31,7 @@ type
   TXmlForm = class(TForm)
     btnInitializeData: TButton;
     btnToXmlText: TButton;
+    btnFromXmlText: TButton;
     edtRowCount: TEdit;
     Grid: TDBGrid;
     Label1: TLabel;
@@ -50,11 +50,10 @@ type
     procedure InitializeData();
 
     procedure ToXmlText();
+    procedure FromXmlText();
 
     procedure SaveToFile();
     procedure LoadFromFile();
-
-    procedure Test();
   protected
     procedure KeyPress(var Key: char); override;
     procedure DoShow; override;
@@ -80,15 +79,16 @@ begin
   InitializeData();
 
   btnInitializeData.OnClick := @AnyClick;
-  btnToXmlText.OnClick := @AnyClick;
+  btnToXmlText.OnClick      := @AnyClick;
+  btnFromXmlText.OnClick    := @AnyClick;
 end;
 
 procedure TXmlForm.InitializeData();
 var
   i : Integer;
-  Images : array of string = ('Laz1.png', 'Laz2.png', 'Laz3.png');
-  ImageFile: string;
   RowCount : Integer;
+  //ImageFile: string;
+  //Images : array of string = ('Laz1.png', 'Laz2.png', 'Laz3.png');
 begin
   i := 1;
 
@@ -102,7 +102,7 @@ begin
   Table := TMemTable.Create(Self);
 
   //Table.FieldDefs.Add('AUTOINC', ftAutoInc);
-  Table.FieldDefs.Add('STRING', ftString, 10);
+  Table.FieldDefs.Add('STRING', ftString, 10, True);
   Table.FieldDefs.Add('GUID', ftGuid, 38);    //38
   Table.FieldDefs.Add('INTEGER', ftInteger);
   Table.FieldDefs.Add('LARGE_INT', ftLargeint);
@@ -116,7 +116,7 @@ begin
   Table.CreateDataset;
 
   Table.Active := True;
-  //for i := 0 to RowCount - 1 do
+  for i := 0 to RowCount - 1 do
   begin
     Table.Append();
 
@@ -130,36 +130,10 @@ begin
     Table.FieldByName('CURRENCY'      ).AsFloat   := i * 2.78;
     Table.FieldByName('DATETIME'      ).AsDateTime := Now();
     //Table.FieldByName('BCD'           ).AsBCD   := DoubleToBCD(i * 1.67);
-    ImageFile := Images[Random(3)];
+
+    //ImageFile := Images[Random(3)];
     //TBlobField(Table.FieldByName('GRAPHIC')).LoadFromFile(ImageFile);
 
-    Table.Post;
-  end;
-
-  //if Table.FieldByName('STRING'        ).IsNull then ShowMessage('Is Null');
-
-  DS := TDataSource.Create(Self);
-  DS.DataSet := Table;
-  Grid.DataSource := DS;
-
-  //if Table.FieldByName('STRING'        ).IsNull then ShowMessage('Is Null');
-
-end;
-procedure TXmlForm.Test();
-var
-  i : Integer;
-begin
-  Pager.ActivePage := tabGrid;
-
-  Table := TMemTable.Create(nil);
-  Table.FieldDefs.Add('INTEGER', ftInteger);
-  Table.CreateDataset;
-
-
-  for i := 0 to 4 do
-  begin
-    Table.Append();
-    Table.FieldByName('INTEGER').AsInteger := i + 1;
     Table.Post;
   end;
 
@@ -173,10 +147,25 @@ procedure TXmlForm.ToXmlText();
 var
   XmlText: string;
 begin
-  XmlText := Table.ToXmlText();
+  XmlText := TMemTable.ToXmlText(Table);
   mmoLog.Text := XmlText;
 
   Pager.ActivePage := tabLog;
+end;
+
+procedure TXmlForm.FromXmlText();
+var
+  XmlText: string;
+begin
+  DS.DataSet := nil;
+  Table.Free();
+
+  XmlText := mmoLog.Text;
+  Table := TMemTable.FromXmlText(XmlText);
+  Self.InsertComponent(Table);
+
+  DS.DataSet := Table;
+  Pager.ActivePage := tabGrid;
 end;
 
 procedure TXmlForm.SaveToFile();
@@ -195,6 +184,8 @@ begin
      InitializeData()
    else if btnToXmlText = Sender then
      ToXmlText()
+   else if btnFromXmlText = Sender then
+     FromXmlText()
    ;
 end;
 
@@ -216,8 +207,6 @@ begin
   Position := poMainFormCenter;
 
   InitializeTest();
-
-  //Test();
 end;
 
 end.

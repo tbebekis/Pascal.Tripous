@@ -349,13 +349,17 @@ type
     procedure CancelRange;
 
     { xml }
-    function  CreateXmlDoc(RootName: string; aEncoding: string): TXMLDocument;
-    function  ToXmlDoc(SchemaOnly: Boolean = False): TXMLDocument;
-    function  ToXmlText(SchemaOnly: Boolean = False): string;
-    procedure SaveToXmlFile(const FileName: string; SchemaOnly: Boolean = False);
-    procedure SaveToXmlStream(Stream: TStream; SchemaOnly: Boolean = False);
+    class function  CreateXmlDoc(RootName: string; aEncoding: string): TXMLDocument;
 
-    procedure LoadFromXmlFile(const FileName: string);
+    class function  ToXmlDoc(Table: TMemTable; SchemaOnly: Boolean = False): TXMLDocument;
+    class function  ToXmlText(Table: TMemTable; SchemaOnly: Boolean = False): string;
+    class procedure SaveToXmlFile(Table: TMemTable; const FileName: string; SchemaOnly: Boolean = False);
+    class procedure SaveToXmlStream(Table: TMemTable; Stream: TStream; SchemaOnly: Boolean = False);
+
+    class function FromXmlDoc(Doc: TXMLDocument; SchemaOnly: Boolean = False): TMemTable;
+    class function FromXmlText(XmlText: string; SchemaOnly: Boolean = False): TMemTable;
+    class function LoadFromXmlFile(const FileName: string; SchemaOnly: Boolean = False): TMemTable;
+    class function LoadFromXmlStream(Stream: TStream; SchemaOnly: Boolean = False): TMemTable;
 
     { supported field types }
 
@@ -425,6 +429,37 @@ uses
 resourcestring
   SUnsupportedFieldType    = 'Fieldtype %s is not supported';
   SReadOnlyField           = 'Field %s cannot be modified, it is read-only.';
+
+
+const
+  NULL_STR   = '##null##';
+
+  InvariantFormatSettings : TFormatSettings = (
+      CurrencyFormat: 1;
+      NegCurrFormat: 5;
+      ThousandSeparator: ',';
+      DecimalSeparator: '.';
+      CurrencyDecimals: 2;
+      DateSeparator: '-';
+      TimeSeparator: ':';
+      ListSeparator: ',';
+      CurrencyString: '$';
+      ShortDateFormat: 'yyyy-mm-dd';          // 'd/m/y';
+      LongDateFormat: 'yyyy-mm-dd';           // 'dd" "mmmm" "yyyy';
+      TimeAMString: 'AM';
+      TimePMString: 'PM';
+      ShortTimeFormat: 'hh:nn';
+      LongTimeFormat: 'hh:nn:ss';
+      ShortMonthNames: ('Jan','Feb','Mar','Apr','May','Jun',
+                        'Jul','Aug','Sep','Oct','Nov','Dec');
+      LongMonthNames: ('January','February','March','April','May','June',
+                       'July','August','September','October','November','December');
+      ShortDayNames: ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
+      LongDayNames:  ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
+      TwoDigitYearCenturyWindow: 50;
+    );
+
+
 
 { TFieldInfo }
 constructor TFieldInfo.Create(Field: TField; aIndex: Integer);
@@ -1146,7 +1181,7 @@ end;
 
 procedure TMemTable.Initialize;
 
-  function GetFieldBufferSize(FieldInfo: TFieldInfo): Integer;
+  function GetFieldBufferSize2(FieldInfo: TFieldInfo): Integer;
   var
     Field: TField;
   begin
@@ -1157,6 +1192,55 @@ procedure TMemTable.Initialize;
       Result := Field.DataSize
     else
       Result := SizeOf(TBlob);
+  end;
+
+  function GetFieldBufferSize(FieldInfo: TFieldInfo): Integer;
+  var
+    Field: TField;
+  begin
+    Result := 0;
+    Field  := FieldInfo.Field;
+
+    case Field.DataType of
+      ftString        : Result := (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);  Field.FieldDef.CharSize
+      ftWideString    : Result := (Field.Size + 1) * SizeOf(WideChar); // SizeOf(WideChar);
+      ftGuid          : Result := (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);
+
+      ftFixedChar     : Result := (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);
+      ftFixedWideChar : Result := (Field.Size + 1) * SizeOf(WideChar); // SizeOf(WideChar);
+
+      ftAutoInc       : Result := SizeOf(Integer);
+      ftSmallint      : Result := SizeOf(SmallInt);
+      ftInteger       : Result := SizeOf(Integer);
+      ftWord          : Result := SizeOf(Word);
+      ftLargeint      : Result := SizeOf(LargeInt);
+
+      ftBoolean       : Result := SizeOf(WordBool);
+
+      ftFloat         : Result := SizeOf(Double);
+      ftCurrency      : Result := SizeOf(Double);
+      ftBCD           : Result := SizeOf(TBcd);
+      ftFMTBcd        : Result := SizeOf(TBcd);
+
+      ftDate          : Result := SizeOf(Integer);
+      ftTime          : Result := SizeOf(Integer);
+      ftDateTime      : Result := SizeOf(TDateTime);
+      ftTimeStamp     : Result := SizeOf(TTimeStamp);
+
+      ftMemo          : Result := SizeOf(TBlob);
+      ftWideMemo      : Result := SizeOf(TBlob);
+      ftFmtMemo       : Result := SizeOf(TBlob);
+
+      ftBlob          : Result := SizeOf(TBlob);
+      ftGraphic       : Result := SizeOf(TBlob);
+
+      ftOraBlob       : Result := SizeOf(TBlob);
+      ftOraClob       : Result := SizeOf(TBlob);
+
+      ftVariant       : Result := SizeOf(PVariant);
+    else
+      raise Exception.Create('FieldType not supported');
+    end;
   end;
 
 var
@@ -1376,7 +1460,7 @@ var
   P          : PByte;
   HasData    : Boolean;
 begin
-  HasData := False;
+  HasData := not IsFieldNull(RecBuf, FieldIndex);
 
   if Assigned(Buffer) then
   begin
@@ -1399,9 +1483,15 @@ procedure TMemTable.SetFieldDataInternal(RecBuf: Pointer; Buffer: Pointer; const
 var
   P             : PByte;
   HasData       : Boolean;
+  S             : string;
 begin
   P         := GetFieldPtr(RecBuf, FieldIndex);
   HasData   := Assigned(Buffer);
+
+  if FFieldTypes[FieldIndex] = ftString then
+  begin
+    SetString(S, Buffer, FFieldBufferSizes[FieldIndex]);
+  end;
 
   if HasData then
   begin
@@ -2989,7 +3079,7 @@ begin
     Result := FEncoding;
 end;
 
-function TMemTable.CreateXmlDoc(RootName: string; aEncoding: string): TXMLDocument;
+class function TMemTable.CreateXmlDoc(RootName: string; aEncoding: string): TXMLDocument;
 begin
   Result := TXMLDocument.Create;
 
@@ -3005,37 +3095,9 @@ begin
   Result.Encoding   := aEncoding;
 end;
 
-function TMemTable.ToXmlDoc(SchemaOnly: Boolean): TXMLDocument;
-
-const
-  NULL_STR   = '##null##';
-
-  InvariantFormatSettings : TFormatSettings = (
-      CurrencyFormat: 1;
-      NegCurrFormat: 5;
-      ThousandSeparator: ',';
-      DecimalSeparator: '.';
-      CurrencyDecimals: 2;
-      DateSeparator: '-';
-      TimeSeparator: ':';
-      ListSeparator: ',';
-      CurrencyString: '$';
-      ShortDateFormat: 'yyyy-mm-dd';          // 'd/m/y';
-      LongDateFormat: 'yyyy-mm-dd';           // 'dd" "mmmm" "yyyy';
-      TimeAMString: 'AM';
-      TimePMString: 'PM';
-      ShortTimeFormat: 'hh:nn';
-      LongTimeFormat: 'hh:nn:ss';
-      ShortMonthNames: ('Jan','Feb','Mar','Apr','May','Jun',
-                        'Jul','Aug','Sep','Oct','Nov','Dec');
-      LongMonthNames: ('January','February','March','April','May','June',
-                       'July','August','September','October','November','December');
-      ShortDayNames: ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
-      LongDayNames:  ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
-      TwoDigitYearCenturyWindow: 50;
-    );
 
 
+class function TMemTable.ToXmlDoc(Table: TMemTable; SchemaOnly: Boolean): TXMLDocument;
   {---------------------------------------------------}
   function StrToXml(const S: string): string;
   const
@@ -3109,25 +3171,25 @@ var
   SubNode   : TDOMElement;
   i         : Integer;
   Field     : TField;
-  FS        : TFormatSettings;
   TagName   : string;
   BM        : TBytes;
   MS        : TMemoryStream;
   V         : Variant;
+  FS        : TFormatSettings;
 begin
   FS     := InvariantFormatSettings;
 
-  Result := CreateXmlDoc('datapacket', Encoding);
+  Result := CreateXmlDoc('datapacket', Table.Encoding);
   Root   := Result.DocumentElement;
 
-  SetAttr(Root, 'TableName', StrToXml(GetStrProp(Self, 'TableName')));
+  SetAttr(Root, 'TableName', StrToXml(GetStrProp(Table, 'TableName')));
 
   // schema ======================================================
   Node := AddNode(Root, 'schema');
 
-  for i := 0 to Self.FieldCount - 1 do
+  for i := 0 to Table.FieldCount - 1 do
   begin
-    Field   := Self.Fields[i];
+    Field   := Table.Fields[i];
     if Field.FieldKind = fkData then
     begin
       SubNode := AddNode(Node, 'c' + IntToStr(i));
@@ -3140,7 +3202,7 @@ begin
         ftWideString    ,
         ftFixedWideChar : begin
                             SubNode['type']  := 'string';
-                            SubNode['width'] := Field.Size.ToString();
+                            SubNode['size']  := Field.Size.ToString();
                           end;
         ftSmallint   ,
         ftInteger    ,
@@ -3176,33 +3238,34 @@ begin
 
       if Field.ReadOnly then
         SubNode['readonly'] := 'true';
+
     end;
 
   end;
 
 
-  // schema ======================================================
+  // data ======================================================
   if not SchemaOnly then
   begin
     Node := AddNode(Root, 'data');
-    Node['row_count'] := Self.RecordCount.ToString();
+    Node['row_count'] := Table.RecordCount.ToString();
 
-    Self.DisableControls;
-    BM := Self.Bookmark;
+    Table.DisableControls;
+    BM := Table.Bookmark;
     try
-      Self.Last;
-      Self.First;
-      while not Self.Eof do
+      Table.Last;
+      Table.First;
+      while not Table.Eof do
       begin
         SubNode := AddNode(Node, 'row');
 
-        for i := 0 to Self.FieldCount - 1 do
+        for i := 0 to Table.FieldCount - 1 do
         begin
-          Field   := Self.Fields[i];
+          Field   := Table.Fields[i];
           if Field.FieldKind = fkData then
           begin
             TagName := 'c' + IntToStr(i);
-            V := Self.FieldByName(Field.FieldName).Value;
+            V := Table.FieldByName(Field.FieldName).Value;
             if VarIsNull(V) then
             ///if Self.FieldByName(Field.FieldName).IsNull then
               SubNode[TagName] := NULL_STR
@@ -3253,24 +3316,23 @@ begin
 
         end;
 
-
-        Self.Next;
+        Table.Next;
       end;
     finally
-      Self.Bookmark := BM;
-      Self.EnableControls;
+      Table.Bookmark := BM;
+      Table.EnableControls;
     end;
 
   end;
 
 end;
 
-function TMemTable.ToXmlText(SchemaOnly: Boolean): string;
+class function TMemTable.ToXmlText(Table: TMemTable; SchemaOnly: Boolean): string;
 var
   Doc: TXMLDocument;
   SS: TStringStream;
 begin
-  Doc := ToXmlDoc(SchemaOnly);
+  Doc := ToXmlDoc(Table, SchemaOnly);
   try
     SS := TStringStream.Create('');
     try
@@ -3284,11 +3346,11 @@ begin
   end;
 end;
 
-procedure TMemTable.SaveToXmlFile(const FileName: string; SchemaOnly: Boolean = False);
+class procedure TMemTable.SaveToXmlFile(Table: TMemTable; const FileName: string; SchemaOnly: Boolean = False);
 var
   Doc   : TXMLDocument;
 begin
-  Doc := ToXmlDoc(SchemaOnly);
+  Doc := ToXmlDoc(Table, SchemaOnly);
   try
     WriteXMLFile(Doc, FileName);
   finally
@@ -3296,11 +3358,11 @@ begin
   end;
 end;
 
-procedure TMemTable.SaveToXmlStream(Stream: TStream; SchemaOnly: Boolean);
+class procedure TMemTable.SaveToXmlStream(Table: TMemTable; Stream: TStream; SchemaOnly: Boolean);
 var
   Doc   : TXMLDocument;
 begin
-  Doc := ToXmlDoc(SchemaOnly);
+  Doc := ToXmlDoc(Table, SchemaOnly);
   try
     WriteXMLFile(Doc, Stream);
   finally
@@ -3308,9 +3370,246 @@ begin
   end;
 end;
 
-procedure TMemTable.LoadFromXmlFile(const FileName: string);
-begin
+class function TMemTable.FromXmlDoc(Doc: TXMLDocument; SchemaOnly: Boolean = False): TMemTable;
 
+  {-------------------------------------------------------------------}
+  function AsVariant(const Value: Variant; Default: Variant): Variant;
+  begin
+    Result := Value;
+    if VarIsNull(Result) then
+      Result := Default;
+  end;
+  {-------------------------------------------------------------------}
+  function GetFieldType(const sType: string): TFieldType;
+  var
+    FieldType : TFieldType;
+  begin
+     FieldType := ftString;
+
+          if sType = 'string'     then FieldType := ftString
+     else if sType = 'integer'    then FieldType := ftInteger
+     else if sType = 'autoinc'    then FieldType := ftAutoInc
+     else if sType = 'boolean'    then FieldType := ftBoolean
+     else if sType = 'float'      then FieldType := ftFloat
+     else if sType = 'money'      then FieldType := ftCurrency
+     else if sType = 'date'       then FieldType := ftDate
+     else if sType = 'time'       then FieldType := ftTime
+     else if sType = 'datetime'   then FieldType := ftDateTime
+     else if sType = 'memo'       then FieldType := ftMemo
+     else if sType = 'graphic'    then FieldType := ftGraphic
+     else if sType = 'blob'       then FieldType := ftBlob
+     ;
+
+     Result := FieldType;
+  end;
+  {-------------------------------------------------------------------}
+  function GetAttr(const Node: TDOMNode; AttrName: string; DefaultValue: string): string;
+  begin
+    if (Node is TDOMElement) and (Assigned(TDOMElement(Node).GetAttributeNode(AttrName))) then
+      Result := TDOMElement(Node)[AttrName]
+    else
+      Result := DefaultValue;
+  end;
+  {-------------------------------------------------------------------}
+  function HasAttr(const Node: TDOMNode; AttrName: string): Boolean;
+  begin
+    Result := (Node is TDOMElement) and Assigned(TDOMElement(Node).GetAttributeNode(AttrName));
+  end;
+
+  {-------------------------------------------------------------------}
+  function Base64ToStream(Input: string): TStream;
+  var
+    InputSS : TStringStream;
+    Decoder : TBase64DecodingStream;
+  begin
+    Result  := TMemoryStream.Create;
+    InputSS := TStringStream.Create(Input);
+    try
+      InputSS.Position := 0;
+      Decoder := TBase64DecodingStream.Create(InputSS, bdmMIME);
+      Result.CopyFrom(Decoder, Decoder.Size);
+      Result.Position := 0;
+    finally
+      InputSS.Free;
+    end;
+  end;
+  {-------------------------------------------------------------------}
+var
+  Root      : TDOMElement;
+  Node      : TDOMElement;
+  SubNode   : TDOMElement;
+  Nodes     : TDOMNodeList;
+  i         : Integer;
+  j         : Integer;
+  FieldDef  : TFieldDef;
+  Field     : TField;
+  Table     : TMemTable;
+
+  sValue    : string;
+
+  MS        : TStream;
+  FS        : TFormatSettings;
+
+  //Size      : SizeInt;
+begin
+  FS     := InvariantFormatSettings;
+
+  Root   := Doc.DocumentElement;
+
+  Table  := TMemTable.Create(nil);
+  Table.TableName := GetAttr(Root, 'TableName', '');
+
+  // schema ======================================================
+  Node  := Root.FindNode('schema') as TDOMElement;
+  Nodes := Node.ChildNodes;
+
+  for i := 0 to Nodes.Count - 1 do
+  begin
+    SubNode := Nodes[i] as TDOMElement;
+
+    FieldDef               := Table.FieldDefs.AddFieldDef();
+    FieldDef.Name          := SubNode['name'];
+    FieldDef.DataType      := GetFieldType(SubNode['type']);
+    if HasAttr(SubNode, 'size') then
+      FieldDef.Size        := LongInt(AsVariant(SubNode['size'], 0));
+    if HasAttr(SubNode, 'required') then
+      FieldDef.Required    := Boolean(AsVariant(SubNode['required'], False));
+    if HasAttr(SubNode, 'readonly') and Boolean(AsVariant(SubNode['readonly'], False)) then
+      FieldDef.Attributes := FieldDef.Attributes + [faReadonly];
+  end;
+
+  Table.CreateDataset();
+
+  // data ======================================================
+  if not SchemaOnly then
+  begin
+    Table.Active := True;
+
+    Node  := Root.FindNode('data') as TDOMElement;
+    Nodes := Node.ChildNodes;
+
+    for j := 0 to Nodes.Count - 1 do
+    begin
+      SubNode := Nodes[j] as TDOMElement;
+      Table.Append();
+
+      for i := 0 to Table.FieldCount - 1 do
+      begin
+        sValue := GetAttr(SubNode, 'c' + IntToStr(i), NULL_STR);
+
+        Field  := Table.Fields[i];
+        if sValue = NULL_STR then
+          Field.Value := Variants.Null
+        else begin
+          case Field.DataType of
+            ftString     ,
+            ftWideString ,
+            ftFixedWideChar,
+            ftFixedChar  ,
+            ftGuid       : begin
+                             //Size := Length(sValue);
+                             Field.AsString := sValue;
+                           end;
+
+            ftSmallint   ,
+            ftInteger    ,
+            ftWord       ,
+            ftLargeint   ,
+            ftAutoInc    : Field.Value  := sValue;
+
+            ftBoolean    : Field.Value  := sValue; // = 'true';
+            ftFloat      ,
+            ftBCD        ,
+            ftFMTBcd     ,
+            ftCurrency   : Field.Value     := StrToFloat(sValue, FS);
+
+            ftDate       : Field.Value     := StrToDate(sValue, FS);
+            ftTime       : Field.Value     := StrToTime(sValue, FS);
+            ftDateTime   ,
+            ftTimeStamp  : Field.Value     := StrToDateTime(sValue, FS);
+            ftMemo       ,
+            ftWideMemo   ,
+            ftFmtMemo    ,
+            ftGraphic    ,
+            ftOraBlob    ,
+            ftOraClob    ,
+            ftBlob       : begin
+                             MS := Base64ToStream(sValue);
+                             try
+                               MS.Position := 0;
+                               TBlobField(Field).LoadFromStream(MS);
+                             finally
+                               MS.Free;
+                             end;
+
+                           end;
+          end;
+        end;
+
+      end;
+
+      try
+        Table.Post;
+      except
+        on E: Exception do
+        begin
+          E.Message := Format('Error while posting. Record number %d', [j]) + LineEnding + E.Message;
+          raise;
+        end;
+      end;
+
+    end;
+  end;
+
+  Result := Table;
+
+end;
+
+class function TMemTable.FromXmlText(XmlText: string; SchemaOnly: Boolean = False): TMemTable;
+var
+  Doc : TXMLDocument;
+  SS  : TStringStream;
+begin
+  Doc := nil;
+
+  SS := TStringStream.Create(XMLText);
+  try
+    ReadXMLFile(Doc, SS);
+    try
+      Result := FromXmlDoc(Doc, SchemaOnly);
+    finally
+      Doc.Free();
+    end;
+  finally
+    SS.Free();
+  end;
+end;
+
+class function TMemTable.LoadFromXmlFile(const FileName: string; SchemaOnly: Boolean = False): TMemTable;
+var
+  Doc   : TXMLDocument;
+begin
+  if not FileExists(FileName) then
+    raise Exception.CreateFmt('File not found: %s', [FileName]);
+
+  ReadXMLFile(Doc, FileName);
+  try
+    Result := FromXmlDoc(Doc, SchemaOnly);
+  finally
+    Doc.Free();
+  end;
+end;
+
+class function TMemTable.LoadFromXmlStream(Stream: TStream; SchemaOnly: Boolean): TMemTable;
+var
+  Doc   : TXMLDocument;
+begin
+  ReadXMLFile(Doc, Stream);
+  try
+    Result := FromXmlDoc(Doc, SchemaOnly);
+  finally
+    Doc.Free();
+  end;
 end;
 
 
