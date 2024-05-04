@@ -83,6 +83,8 @@ begin
   btnFromXmlText.OnClick    := @AnyClick;
 end;
 
+
+
 procedure TXmlForm.InitializeData();
 var
   i : Integer;
@@ -102,12 +104,12 @@ begin
   Table := TMemTable.Create(Self);
 
   //Table.FieldDefs.Add('AUTOINC', ftAutoInc);
-  Table.FieldDefs.Add('STRING', ftString, 10, True);
-  Table.FieldDefs.Add('GUID', ftGuid, 38);    //38
+  Table.FieldDefs.AddString('STRING', 10);     // Table.FieldDefs.Add('STRING', ftWideString, 10, True);
+  Table.FieldDefs.Add('GUID', ftGuid, 38);
   Table.FieldDefs.Add('INTEGER', ftInteger);
   Table.FieldDefs.Add('LARGE_INT', ftLargeint);
   Table.FieldDefs.Add('BOOL', ftBoolean);
-  Table.FieldDefs.Add('FLOAT', ftFloat);
+  Table.FieldDefs.Add('FLOAT', ftFloat); //.Precision := 4;
   //Table.FieldDefs.Add('BCD', ftBCD);
   Table.FieldDefs.Add('CURRENCY', ftCurrency);
   Table.FieldDefs.Add('DATETIME', ftDateTime);

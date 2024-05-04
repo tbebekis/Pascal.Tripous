@@ -21,6 +21,17 @@ uses
  ;
 
 type
+
+  { TFieldDefsStringFieldHelper }
+
+  TFieldDefsStringFieldHelper = class helper for TFieldDefs
+    { For the Size of an ftString field to be respected, in characters, even for non-English characters,
+      the CodePage should be CP_UTF8. Not CP_ACP.
+
+      SEE: https://forum.lazarus.freepascal.org/index.php/topic,6950.msg516328.html#msg516328 }
+    function AddString(FieldName: string; Size: Integer; Required: Boolean = False; ReadOnly: Boolean = False): TFieldDef;
+  end;
+
   (*============================================================================
                              Record buffer layout
    -----------------------------------------------------------------------------
@@ -458,6 +469,13 @@ const
       LongDayNames:  ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
       TwoDigitYearCenturyWindow: 50;
     );
+
+{ TFieldDefsStringFieldHelper }
+
+function TFieldDefsStringFieldHelper.AddString(FieldName: string; Size: Integer; Required: Boolean; ReadOnly: Boolean): TFieldDef;
+begin
+  Result := Add(FieldName, ftString, Size, 0, Required, ReadOnly, Count + 1, CP_UTF8);
+end;
 
 
 
@@ -1181,7 +1199,7 @@ end;
 
 procedure TMemTable.Initialize;
 
-  function GetFieldBufferSize2(FieldInfo: TFieldInfo): Integer;
+  function GetFieldBufferSize(FieldInfo: TFieldInfo): Integer;
   var
     Field: TField;
   begin
@@ -1194,7 +1212,7 @@ procedure TMemTable.Initialize;
       Result := SizeOf(TBlob);
   end;
 
-  function GetFieldBufferSize(FieldInfo: TFieldInfo): Integer;
+  function GetFieldBufferSize2(FieldInfo: TFieldInfo): Integer;
   var
     Field: TField;
   begin
@@ -1202,7 +1220,7 @@ procedure TMemTable.Initialize;
     Field  := FieldInfo.Field;
 
     case Field.DataType of
-      ftString        : Result := (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);  Field.FieldDef.CharSize
+      ftString        : Result := Field.DataSize + 2; // (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);  Field.FieldDef.CharSize
       ftWideString    : Result := (Field.Size + 1) * SizeOf(WideChar); // SizeOf(WideChar);
       ftGuid          : Result := (Field.Size + 1) * SizeOf(AnsiChar); // SizeOf(AnsiChar);
 
@@ -3197,41 +3215,44 @@ begin
 
       case Field.DataType of
         ftString        ,
-        ftFixedChar     ,
-        ftGuid          ,
+        ftFixedChar     : SubNode['type']  := 'string';
+        ftGuid          : SubNode['guid']  := 'string';
+
         ftWideString    ,
-        ftFixedWideChar : begin
-                            SubNode['type']  := 'string';
-                            SubNode['size']  := Field.Size.ToString();
-                          end;
-        ftSmallint   ,
-        ftInteger    ,
-        ftWord       ,
-        ftLargeint   : SubNode['type'] := 'integer';
-        ftAutoInc    : SubNode['type'] := 'autoinc';
+        ftFixedWideChar : SubNode['type']  := 'widestring';
 
-        ftBoolean    : SubNode['type'] := 'boolean';
+        ftSmallint      ,
+        ftInteger       ,
+        ftWord          ,
+        ftLargeint      : SubNode['type'] := 'integer';
+        ftAutoInc       : SubNode['type'] := 'autoinc';
 
-        ftFloat      ,
-        ftBCD        ,
-        ftFMTBcd     : SubNode['type'] := 'float';
-        ftCurrency   : SubNode['type'] := 'money';
+        ftBoolean       : SubNode['type'] := 'boolean';
 
-        ftDate       : SubNode['type'] := 'date';
-        ftTime       : SubNode['type'] := 'time';
-        ftDateTime   : SubNode['type'] := 'datetime';
-        ftTimeStamp  : SubNode['type'] := 'datetime';
+        ftFloat         ,
+        ftBCD           ,
+        ftFMTBcd        : SubNode['type'] := 'float';
+        ftCurrency      : SubNode['type'] := 'money';
 
-        ftMemo       ,
-        ftWideMemo   ,
-        ftFmtMemo    ,
-        ftOraClob    : SubNode['type'] := 'memo';
+        ftDate          : SubNode['type'] := 'date';
+        ftTime          : SubNode['type'] := 'time';
+        ftDateTime      : SubNode['type'] := 'datetime';
+        ftTimeStamp     : SubNode['type'] := 'datetime';
 
-        ftGraphic    : SubNode['type'] := 'graphic';
+        ftMemo          ,
+        ftWideMemo      ,
+        ftFmtMemo       ,
+        ftOraClob       : SubNode['type'] := 'memo';
 
-        ftOraBlob    ,
-        ftBlob       : SubNode['type'] := 'blob';
+        ftGraphic       : SubNode['type'] := 'graphic';
+
+        ftOraBlob       ,
+        ftBlob          : SubNode['type'] := 'blob';
       end;
+
+      // ftString, ftWideString, ftGuid, etc
+      if (Field is TStringField) then
+        SubNode['size']  := Field.FieldDef.Size.ToString();
 
       if Field.Required then
         SubNode['required'] := 'true';
@@ -3239,6 +3260,8 @@ begin
       if Field.ReadOnly then
         SubNode['readonly'] := 'true';
 
+      if ((Field is TFloatField) or (Field is TNumericField)) and (Field.FieldDef.Precision <> -1) then
+        SubNode['precision'] := Field.FieldDef.Precision.ToString();
     end;
 
   end;
@@ -3387,6 +3410,8 @@ class function TMemTable.FromXmlDoc(Doc: TXMLDocument; SchemaOnly: Boolean = Fal
      FieldType := ftString;
 
           if sType = 'string'     then FieldType := ftString
+     else if sType = 'widestring' then FieldType := ftWideString
+     else if sType = 'guid'       then FieldType := ftGuid
      else if sType = 'integer'    then FieldType := ftInteger
      else if sType = 'autoinc'    then FieldType := ftAutoInc
      else if sType = 'boolean'    then FieldType := ftBoolean
@@ -3451,6 +3476,15 @@ var
   FS        : TFormatSettings;
 
   //Size      : SizeInt;
+
+  FieldName : string;
+  FieldType : TFieldType;
+  FieldSize : Integer;
+  Precision : Integer;
+  Required  : Boolean;
+  ReadOnly  : Boolean;
+  FieldNo   : Integer;
+  CodePage  : TSystemCodePage;
 begin
   FS     := InvariantFormatSettings;
 
@@ -3465,17 +3499,37 @@ begin
 
   for i := 0 to Nodes.Count - 1 do
   begin
+    Precision := 0;
+    FieldSize := 0;
+    Required  := False;
+    ReadOnly  := False;
+    CodePage  := 0;
+    FieldNo   := Table.FieldDefs.Count + 1;
+
     SubNode := Nodes[i] as TDOMElement;
 
-    FieldDef               := Table.FieldDefs.AddFieldDef();
-    FieldDef.Name          := SubNode['name'];
-    FieldDef.DataType      := GetFieldType(SubNode['type']);
+    FieldName := SubNode['name'];
+    FieldType := GetFieldType(SubNode['type']);
     if HasAttr(SubNode, 'size') then
-      FieldDef.Size        := LongInt(AsVariant(SubNode['size'], 0));
+      FieldSize        := LongInt(AsVariant(SubNode['size'], 0));
+
     if HasAttr(SubNode, 'required') then
-      FieldDef.Required    := Boolean(AsVariant(SubNode['required'], False));
-    if HasAttr(SubNode, 'readonly') and Boolean(AsVariant(SubNode['readonly'], False)) then
-      FieldDef.Attributes := FieldDef.Attributes + [faReadonly];
+      Required    := Boolean(AsVariant(SubNode['required'], False));
+
+    if HasAttr(SubNode, 'readonly') then
+      ReadOnly :=  Boolean(AsVariant(SubNode['readonly'], False));
+
+    if HasAttr(SubNode, 'precision') then
+      Precision :=  LongInt(AsVariant(SubNode['precision'], False));
+
+    case FieldType of
+      ftString, ftFixedChar, ftMemo:
+        CodePage := CP_UTF8;
+      ftWideString, ftFixedWideChar, ftWideMemo:
+        CodePage := CP_UTF16;
+    end;
+
+    FieldDef := Table.FieldDefs.Add(FieldName, FieldType, FieldSize, Precision, Required, ReadOnly, FieldNo, CodePage);
   end;
 
   Table.CreateDataset();

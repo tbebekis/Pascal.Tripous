@@ -18,8 +18,8 @@ type
 implementation
 
 uses
-   DCPrc4        // dcpcrypt package
-  ,DCPsha256     // dcpcrypt package
+   DCPrc4        // dcpcrypt package is required
+  ,DCPsha256     // dcpcrypt package is required
   ;
 
 class function Encryptor.Encrypt(Passphrase: string; PlainText: string): string;

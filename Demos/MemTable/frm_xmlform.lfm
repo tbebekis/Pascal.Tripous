@@ -1,7 +1,7 @@
 object XmlForm: TXmlForm
-  Left = 531
+  Left = 825
   Height = 534
-  Top = 155
+  Top = 350
   Width = 1086
   Caption = 'XML'
   ClientHeight = 534
