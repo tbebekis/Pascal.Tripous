@@ -1484,10 +1484,6 @@ begin
   Result := TokenList[Current - 1] as TToken;
 end;
 
-
-
-
-
 function TFilterParser.Advance(): TToken;
 begin
   if not IsAtEnd() then

@@ -13,7 +13,7 @@ uses
   , Dialogs
   , DB
   , DBCtrls
-  , DBGrids
+  , DBGrids, ExtCtrls, StdCtrls
 
   ,Tripous.MemTable
   ,O_App
@@ -24,10 +24,16 @@ type
   { TSimpleForm }
 
   TSimpleForm = class(TForm)
+    btnGetBookmark: TButton;
+    btnGoToBookmark: TButton;
     Grid: TDBGrid;
+    Panel1: TPanel;
   private
     DS: TDatasource;
     Table: TMemTable;
+
+    FBookmark : TBookMark;
+    procedure AnyClick(Sender: TObject);
     procedure InitializeTest();
   protected
     procedure KeyPress(var Key: char); override;
@@ -44,10 +50,24 @@ implementation
 
 { TSimpleForm }
 
+procedure TSimpleForm.AnyClick(Sender: TObject);
+begin
+  if btnGetBookmark = Sender then
+     FBookmark := Table.GetBookmark
+  else if btnGoToBookmark = Sender then
+  begin
+    if Table.BookmarkValid(FBookmark) then
+      Table.GotoBookmark(FBookmark);
+  end;
+end;
+
 procedure TSimpleForm.InitializeTest();
 var
   i: Integer;
 begin
+  btnGetBookmark.OnClick := Addr(AnyClick);
+  btnGoToBookmark.OnClick := Addr(AnyClick);  ;
+
   // master
   Table := TMemTable.Create(Self);
   Table.FieldDefs.Add('Id', ftAutoInc);
@@ -65,7 +85,7 @@ begin
 
   Table.FieldByName('Id').ReadOnly := True;
 
-  for i := 0 to 2 do
+  for i := 0 to 9 do
   begin
     Table.Append();
     Table.FieldByName('Name').AsString := 'Name_' + IntToStr(i + 1);

@@ -1,0 +1,20 @@
+object CalcFieldForm: TCalcFieldForm
+  Left = 648
+  Height = 240
+  Top = 313
+  Width = 488
+  Caption = 'Calculated Fields'
+  ClientHeight = 240
+  ClientWidth = 488
+  LCLVersion = '3.0.0.3'
+  object Grid: TDBGrid
+    Left = 0
+    Height = 240
+    Top = 0
+    Width = 488
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    TabOrder = 0
+  end
+end

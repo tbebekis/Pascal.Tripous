@@ -1,0 +1,39 @@
+object LookUpFieldForm: TLookUpFieldForm
+  Left = 569
+  Height = 306
+  Top = 294
+  Width = 632
+  Caption = 'LookUp Field'
+  ClientHeight = 306
+  ClientWidth = 632
+  LCLVersion = '3.0.0.3'
+  object gridCustomer: TDBGrid
+    Left = 0
+    Height = 147
+    Top = 0
+    Width = 632
+    Align = alTop
+    Color = clWindow
+    Columns = <>
+    TabOrder = 0
+  end
+  object Splitter1: TSplitter
+    Cursor = crVSplit
+    Left = 0
+    Height = 5
+    Top = 147
+    Width = 632
+    Align = alTop
+    ResizeAnchor = akTop
+  end
+  object gridCountry: TDBGrid
+    Left = 0
+    Height = 154
+    Top = 152
+    Width = 632
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    TabOrder = 2
+  end
+end

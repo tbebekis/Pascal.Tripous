@@ -20,7 +20,6 @@ uses
   , DBGrids
 
   ,TypInfo
-
   ,Tripous.MemTable
   ;
 
@@ -29,6 +28,8 @@ type
   { TXmlForm }
 
   TXmlForm = class(TForm)
+    btnSaveToFile: TButton;
+    btnLoadFromFile: TButton;
     btnInitializeData: TButton;
     btnToXmlText: TButton;
     btnFromXmlText: TButton;
@@ -81,6 +82,8 @@ begin
   btnInitializeData.OnClick := @AnyClick;
   btnToXmlText.OnClick      := @AnyClick;
   btnFromXmlText.OnClick    := @AnyClick;
+  btnSaveToFile.OnClick     := @AnyClick;
+  btnLoadFromFile.OnClick   := @AnyClick;
 end;
 
 
@@ -103,7 +106,7 @@ begin
 
   Table := TMemTable.Create(Self);
 
-  //Table.FieldDefs.Add('AUTOINC', ftAutoInc);
+  Table.FieldDefs.Add('AUTOINC', ftAutoInc);
   Table.FieldDefs.AddString('STRING', 10);     // Table.FieldDefs.Add('STRING', ftWideString, 10, True);
   Table.FieldDefs.Add('GUID', ftGuid, 38);
   Table.FieldDefs.Add('INTEGER', ftInteger);
@@ -149,7 +152,7 @@ procedure TXmlForm.ToXmlText();
 var
   XmlText: string;
 begin
-  XmlText := TMemTable.ToXmlText(Table);
+  XmlText := Table.ToXmlText();
   mmoLog.Text := XmlText;
 
   Pager.ActivePage := tabLog;
@@ -163,21 +166,49 @@ begin
   Table.Free();
 
   XmlText := mmoLog.Text;
-  Table := TMemTable.FromXmlText(XmlText);
-  Self.InsertComponent(Table);
+  Table := TMemTable.Create(Self);
+  Table.FromXmlText(XmlText);
+  //Self.InsertComponent(Table);
 
   DS.DataSet := Table;
   Pager.ActivePage := tabGrid;
 end;
 
 procedure TXmlForm.SaveToFile();
+var
+  Dlg: TSaveDialog;
 begin
-
+  Dlg := TSaveDialog.Create(nil);
+  try
+    Dlg.Filter := 'XML|*.xml';
+    if Dlg.Execute() then
+      Table.SaveToXmlFile(Dlg.FileName);
+  finally
+    Dlg.Free;
+  end;
 end;
 
 procedure TXmlForm.LoadFromFile();
+var
+  Dlg: TOpenDialog;
 begin
+  Dlg := TOpenDialog.Create(nil);
+  try
+    Dlg.Filter := 'XML|*.xml';
+    if Dlg.Execute() then
+    begin
+      DS.DataSet := nil;
+      Table.Free();
 
+      Table := TMemTable.Create(Self);
+      Table.LoadFromXmlFile(Dlg.FileName);
+
+      DS.DataSet := Table;
+      Pager.ActivePage := tabGrid;
+    end;
+  finally
+    Dlg.Free;
+  end;
 end;
 
 procedure TXmlForm.AnyClick(Sender: TObject);
@@ -188,6 +219,10 @@ begin
      ToXmlText()
    else if btnFromXmlText = Sender then
      FromXmlText()
+   else if btnSaveToFile = Sender then
+     SaveToFile()
+   else if btnLoadFromFile = Sender then
+     LoadFromFile()
    ;
 end;
 

@@ -1,7 +1,7 @@
 object XmlForm: TXmlForm
-  Left = 825
+  Left = 334
   Height = 534
-  Top = 350
+  Top = 125
   Width = 1086
   Caption = 'XML'
   ClientHeight = 534
@@ -55,15 +55,31 @@ object XmlForm: TXmlForm
       Caption = 'From Xml Text'
       TabOrder = 3
     end
+    object btnSaveToFile: TButton
+      Left = 440
+      Height = 25
+      Top = 11
+      Width = 118
+      Caption = 'Save to file'
+      TabOrder = 4
+    end
+    object btnLoadFromFile: TButton
+      Left = 440
+      Height = 25
+      Top = 39
+      Width = 118
+      Caption = 'Load from file'
+      TabOrder = 5
+    end
   end
   object Pager: TPageControl
     Left = 0
     Height = 452
     Top = 82
     Width = 1086
-    ActivePage = tabLog
+    ActivePage = tabGrid
     Align = alClient
-    TabIndex = 1
+    TabIndex = 0
     TabOrder = 1
     object tabGrid: TTabSheet
       Caption = 'Grid'

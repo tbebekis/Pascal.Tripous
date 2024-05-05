@@ -18,7 +18,7 @@ uses
   Interfaces, // this includes the LCL widgetset
   Forms, frm_MainForm, frm_simpleform, o_App, frm_SortForm,
 frm_StatusFilterForm, frm_RangeForm, frm_LocateLookupForm, frm_BlobForm, 
-frm_FilterForm, Tripous, frm_XmlForm;
+frm_FilterForm, Tripous, frm_XmlForm, frm_LookUpField, frm_CalcField;
 
 {$R *.res}
 

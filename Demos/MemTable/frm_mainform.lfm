@@ -1,10 +1,10 @@
 object MainForm: TMainForm
-  Left = 1502
-  Height = 304
-  Top = 561
+  Left = 659
+  Height = 339
+  Top = 163
   Width = 320
-  Caption = 'MainForm'
-  ClientHeight = 304
+  Caption = 'TMemTable demo'
+  ClientHeight = 339
   ClientWidth = 320
   Position = poScreenCenter
   LCLVersion = '3.0.0.3'
@@ -19,65 +19,81 @@ object MainForm: TMainForm
   object btnBlobs: TButton
     Left = 48
     Height = 25
-    Top = 184
+    Top = 233
     Width = 224
     Caption = 'Blobs'
-    TabOrder = 1
+    TabOrder = 3
   end
   object btnMasterDetail: TButton
     Left = 48
     Height = 25
-    Top = 44
+    Top = 95
     Width = 224
     Caption = 'Master-Detail'
-    TabOrder = 2
+    TabOrder = 4
   end
   object btnSort: TButton
     Left = 48
     Height = 25
-    Top = 72
+    Top = 121
     Width = 224
     Caption = 'Sort'
-    TabOrder = 3
+    TabOrder = 5
   end
   object btnStatusFilter: TButton
     Left = 48
     Height = 25
-    Top = 100
+    Top = 149
     Width = 224
     Caption = 'Status Filter'
-    TabOrder = 4
+    TabOrder = 6
   end
   object btnRange: TButton
     Left = 48
     Height = 25
-    Top = 128
+    Top = 177
     Width = 224
     Caption = 'Range'
-    TabOrder = 5
+    TabOrder = 7
   end
   object btnLocateLookup: TButton
     Left = 48
     Height = 25
-    Top = 156
+    Top = 205
     Width = 224
     Caption = 'Locate/Lookup'
-    TabOrder = 6
+    TabOrder = 8
   end
   object btnFilter: TButton
     Left = 48
     Height = 25
-    Top = 212
+    Top = 261
     Width = 224
     Caption = 'Filter'
-    TabOrder = 7
+    TabOrder = 9
   end
   object btnXML: TButton
     Left = 48
     Height = 25
-    Top = 240
+    Top = 289
     Width = 224
     Caption = 'Save to XML - Load from XML'
-    TabOrder = 8
+    TabOrder = 10
+  end
+  object btnLookUpField: TButton
+    Left = 48
+    Height = 25
+    Top = 43
+    Width = 224
+    Caption = 'LookUp Field'
+    TabOrder = 1
+  end
+  object btnCalcField: TButton
+    Left = 48
+    Height = 25
+    Top = 69
+    Width = 224
+    Caption = 'Calculated Fields'
+    TabOrder = 2
   end
 end

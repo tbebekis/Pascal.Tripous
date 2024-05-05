@@ -137,6 +137,20 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_XmlForm"/>
       </Unit>
+      <Unit>
+        <Filename Value="frm_lookupfield.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="LookUpFieldForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_LookUpField"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frm_calcfield.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="CalcFieldForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="frm_CalcField"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

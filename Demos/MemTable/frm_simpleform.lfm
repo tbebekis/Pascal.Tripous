@@ -1,21 +1,47 @@
 object SimpleForm: TSimpleForm
   Left = 616
-  Height = 346
+  Height = 353
   Top = 261
-  Width = 462
+  Width = 468
   Caption = 'SimpleForm'
-  ClientHeight = 346
-  ClientWidth = 462
+  ClientHeight = 353
+  ClientWidth = 468
   Position = poMainFormCenter
   LCLVersion = '3.0.0.3'
   object Grid: TDBGrid
     Left = 0
-    Height = 346
-    Top = 0
-    Width = 462
+    Height = 305
+    Top = 48
+    Width = 468
     Align = alClient
     Color = clWindow
     Columns = <>
     TabOrder = 0
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 48
+    Top = 0
+    Width = 468
+    Align = alTop
+    ClientHeight = 48
+    ClientWidth = 468
+    TabOrder = 1
+    object btnGetBookmark: TButton
+      Left = 26
+      Height = 25
+      Top = 8
+      Width = 123
+      Caption = 'Get Bookmark'
+      TabOrder = 0
+    end
+    object btnGoToBookmark: TButton
+      Left = 168
+      Height = 25
+      Top = 8
+      Width = 123
+      Caption = 'Go To Bookmark'
+      TabOrder = 1
+    end
   end
 end

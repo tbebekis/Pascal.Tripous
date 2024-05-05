@@ -23,7 +23,9 @@ type
     btnBlobs: TButton;
     btnFilter: TButton;
     btnLocateLookup: TButton;
+    btnCalcField: TButton;
     btnMasterDetail: TButton;
+    btnLookUpField: TButton;
     btnRange: TButton;
     btnSimple: TButton;
     btnSort: TButton;
@@ -47,6 +49,8 @@ implementation
 
 uses
    frm_SimpleForm
+  ,frm_LookUpField
+  ,frm_CalcField
   ,frm_MasterDetailForm
   ,frm_SortForm
   ,frm_StatusFilterForm
@@ -63,6 +67,10 @@ procedure TMainForm.AnyClick(Sender: TObject);
 begin
   if (btnSimple = Sender) then
       ShowModalForm(TSimpleForm)
+  else if (btnLookUpField = Sender) then
+      ShowModalForm(TLookUpFieldForm)
+  else if (btnCalcField = Sender) then
+        ShowModalForm(TCalcFieldForm)
   else if (btnMasterDetail = Sender) then
       ShowModalForm(TMasterDetailForm)
   else if (btnSort = Sender) then
@@ -112,6 +120,8 @@ begin
   KeyPreview := True;
 
   btnSimple.OnClick := @AnyClick;
+  btnLookUpField.OnClick := @AnyClick;
+  btnCalcField.OnClick := @AnyClick;
   btnMasterDetail.OnClick := @AnyClick;
   btnSort.OnClick := @AnyClick;
   btnStatusFilter.OnClick := @AnyClick;
