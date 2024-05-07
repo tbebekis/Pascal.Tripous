@@ -81,6 +81,13 @@ type
 
   TMemTableSortMode  = (smNone, smAsc, smDesc);
 
+  // PtrUInt is an unsigned integer type which has always the same size as a pointer.
+  // When using integers which will be cast to pointers and vice versa, use this type
+  // The following type is used a bookmark data
+  TIntBM = PtrUInt;
+  PIntBM = ^TIntBM;
+
+
   { TFieldInfo }
   TFieldInfo = class(TObject)
   protected
@@ -106,7 +113,7 @@ type
       PRecInfo = ^TRecInfo;
       TRecInfo = record
         Id             : LongWord;        // unique record Id
-        Bookmark       : Integer;         // the BookMark
+        Bookmark       : TIntBM;          // the BookMark
         BookmarkFlag   : TBookmarkFlag;   // = (bfCurrent, bfBOF, bfEOF, bfInserted)
         Status         : TUpdateStatus;   // = (usUnmodified, usModified, usInserted, usDeleted)
       end;
@@ -146,7 +153,7 @@ type
     FTableName                 : string;
 
     FAllRows                   : TList;                   { all rows - owned, all record buffers. Buffers must be freed. }
-    FRows                      : TList;                   { current rows - buffers passing filters, ranges, etc. }
+    FRows                      : TList;                   { current rows - record buffers passing filters, ranges, etc. }
 
     FFields                    : TList;                   { all TFieldInfo fields - owned. TFieldInfo instances must be freed. }
     FDetailFields              : TList;                   { TFieldInfo list }
@@ -169,8 +176,8 @@ type
     FFieldBufferSizes          : array of LongWord;       { data size of field. Null flag is NOT included. }
     FOffsets                   : array of LongWord;       { offset of a field data. For non-blob fields, the first byte is the Null Flag  byte. Blob fields have a Size property. }
 
-    FCurRecIndex               : Integer;                 { the current record index in the FRows list }
-    FLastBookmark              : Integer;                 { an auto inc number unique for each record, stored in TRecInfo.Bookmark }
+    FCurRecIndex               : LongInt;                 { the current record index in the FRows list }
+    FLastBookmark              : TIntBM;                  { an auto inc number unique for each record, stored in TRecInfo.Bookmark }
 
     FModes                     : TCursorModes;
     FKeyBuffers                : array[TKeyBufferIndex] of TRecordBuffer;
@@ -249,9 +256,9 @@ type
     function  GetActiveRecBuf(var RecBuf: Pointer): Boolean;
 
     { bookmark }
-    function  GoToBookmarkInternal(BM: Integer): Boolean;
-    function  GetBookmarkInternal(RecBuf: Pointer): Integer;
-    function  IndexOfBookmark(BM: Integer): Integer;
+    function  GoToBookmarkInternal(BM: TIntBM): Boolean;
+    function  GetBookmarkInternal(RecBuf: Pointer): TIntBM;
+    function  IndexOfBookmark(BM: TIntBM): Integer;
 
     { master-detail }
     procedure OnMasterLinkChanged(Sender: TObject);
@@ -299,10 +306,10 @@ type
     {== TDataset overrides ==}
 
     { record buffer }
-    function  AllocRecordBuffer: TRecordBuffer; override;
+    function  AllocRecordBuffer(): TRecordBuffer; override;
     procedure FreeRecordBuffer(var RecBuf: TRecordBuffer); override;
     function  GetRecord(RecBuf: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;
-    function  GetRecordSize: Word; override;
+    function  GetRecordSize(): Word; override;
 
     { bookmark }
     function  GetBookmarkFlag(RecBuf: TRecordBuffer): TBookmarkFlag; override;
@@ -311,6 +318,7 @@ type
     procedure SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;
     procedure InternalGotoBookmark(pBM: Pointer); override;
     procedure InternalSetToRecord(RecBuf: TRecordBuffer); override;
+
 
     { navigation }
     procedure InternalFirst; override;
@@ -355,8 +363,6 @@ type
     destructor Destroy; override;
 
     {== TDataset overrides ==}
-    function  GetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean): Boolean; override;
-    procedure SetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean); override;
     function  GetFieldData(Field: TField; Buffer: Pointer): Boolean; override;
     procedure SetFieldData(Field: TField; Buffer: Pointer); override;
     function  CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;
@@ -709,7 +715,7 @@ begin
       if Field.ReadOnly then
         SubNode['readonly'] := 'true';
 
-      if ((Field is TFloatField) or (Field is TNumericField)) and (Field.FieldDef.Precision <> -1) then
+      if ((Field is TFloatField) or (Field is TBCDField) or (Field is TFmtBCDField)) and (Field.FieldDef.Precision <> -1) then
         SubNode['precision'] := Field.FieldDef.Precision.ToString();
     end;
 
@@ -948,7 +954,7 @@ begin
 
   for i := 0 to Nodes.Count - 1 do
   begin
-    Precision := 0;
+    Precision := -1;
     FieldSize := 0;
     Required  := False;
     ReadOnly  := False;
@@ -1271,7 +1277,7 @@ end;
 
 
 
-function TMemTable.AllocRecordBuffer: TRecordBuffer;
+function TMemTable.AllocRecordBuffer(): TRecordBuffer;
 var
   RecInfo: PRecInfo;
 begin
@@ -1345,7 +1351,7 @@ begin
 
 end;
 
-function TMemTable.GetRecordSize: Word;
+function TMemTable.GetRecordSize(): Word;
 begin
    Result := FRecBufSize;
 end;
@@ -1368,20 +1374,20 @@ end;
 
 procedure TMemTable.GetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer);
 var
-  RecInfo: PRecInfo;
-  BM: Integer;
+  RecInfo : PRecInfo;
+  BM      : TIntBM;
 begin
   RecInfo := GetRecInfo(RecBuf);
   BM := RecInfo^.Bookmark;
-  PInteger(Data)^ := BM;
+  PIntBM(Data)^ := BM;
 end;
 
 procedure TMemTable.SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer);
 var
-  RecInfo: PRecInfo;
-  BM: Integer;
+  RecInfo : PRecInfo;
+  BM      : TIntBM;
 begin
-  BM := PInteger(Data)^;
+  BM := PIntBM(Data)^;
 
   RecInfo := GetRecInfo(RecBuf);
   RecInfo^.Bookmark := BM;
@@ -1389,16 +1395,16 @@ end;
 
 procedure TMemTable.InternalGotoBookmark(pBM: Pointer);
 var
-  BM: Integer;
+  BM : TIntBM;
 begin
-  BM := PInteger(pBM)^;
+  BM := PIntBM(pBM)^;
   GoToBookmarkInternal(BM);
 end;
 
 procedure TMemTable.InternalSetToRecord(RecBuf: TRecordBuffer);
 var
-  RecInfo: PRecInfo;
-  BM: Integer;
+  RecInfo : PRecInfo;
+  BM      : TIntBM;
 begin
   RecInfo := GetRecInfo(RecBuf);
 
@@ -1406,7 +1412,7 @@ begin
   GoToBookmarkInternal(BM);
 end;
 
-function TMemTable.GoToBookmarkInternal(BM: Integer): Boolean;
+function TMemTable.GoToBookmarkInternal(BM: TIntBM): Boolean;
 var
   Index  : Integer;
 begin
@@ -1421,7 +1427,7 @@ begin
   end;
 end;
 
-function TMemTable.GetBookmarkInternal(RecBuf: Pointer): Integer;
+function TMemTable.GetBookmarkInternal(RecBuf: Pointer): TIntBM;
 var
   RecInfo: PRecInfo;
 begin
@@ -1429,7 +1435,7 @@ begin
   Result  := RecInfo^.Bookmark;
 end;
 
-function TMemTable.IndexOfBookmark(BM: Integer): Integer;
+function TMemTable.IndexOfBookmark(BM: TIntBM): Integer;
 var
   i     : Integer;
   RecInfo: PRecInfo;
@@ -1462,30 +1468,39 @@ begin
   begin
     CursorPosChanged;
     RecBuf := AllocRecordBuffer();
-    Result := (IndexOfBookmark(PInteger(BM)^) <> -1)  and  (GetRecord(RecBuf, gmCurrent, False) = grOK);
+    try
+      Result := (IndexOfBookmark(PIntBM(BM)^) <> -1)  and  (GetRecord(RecBuf, gmCurrent, False) = grOK);
+    finally
+      FreeRecordBuffer(RecBuf);
+    end;
   end;
 
 end;
 
 function TMemTable.CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer;
+var
+  Index1 : Integer;
+  Index2 : Integer;
 begin
   CheckActive();
 
-  Result := 0;
+  if (Bookmark1 = nil) and (Bookmark2 = nil) then
+    Exit(0);
+  if (Bookmark1 <> nil) and (Bookmark2 = nil) then
+    Exit(1);
+  if (Bookmark1 = nil) and (Bookmark2 <> nil) then
+    Exit(-1);
 
-  if Active then
-  begin
-    if (Bookmark1 = nil) and (Bookmark2 = nil) then
-      Result := 0
-    else if (Bookmark1 <> nil) and (Bookmark2 = nil) then
-      Result := 1
-    else if (Bookmark1 = nil) and (Bookmark2 <> nil) then
-      Result := -1
-    else if PInteger(Bookmark1)^ < PInteger(Bookmark2)^ then
-      Result := -1
-    else if PInteger(Bookmark1)^ > PInteger(Bookmark2)^ then
-      Result := 1;
-  end;
+  Index1 := IndexOfBookmark(PIntBM(Bookmark1)^);
+  Index2 := IndexOfBookmark(PIntBM(Bookmark2)^);
+
+  if Index1 < Index2 then
+     Exit(-1);
+
+  if Index1 > Index2 then
+    Exit(1);
+
+  Exit(0);
 end;
 
 procedure TMemTable.InternalFirst;
@@ -1608,12 +1623,11 @@ begin
   Inc(FLastBookmark);
 
   SourceRecInfo := GetRecInfo(RecBuf);
-  SourceRecInfo^.Bookmark      := FLastBookmark;
+  SourceRecInfo^.Bookmark      := FLastBookmark;     // CRUCIAL: this must be set
   SourceRecInfo^.BookmarkFlag  := bfCurrent;
   SourceRecInfo^.Status        := usInserted;
 
   DestRecBuf     := Pointer(AllocRecordBuffer());
-  //DestRecInfo    := GetRecInfo(DestRecBuf);
 
   CopyRecord(RecBuf, DestRecBuf, True);
 
@@ -1708,7 +1722,7 @@ end;
 
 procedure TMemTable.InternalInitFieldDefs;
 begin
-   { nothing }
+   { nothing - TFieldDef instances must be provided by client code }
 end;
 
 procedure TMemTable.ClearCalcFields(RecBuf: TRecordBuffer);
@@ -1756,16 +1770,6 @@ end;
 function TMemTable.GetRecordCount: Integer;
 begin
   Result := FRows.Count;
-end;
-
-function TMemTable.GetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean): Boolean;
-begin
-  Result := GetFieldData(Field, Buffer);
-end;
-
-procedure TMemTable.SetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean);
-begin
-  SetFieldData(Field, Buffer);
 end;
 
 function TMemTable.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
@@ -1933,7 +1937,7 @@ begin
     if FInitialized then
       Finalize();
 
-    BookmarkSize   := SizeOf(Integer);
+    BookmarkSize   := SizeOf(TIntBM);
     FCurRecIndex   := -1;
     FLastRecId      := 1;
 
@@ -1950,7 +1954,7 @@ begin
 
       if (Field.FieldKind in [fkData, fkInternalCalc]) and (not IsBlob) then             { plain data fields }
         DataFields.Add(FieldInfo)
-      else if (not (Field.FieldKind in [fkData, fkInternalCalc])) and (not IsBlob) then  { look up fields }
+      else if (not (Field.FieldKind in [fkData, fkInternalCalc])) and (not IsBlob) then  { look up and calc fields }
         CalcFields.Add(FieldInfo)
       else if IsBlob then                                                                { blob fields }
         BlobFields.Add(FieldInfo)
@@ -2921,7 +2925,8 @@ begin
   if Len <> 0 then
   begin
     SetLength(Result, Len div SizeOf(WideChar));
-    Move(Pointer(PChar(Buffer) + SizeOf(LongWord))^, Pointer(Result)^, Len);
+    //Move(Pointer(PChar(Buffer) + SizeOf(LongWord))^, Pointer(Result)^, Len);
+    CopyMem(Pointer(PChar(Buffer) + SizeOf(LongWord)), Pointer(Result), Len);
   end;
 end;
 
@@ -2935,7 +2940,8 @@ begin
   begin
     Source        := PChar(WS) - SizeOf(LongWord);
     Len           := PLongWord(Source)^;
-    Move(Source^, Buffer^, Len + SizeOf(LongWord));
+    //Move(Source^, Buffer^, Len + SizeOf(LongWord));
+    CopyMem(Source, Buffer, Len + SizeOf(LongWord));
   end;
 {$WARNINGS ON}
 end;
@@ -3526,7 +3532,8 @@ begin
                                  BDC.SignSpecialPlaces := 0;
                                  CurrToBCD(Value, BDC, 32, Fields[FieldIndex].Size);
                                  P := @BDC;
-                                 Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 //Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 CopyMem(P, FieldBuf, FFieldBufferSizes[FieldIndex]);
                                end;
 
     ftDate                   ,
@@ -3534,7 +3541,8 @@ begin
     ftDateTime               : begin
                                  DTR := DateTimeToNative(FFieldTypes[FieldIndex], VarToDateTime(Value));
                                  P   := @DTR;
-                                 Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 //Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 CopyMem(P, FieldBuf, FFieldBufferSizes[FieldIndex]);
                                end;
 
     ftTimeStamp              : begin
@@ -3546,7 +3554,8 @@ begin
                                  }
                                  DT  := VarToDateTime(Value); //VarToSQLTimeStamp(VarToDateTime(Value));
                                  P   := @DT;
-                                 Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 //Move(P^, FieldBuf^, FFieldBufferSizes[FieldIndex]);
+                                 CopyMem(P, FieldBuf, FFieldBufferSizes[FieldIndex]);
                                  Value := Null;
                                end;
 
@@ -3566,7 +3575,7 @@ begin
   Result := Assigned(SourceRecBuf);
 
   if Result then
-    System.Move(SourceRecBuf^, RecBuf^, FRecBufSize);
+    CopyMem(SourceRecBuf, RecBuf, FRecBufSize);
 
 end;
 (*----------------------------------------------------------------------------
@@ -3784,3 +3793,4 @@ begin
 end;
 
 end.
+

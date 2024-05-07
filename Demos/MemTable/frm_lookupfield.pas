@@ -10,7 +10,6 @@ uses
   , Forms
   , Controls
   , ExtCtrls
-  , StdCtrls
   , ComCtrls
   , Graphics
   , Dialogs

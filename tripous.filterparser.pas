@@ -1,5 +1,10 @@
 unit Tripous.FilterParser;
 
+(* ====================================================================
+       Many many thanks to Robert Nystrom of the excellent
+              https://craftinginterpreters.com/
+       This scanner and parser owes its existence to his work.
+ ==================================================================== *)
 
 {$mode ObjFPC}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}

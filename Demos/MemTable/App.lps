@@ -20,7 +20,7 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
         <TopLine Value="2"/>
-        <CursorPos X="44" Y="112"/>
+        <CursorPos X="40" Y="10"/>
         <UsageCount Value="215"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -32,9 +32,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_SimpleForm"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="37"/>
-        <CursorPos X="69" Y="47"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="23"/>
+        <CursorPos X="29" Y="52"/>
         <UsageCount Value="215"/>
         <Loaded Value="True"/>
       </Unit>
@@ -113,9 +113,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_BlobForm"/>
-        <EditorIndex Value="6"/>
-        <TopLine Value="150"/>
-        <CursorPos Y="134"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="73"/>
+        <CursorPos X="53" Y="165"/>
         <UsageCount Value="200"/>
         <Loaded Value="True"/>
       </Unit>
@@ -135,10 +135,8 @@
         <Filename Value="..\..\tripous.filterparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.FilterParser"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="1569"/>
-        <CursorPos X="107" Y="1576"/>
+        <EditorIndex Value="5"/>
+        <CursorPos X="57" Y="18"/>
         <UsageCount Value="217"/>
         <Loaded Value="True"/>
       </Unit>
@@ -146,8 +144,10 @@
         <Filename Value="..\..\tripous.memtable.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.MemTable"/>
-        <EditorIndex Value="2"/>
-        <CursorPos X="54" Y="356"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="1752"/>
+        <CursorPos X="45" Y="1763"/>
         <UsageCount Value="217"/>
         <Loaded Value="True"/>
       </Unit>
@@ -155,7 +155,7 @@
         <Filename Value="..\..\tripous.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="14"/>
         <TopLine Value="77"/>
         <CursorPos X="31" Y="71"/>
         <UsageCount Value="215"/>
@@ -168,7 +168,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_XmlForm"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="12"/>
         <TopLine Value="22"/>
         <CursorPos X="45" Y="48"/>
         <UsageCount Value="354"/>
@@ -181,7 +181,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1150"/>
         <CursorPos X="34" Y="1153"/>
-        <UsageCount Value="79"/>
+        <UsageCount Value="69"/>
       </Unit>
       <Unit>
         <Filename Value="o_filterparser.pas"/>
@@ -189,44 +189,46 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1229"/>
         <CursorPos X="41" Y="1252"/>
-        <UsageCount Value="36"/>
+        <UsageCount Value="26"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
         <UnitName Value="DB"/>
-        <EditorIndex Value="4"/>
-        <TopLine Value="562"/>
-        <CursorPos X="21" Y="584"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="1648"/>
+        <CursorPos X="33" Y="1672"/>
         <UsageCount Value="107"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\bufdataset.pas"/>
         <UnitName Value="BufDataset"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="2639"/>
-        <CursorPos X="33" Y="2643"/>
-        <UsageCount Value="87"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="1648"/>
+        <CursorPos X="52" Y="1659"/>
+        <UsageCount Value="86"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="698"/>
-        <CursorPos X="3" Y="701"/>
-        <UsageCount Value="101"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="662"/>
+        <CursorPos X="3" Y="670"/>
+        <UsageCount Value="114"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="G:\My Drive\Dev\Lazarus\MemTable_Miscs\tpk_DB.pas"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="13"/>
         <CursorPos X="12" Y="5"/>
         <UsageCount Value="123"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\fields.inc"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="1667"/>
-        <CursorPos X="62" Y="1678"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="3190"/>
+        <CursorPos X="3" Y="3193"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
       </Unit>
@@ -235,47 +237,40 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="744"/>
         <CursorPos Y="769"/>
-        <UsageCount Value="60"/>
+        <UsageCount Value="50"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\classesh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="1939"/>
         <CursorPos X="26" Y="1973"/>
-        <UsageCount Value="146"/>
+        <UsageCount Value="136"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\util.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="37" Y="6"/>
-        <UsageCount Value="85"/>
+        <UsageCount Value="75"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\lists.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="718"/>
         <CursorPos X="35" Y="727"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="12"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\streams.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="33"/>
         <CursorPos Y="41"/>
-        <UsageCount Value="15"/>
-      </Unit>
-      <Unit>
-        <Filename Value="..\..\tripous.memtable - 00.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="1220"/>
-        <CursorPos X="3" Y="1191"/>
-        <UsageCount Value="4"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\intfh.inc"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="10" Y="34"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="4"/>
       </Unit>
       <Unit>
         <Filename Value="C:\_Disk_X\_Dev\Lazarus\Github\Pascal-MemTable\o_memtable.pas"/>
@@ -283,21 +278,22 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1940"/>
         <CursorPos Y="1953"/>
-        <UsageCount Value="85"/>
+        <UsageCount Value="76"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\systemh.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="81"/>
-        <CursorPos X="10" Y="101"/>
-        <UsageCount Value="76"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="432"/>
+        <CursorPos X="47" Y="449"/>
+        <UsageCount Value="96"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\tripous.crypt.pas"/>
         <UnitName Value="Tripous.Crypt"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="48" Y="14"/>
-        <UsageCount Value="74"/>
+        <UsageCount Value="64"/>
       </Unit>
       <Unit>
         <Filename Value="frm_lookupfield.pas"/>
@@ -305,10 +301,10 @@
         <ComponentName Value="LookUpFieldForm"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_LookUpField"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="53"/>
-        <CursorPos X="30" Y="72"/>
-        <UsageCount Value="27"/>
+        <EditorIndex Value="4"/>
+        <CursorPos Y="13"/>
+        <UsageCount Value="123"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frm_calcfield.pas"/>
@@ -319,127 +315,158 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="37"/>
         <CursorPos X="23" Y="56"/>
-        <UsageCount Value="25"/>
+        <UsageCount Value="121"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\sysstrh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="43"/>
         <CursorPos X="42" Y="63"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="1"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\sysstr.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="2074"/>
         <CursorPos X="3" Y="2086"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="1"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\objpas.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="127"/>
+        <CursorPos X="8" Y="36"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\sysutilh.inc"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="82"/>
+        <CursorPos X="32" Y="104"/>
+        <UsageCount Value="18"/>
+        <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="25">
+    <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2575" Column="9" TopLine="2558"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="3797" Column="33" TopLine="3778"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_xmlform.pas"/>
-        <Caret Line="165" Column="17" TopLine="139"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_xmlform.pas"/>
-        <Caret Line="117" Column="22" TopLine="105"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_xmlform.pas"/>
-        <Caret Line="54" Column="25" TopLine="42"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_xmlform.pas"/>
-        <Caret Line="191" Column="61" TopLine="176"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_xmlform.pas"/>
-        <Caret Line="185" Column="64" TopLine="177"/>
+        <Caret Line="336" Column="27" TopLine="316"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1036" Column="36" TopLine="1017"/>
+        <Caret Line="1714" Column="17" TopLine="1678"/>
       </Position>
       <Position>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
-        <Caret Line="116" Column="73" TopLine="144"/>
+        <Caret Line="1518" Column="15" TopLine="1496"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1719" Column="42" TopLine="1699"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="368" Column="27" TopLine="345"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1821" Column="53" TopLine="1786"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="235" Column="20" TopLine="209"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="2078" Column="43" TopLine="2053"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="368" Column="27" TopLine="345"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1793" Column="3" TopLine="1807"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="240" Column="15" TopLine="220"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="2177" Column="57" TopLine="2156"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="236" Column="15" TopLine="216"/>
+      </Position>
+      <Position>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
+        <Caret Line="89" Column="66" TopLine="80"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="46" Column="26" TopLine="29"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="788" Column="84" TopLine="759"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1157" Column="69" TopLine="1129"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="370" Column="31" TopLine="349"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1869" Column="56" TopLine="1841"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="352" Column="36" TopLine="332"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="1767" Column="14" TopLine="1751"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.memtable.pas"/>
+        <Caret Line="353" Column="30" TopLine="333"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.filterparser.pas"/>
+        <Caret Line="18" Column="57"/>
+      </Position>
+      <Position>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
+        <Caret Line="1531" Column="62" TopLine="1523"/>
       </Position>
       <Position>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
-        <Caret Line="108" Column="35" TopLine="89"/>
+        <Caret Line="916" Column="67" TopLine="908"/>
       </Position>
       <Position>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
-        <Caret Line="654" Column="24" TopLine="646"/>
+        <Caret Line="1670" Column="65" TopLine="1633"/>
       </Position>
       <Position>
-        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\fields.inc"/>
-        <Caret Line="1938" Column="41" TopLine="1925"/>
-      </Position>
-      <Position>
-        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
-        <Caret Line="652" Column="3" TopLine="633"/>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
+        <Caret Line="592" Column="3" TopLine="563"/>
       </Position>
       <Position>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
-        <Caret Line="584" Column="21" TopLine="562"/>
+        <Caret Line="1672" Column="33" TopLine="1648"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1038" Column="60" TopLine="1017"/>
+        <Caret Line="366" TopLine="345"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1034" Column="66" TopLine="1017"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="354" Column="21" TopLine="345"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1269" Column="29" TopLine="1369"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="322" Column="23" TopLine="293"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="394" Column="21" TopLine="378"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="3765" TopLine="3745"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_simpleform.pas"/>
-        <Caret Line="59" Column="51" TopLine="45"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_simpleform.pas"/>
-        <Caret Line="60" Column="41" TopLine="46"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_simpleform.pas"/>
-        <Caret Line="61" Column="41" TopLine="47"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_simpleform.pas"/>
-        <Caret Line="34" Column="45" TopLine="13"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="356" Column="54"/>
+        <Caret Line="1775" TopLine="1752"/>
       </Position>
     </JumpHistory>
     <RunParams>

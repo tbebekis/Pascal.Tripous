@@ -66,7 +66,7 @@ var
   i: Integer;
 begin
   btnGetBookmark.OnClick := Addr(AnyClick);
-  btnGoToBookmark.OnClick := Addr(AnyClick);  ;
+  btnGoToBookmark.OnClick := Addr(AnyClick);
 
   // master
   Table := TMemTable.Create(Self);
