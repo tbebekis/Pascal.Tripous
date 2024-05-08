@@ -16,7 +16,7 @@ The [**TMemTable**](https://github.com/tbebekis/Pascal.Tripous/tree/main/Demos/M
 - Load from and Save to XML.
 
 ## What is TDataset
-`TDataset` is a Pascal class which represents database data as columns and rows. 
+`TDataset` is a [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) class which represents database data as columns and rows. 
 
 `TDataset` uses the notion of [**Active Record pattern**](https://en.wikipedia.org/wiki/Active_record_pattern). A data row, a `record` in TDataset parlance, is considered the **active** one, upon which operations, such as `Insert()`, `Edit()` or `Delete()`, may applied.
 
@@ -24,15 +24,15 @@ The [**TMemTable**](https://github.com/tbebekis/Pascal.Tripous/tree/main/Demos/M
 
 Back in those days an application kept open a connection to a database throughout its lifetime. The code that presented database data to the application retrieved data from the database one row at a time or in small groups of rows. `TDataset` adheres to this logic. So the **Active Record pattern** was almost the only way to go, considering the limited memory of those computers.
 
-`TDataset` operations, such as `Insert()`, `Edit()` or `Delete()`, are applied to the **active** `Record Buffer`. A `Record Buffer` is a [Pointer](https://en.wikipedia.org/wiki/Pointer_(computer_programming)) to an array of Bytes. `TDataset` uses a lot of buffers for various purposes. Even a totally empty `TDataset` allocates memory for more than 10 buffers.
+`TDataset` operations, such as `Insert()`, `Edit()` or `Delete()`, are applied to the **active** `Record Buffer`. A `Record Buffer` is a [Pointer](https://en.wikipedia.org/wiki/Pointer_(computer_programming)) to an array of Bytes. `TDataset` uses a lot of buffers for various purposes. Even a totally empty `TDataset` allocates memory for more than 10 record buffers.
 
 # Inheriting TDataset
 
-Creating a `TDataset` descendant is not an easy task. And, believe me or not, there are a lot fo "secrets" and close to zero help.
+Creating a `TDataset` descendant is not an easy task. And, believe it or not, there are a lot fo "secrets" and close to zero help.
 
 `TDataset` contains [abstract methods](https://en.wiktionary.org/wiki/abstract_method) and [virtual methods](https://en.wiktionary.org/wiki/virtual_method) that are just stubs.
 
-A `TDataset`, such as the `TMemTable`, has to override these abstract and virtual methods and provide its own implementation.
+A `TDataset` descendant, such as the `TMemTable`, has to override these abstract and virtual methods and provide its own implementation.
 
 Here is the absolute minimum of methods a descendant class has to override in order to provide the basic functionality. They are divided into groups to easy the discussion.
 
@@ -117,7 +117,7 @@ A blob in `TMemTable`  is represented by the following Pascal types.
 
 For any blob field a `TBlob` structure is stored in the record buffer only. The actual blob data, where the `Data` field points to, are in the heap memory.
 
-Except of the actual record data a record buffer contains information about the buffer. This information is represented by the `TRecInfo` Pascal record.
+Except of the actual record data a record buffer contains information about the record buffer. In `TMemTable` this information is represented by the `TRecInfo` Pascal record.
 
 ```
     PRecInfo = ^TRecInfo;
@@ -141,7 +141,7 @@ The `TIntBM` type is declared by `TMemTable` code as following.
 
 `TMemTable` uses an integer of type [`PtrUInt`](https://www.freepascal.org/docs-html/rtl/system/ptruint.html) for that typecast, following the documentation which clearly states that: "*PtrUInt is an unsigned integer type which has always the same size as a pointer. When using integers which will be cast to pointers and vice versa, use this type*".
 
-A `TDataset` bookmark is a way to mark a data record and then use that bookmark at a later time to go back to the bookmarked record, that is designating the record as the active record.
+A `TDataset` bookmark is a way to mark a data record and then use that bookmark, at a later time, to go back to the bookmarked record, that is designating the record as the active record.
 
 ## Record Buffer methods
 
@@ -149,7 +149,7 @@ One of the first things a `TDataset` descendant has to do is to calculate the si
 
 The actual `FRecBufSize` is the sum of the [`TField.DataSize`](https://www.freepascal.org/docs-html/current/fcl/db/tfield.datasize.html) property. For blob fields that `DataSize` is the `SizeOf(TBlob)`.
 
-The `TRecordBuffer` type represents a record buffer and is defined as following.
+The `TRecordBuffer` type represents a record buffer and is defined, by Free Pascal, as following.
 
 ```
 type
@@ -175,13 +175,13 @@ This method is the getter for the `TDataset.RecordSize` property. It should retu
 
 `TDataset` code does not use it at all. It's probably for use by descendants.
 
-The `TMemTable` returns the full size of the record buffer, including the `TRecInfo` record. 
+The `TMemTable` returns the `FRecBufSize`, which is the full size of the record buffer, including the `TRecInfo` record. 
 
 ### function  AllocRecordBuffer(): TRecordBuffer; override;  
-`TDataset` uses alot of record buffers. This method is called by `TDataset` whenever a new buffer is needed, in order to allocate memory of the proper size.
+`TDataset` uses alot of record buffers. This method is called by `TDataset`, in order to allocate memory of the proper size, whenever a new buffer is needed.
 
-The code of this method should call `InitRecord()` passing the newly allocated record buffer, right after the memory allocation.
-
+The code of this method should allocate memory for the new record buffer, calling `AllocMem()`, and then should call `TDataset.InitRecord()` passing the newly allocated record buffer.
+ 
 It may then proceed to other record buffer initialization tasks, specific to the `TDataset` descendant.
  
 ### procedure FreeRecordBuffer(var RecBuf: TRecordBuffer); override;
@@ -195,27 +195,26 @@ This method is called by `TDataset` whenever it needs to retrieve a record.
 
 The `TGetMode` is defined as `TGetMode = (gmCurrent, gmNext, gmPrior);`. So the `GetMode` parameter indicates the position of the record the `TDataset` has to retrieve, relative to current record.
 
-The `DoCheck` parameter may passed by `TDataset` as `True`. In that case the `GetRecord()` code should return `grError` if an error occurs while trying to retrieve data from the current record.
-
-
+The `DoCheck` parameter may passed by `TDataset` as `True` in some cases. 
+ 
 The result of the `GetRecord()` function is of type `TGetResult` which is defined as 
 ```
 TGetResult = (
     grOK,       // everything is ok, a record buffer is retrieved
     grBOF,      // Befin Of File, in the crack before the first record, no record buffer
     grEOF,      // End Of File, in the crack after the last record, no record buffer
-    grError     // an error occured, no record buffer, raise an exception
+    grError     // an error occured, no record buffer, if DoCheck = True then raise an exception
 );
 ```
 
-In case where `grError` is going to be returned, the method should raise an exception.
+In case where `DoCheck` is `True` and `grError` is going to be returned, the method should raise an exception.
  
 
 The `RecBuf` parameter is where the function should place the record data if the result is `grOK`.
 
-Depending on the `TDataset` descendant, that record data could be in various places, i.e. a database or a file.
+Depending on the `TDataset` descendant, that record data could be stored in various places, i.e. a database or a file.
 
-The `TMemTable` is an **in-memory** dataset. Its storage medium is a [`TList`](https://www.freepascal.org/docs-html/rtl/classes/tlist.html). The `FCurRecIndex` private field is the index to the current record in that list. So the  `TMemTable.GetRecord()` just copies the record buffer from its internal list to that `RecBuf` parameter.
+The `TMemTable` is an **in-memory** dataset. Its storage medium is a [`TList`](https://www.freepascal.org/docs-html/rtl/classes/tlist.html). The `FCurRecIndex` private field is the index to the current record in that `TList`. So the  `TMemTable.GetRecord()` just copies the record buffer from its internal `TList` to that `RecBuf` parameter.
 
 ```
     ...
@@ -235,7 +234,7 @@ The `TMemTable` is an **in-memory** dataset. Its storage medium is a [`TList`](h
 
 ## Bookmark methods
 
-A `TDataset` bookmark is a way to mark a data record and then use that bookmark at a later time to go back to the bookmarked record, that is designating the record as the active record.
+A `TDataset` bookmark is a way to mark a data record and then use that bookmark, at a later time, to go back to the bookmarked record, that is designating the record as the active record.
 
 Here are the bookmark methods.
 ```
@@ -286,13 +285,13 @@ The `TMemTable` uses the following `TRecInfo` Pascal record to keep bookmark rel
 Then the `TMemTable` uses a function to get a pointer to that `TRecInfo` type.
 
 ```
-    function  TMemTable.GetRecInfo(RecBuf: Pointer): PRecInfo;
-    var
-        P : PByte;
-    begin
-        P := PByte(RecBuf) + FBookOfs;
-        Result := PRecInfo(P);
-    end;   
+  function  TMemTable.GetRecInfo(RecBuf: Pointer): PRecInfo;
+  var
+      P : PByte;
+  begin
+      P := PByte(RecBuf) + FBookOfs;
+      Result := PRecInfo(P);
+  end;   
 ```
 
 As you can see, pointer arithmetic is used in order to move the passed in `RecBuf` pointer to the correct offset, where the `TRecInfo` resides.
@@ -305,6 +304,16 @@ This method is called by `TDataset` whenever it needs to retrieve the flag of a 
 
 This method is called by `TDataset` whenever a bookmark flag has to be set.
 
+```
+procedure TMemTable.SetBookmarkFlag(RecBuf: TRecordBuffer; Value: TBookmarkFlag);
+var
+  RecInfo: PRecInfo;
+begin
+  RecInfo := GetRecInfo(RecBuf);
+  RecInfo^.BookmarkFlag := Value;
+end;  
+```
+
 ### procedure GetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;
 
 This method is called by `TDataset` whenever it needs to retrieve the actual value of a bookmark.
@@ -313,15 +322,89 @@ This method is called by `TDataset` whenever it needs to retrieve the actual val
 
 This method is called by `TDataset` whenever a bookmark has to be set.
 
+```
+procedure TMemTable.SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer);
+var
+  RecInfo : PRecInfo;
+  BM      : TIntBM;
+begin
+  BM := PIntBM(Data)^;
+
+  RecInfo := GetRecInfo(RecBuf);
+  RecInfo^.Bookmark := BM;
+end;
+```
+
 ### procedure InternalGotoBookmark(pBM: Pointer); override;
 
 This method is called by `TDataset` whenever it needs to go to the record marked with the passed in parameter and make it the current record.
 
 The passed in parameter is the *bookmark data*, and for the `TMemTable` this is just an integer.
 
+The `TMemTable` has to go to its internal `TList` of record buffers, locate a record marked with the passed in `pBM` value, and set the `FCurRecIndex` accordingly.
+
+```
+function TMemTable.IndexOfBookmark(BM: TIntBM): Integer;
+var
+  i     : Integer;
+  RecInfo: PRecInfo;
+begin
+  Result := -1;
+  if BM > 0 then
+  begin
+    for i := 0 to FRows.Count - 1 do
+    begin
+      RecInfo := GetRecInfo(FRows[i]);
+      if (BM = RecInfo^.Bookmark) then
+      begin
+        Result := i;
+        Break; //==>
+      end;
+    end;
+  end;
+end;  
+
+function TMemTable.GoToBookmarkInternal(BM: TIntBM): Boolean;
+var
+  Index  : Integer;
+begin
+  Result := False;
+
+  Index := IndexOfBookmark(BM);
+
+  if Index <> -1 then
+  begin
+    Result := True;
+    FCurRecIndex := Index;
+  end;
+end;   
+
+procedure TMemTable.InternalGotoBookmark(pBM: Pointer);
+var
+  BM : TIntBM;
+begin
+  BM := PIntBM(pBM)^;
+  GoToBookmarkInternal(BM);
+end;  
+
+```
+
 ### procedure InternalSetToRecord(RecBuf: TRecordBuffer); override;   
 
 This method is called by `TDataset` whenever it needs to make the data record, passed in with the`TRecordBuffer` parameter, to be the current record.
+
+```
+procedure TMemTable.InternalSetToRecord(RecBuf: TRecordBuffer);
+var
+  RecInfo : PRecInfo;
+  BM      : TIntBM;
+begin
+  RecInfo := GetRecInfo(RecBuf);
+
+  BM := RecInfo^.Bookmark;
+  GoToBookmarkInternal(BM);
+end;
+```
  
 ### function  BookmarkValid(BM: TBookmark): Boolean; override; 
 This method may called by user code to check the validity of a bookmark, previously retrieved using the [`Bookmark`](https://www.freepascal.org/docs-html/fcl/db/tdataset.bookmark.html) property.
@@ -348,13 +431,29 @@ Two protected navigation methods must be overriden.
     procedure InternalLast; override;
 ```
 
+The `TMemTable` just sets the `FCurRecIndex` field to the BOF or EOF crack value accordingly.
+
 ### procedure InternalFirst; override;
 
 This method is called by `TDataset` and makes the first record, if any, to be the current record.
 
+```
+procedure TMemTable.InternalFirst;
+begin
+  FCurRecIndex := -1;
+end;    
+``` 
+
 ### procedure InternalLast; override;
 
 This method is called by `TDataset` and makes the last record, if any, to be the current record.
+
+```
+procedure TMemTable.InternalLast;
+begin
+  FCurRecIndex := FRows.Count;
+end;  
+``` 
 
 ## Editing methods
 
@@ -374,12 +473,17 @@ A number of *internal* methods must be overriden in order to have functioning `I
 This method is called by the `TDataset.InitRecord()` and `TDataset.ClearFields()` methods to give the descendant dataset a chance to initialize the record buffer, usually by filling it with zeroes.
 
 ```
-  FillChar(RecBuf^, FRecBufSize, 0);
+procedure TMemTable.InternalInitRecord(RecBuf: TRecordBuffer);
+begin
+   FillChar(RecBuf^, FRecBufSize, 0);    
+end; 
 ```
 
 ### procedure InternalPost; override;
 
-This method is called by the `TDataset.Post()`. Client code has to call `Post()` after a call to `Insert()` or `Edit()`. This means that the `InternalPost()` will be called subsequently after an insert or edit operation.
+This method is called by the `TDataset.Post()`. 
+
+Client code has to call `Post()` after a call to `Insert()`, `Append()` or `Edit()`. This means that the `InternalPost()` will be called subsequently after an insert or edit operation.
 
 This method should copy the data of the active record buffer, along with the full bookmark information, to the storage medium the descendant dataset uses.
 
@@ -389,7 +493,7 @@ The `TDataset.ActiveBuffer()` method returns the active record buffer.
 
 This method is **not** called by `TDataset` code. 
 
-A `TDataset` descendant should call this method when the `Post()` is called, and a data record is to be inserted or appended.
+A `TDataset` descendant should call this method when the `Post()` is called, and a data record is to be **inserted** or **appended**.
 
 When the `IsAppend` parameter is `True` then the data record should be appended as the last data record. Otherwise the data record should be inserted at the current record position.
 
@@ -437,9 +541,9 @@ A number of methods related to opening and closing the `TDataset` should be over
 
 This method is called by the `TDataset` to check if it is open and ready, which could be two different things.
 
-The `TMemTable` uses its own `Initialize()` method which is called from inside of the `InternalOpen()` as a consequence of a call to `Open()` or setting the `Active` property to `True`.
+The `TMemTable` uses its own `Initialize()` method which is called from inside of the `InternalOpen()` as a consequence of calling `Open()` or setting the `Active` property to `True`.
 
-The `Initialize()` sets the `FInitialized` private field to `True` upon successful exit.
+The `TMemTable.Initialize()` sets the `FInitialized` private field to `True` upon successful exit.
 
 The `TMemTable.IsCursorOpen()` returns the `FInitialized` value.
 
@@ -469,7 +573,7 @@ One of the most crucial operations of a `TDataset` descendant code is reading an
 
 Non-blob field data buffers are handled by the `GetFieldData()` and `SetFieldData()` methods.
 
-For blob fields the `GetFieldData()` and `SetFieldData()` methods handle just a `TBlob` Pascal record, found in the record data buffer, to know where the actual blob data is.
+For blob fields the `GetFieldData()` and `SetFieldData()` methods just read the proper `TBlob` Pascal record, found in the record data buffer, in order to know where the actual blob data is.
 
 Blob fields require special handling which involves a custom [`TStream`](https://www.freepascal.org/docs-html/rtl/classes/tstream.html).
 
@@ -493,9 +597,11 @@ The method has first to get the active record buffer.
  
 If the passed in `Buffer` parameter is **not** `nil` then the method has to copy the field data from the active record buffer to that `Buffer` parameter, and return `True`. If the field data is `nil`, i.e. `NULL`, then leaves the `Buffer` untouched and just returns `False`.
 
-If the passed in `Buffer` parameter **is** `nil` then the method has just to check if the field data is `nil`, i.e. `NULL`, or not. Should return `True` if field data is not `nil` and `False` otherwise.
+If the passed in `Buffer` parameter **is** `nil` then the method has just to check if the field data is `nil`, i.e. `NULL`, or not. The method should return `True` if field data is not `nil` and `False` otherwise.
 
-When the `TMemTable` calculates and constructs a record data buffer it adds an extra byte in every non-blob field buffer and uses that byte as the `NULL` flag. For blob fields it uses the `Size` property of the `TBlob` Pascal record. If the first byte of a non-blob field buffer is zero or the `Size` property of a `TBlob` field is zero, then the field is considered `NULL`.
+When the `TMemTable` calculates the size, in bytes, of a record data buffer, it adds an extra byte in every non-blob field buffer. Then it uses that byte as the `NULL` flag. For blob fields it uses the `Size` property of the `TBlob` Pascal record. 
+
+If the first byte of a non-blob field buffer is zero or the `Size` property of a `TBlob` field is zero, then the field is considered `NULL`.
 
 ```
 function TMemTable.IsFieldNull(RecBuf: Pointer; FieldIndex: Integer): Boolean;

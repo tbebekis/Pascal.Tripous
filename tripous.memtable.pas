@@ -1466,7 +1466,7 @@ begin
 
   if Active then
   begin
-    CursorPosChanged;
+    CursorPosChanged();
     RecBuf := AllocRecordBuffer();
     try
       Result := (IndexOfBookmark(PIntBM(BM)^) <> -1)  and  (GetRecord(RecBuf, gmCurrent, False) = grOK);
