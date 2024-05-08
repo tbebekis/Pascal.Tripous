@@ -1469,7 +1469,7 @@ begin
     CursorPosChanged();
     RecBuf := AllocRecordBuffer();
     try
-      Result := (IndexOfBookmark(PIntBM(BM)^) <> -1)  and  (GetRecord(RecBuf, gmCurrent, False) = grOK);
+      Result := (IndexOfBookmark(PIntBM(BM)^) <> -1) and (GetRecord(RecBuf, gmCurrent, False) = grOK);
     finally
       FreeRecordBuffer(RecBuf);
     end;

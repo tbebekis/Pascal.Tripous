@@ -1,8 +1,8 @@
 # Crafting an in-memory TDataset descendant in Free Pascal - Lazarus: the ultimate adventure.
 
-This text describes the adventure of creating a [TDataset](https://www.freepascal.org/docs-html/fcl/db/tdataset.html) descendant in [Free Pascal](https://www.freepascal.org/) and [Lazarus](https://www.lazarus-ide.org/).
+This text describes the adventure of creating the [**TMemTable**](https://github.com/tbebekis/Pascal.Tripous/tree/main/Demos/MemTable), a [TDataset](https://www.freepascal.org/docs-html/fcl/db/tdataset.html) descendant in [Free Pascal](https://www.freepascal.org/) and [Lazarus](https://www.lazarus-ide.org/).
 
-The [**TMemTable**](https://github.com/tbebekis/Pascal.Tripous/tree/main/Demos/MemTable) class is an in-memory `TDataset` which has most of the features a Pascal developer expects from a TDataset:
+The `TMemTable` is an in-memory `TDataset` which has most of the features a Pascal developer expects from a TDataset:
 
 - Bookmarks
 - Lookup and Calculated fields
@@ -647,9 +647,62 @@ begin
   Result := TBlobStream.Create(Self, TBlobField(Field), RecBuf, Mode);
 end;
 ```
- 
- 
 
+# TMemTable specific
+
+`TMemTable` functionality resides in two Pascal code units
+
+- tripous.memtable.pas
+- tripous.filterparser.pas
+
+The first unit `uses` the second one. No other dependencies exist. So `TMemTable` can be used just by adding `tripous.memtable.pas` in a `uses` clause.
+
+## Demo application
+
+There is a tiny demo application in the folder `\Demos\MemTable`. The application displays most of the `TMemTable` functionality and can be used for testing its capabilities.
+
+## Filter Expression Parser
+`TMemTable` comes with the `TFilterParser`, a filter expression parser in the `tripous.filterparser.pas`.
+
+The `TFilterParser` is made by following the instructions of the excellent [Crafting Interpreters](https://craftinginterpreters.com/) site. Many many thanks to the author of the site, **Robert Nystrom**. The scanner and parser owes its existence to his work.
+
+The `TFilterParser` is made so that it can be used from any `TDataset` descendant and not only the `TMemTable`. Actually it can be used by any code and not only datasets.
+
+The `TFilterParser` supports the following operators.
+
+```
+<> = > >= < <= - + * / and or not like in
+```
+
+The user may write a filter expression such as the following.
+
+```
+Name like '%John` and Amount > 5000 
+```
+
+## Load from and save to XML
+
+The "*load from/save to XML*" functionality resides in a totally independent `full static class` which may serve other `TDataset` implementations too, and not only the `TMemTable`.
+
+ ```
+  XmlPersistor = class
+    class function  CreateXmlDoc(RootName: string; aEncoding: string): TXMLDocument;
+
+    class function  ToXmlDoc(Table: TDataset; SchemaOnly: Boolean = False): TXMLDocument;
+    class function  ToXmlText(Table: TDataset; SchemaOnly: Boolean = False): string;
+    class procedure SaveToXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
+    class procedure SaveToXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean = False);
+
+    class procedure FromXmlDoc(Table: TDataset; Doc: TXMLDocument; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+    class procedure FromXmlText(Table: TDataset; XmlText: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlFile(Table: TDataset; const FileName: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlStream(Table: TDataset; Stream: TStream; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+  end;
+ ```
+ 
+## Tested On
+- FPC 3.2.2
+- Lazarus 3.0
 
 
 

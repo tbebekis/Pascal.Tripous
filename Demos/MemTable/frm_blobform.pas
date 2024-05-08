@@ -95,6 +95,10 @@ begin
 
   Table.First;
 
+  Table.Edit();
+  Table.FieldByName('Memo').AsString := 'right click to see a context menu for handling the image';
+  Table.Post();
+
   imgImage.DataSource := DS;
   imgImage.DataField := 'Image';
 
