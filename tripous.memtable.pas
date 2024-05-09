@@ -83,7 +83,7 @@ type
 
   // PtrUInt is an unsigned integer type which has always the same size as a pointer.
   // When using integers which will be cast to pointers and vice versa, use this type
-  // The following type is used a bookmark data
+  // The following type is used as bookmark data
   TIntBM = PtrUInt;
   PIntBM = ^TIntBM;
 
@@ -1857,7 +1857,7 @@ procedure TMemTable.Initialize;
     else
       Result := SizeOf(TBlob);
   end;
-
+  {
   function GetFieldBufferSize2(FieldInfo: TFieldInfo): Integer;
   var
     Field: TField;
@@ -1906,6 +1906,7 @@ procedure TMemTable.Initialize;
       raise Exception.Create('FieldType not supported');
     end;
   end;
+  }
 
 var
   i               : Integer;

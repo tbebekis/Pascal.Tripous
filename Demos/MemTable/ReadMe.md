@@ -15,6 +15,53 @@ The `TMemTable` is an in-memory `TDataset` which has most of the features a Pasc
 - Blobs
 - Load from and Save to XML.
 
+## Content table
+
+- [Crafting an in-memory TDataset descendant in Free Pascal - Lazarus: the ultimate adventure.](#crafting-an-in-memory-tdataset-descendant-in-free-pascal---lazarus-the-ultimate-adventure)
+  - [Content table](#content-table)
+  - [What is TDataset](#what-is-tdataset)
+- [Inheriting TDataset](#inheriting-tdataset)
+  - [The Record Buffer](#the-record-buffer)
+  - [Record Buffer methods](#record-buffer-methods)
+    - [function  GetRecordSize(): Word; override;](#function--getrecordsize-word-override)
+    - [function  AllocRecordBuffer(): TRecordBuffer; override;](#function--allocrecordbuffer-trecordbuffer-override)
+    - [procedure FreeRecordBuffer(var RecBuf: TRecordBuffer); override;](#procedure-freerecordbuffervar-recbuf-trecordbuffer-override)
+    - [function  GetRecord(RecBuf: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;](#function--getrecordrecbuf-trecordbuffer-getmode-tgetmode-docheck-boolean-tgetresult-override)
+  - [Bookmark methods](#bookmark-methods)
+    - [function  GetBookmarkFlag(RecBuf: TRecordBuffer): TBookmarkFlag; override;](#function--getbookmarkflagrecbuf-trecordbuffer-tbookmarkflag-override)
+    - [procedure SetBookmarkFlag(RecBuf: TRecordBuffer; Value: TBookmarkFlag); override;](#procedure-setbookmarkflagrecbuf-trecordbuffer-value-tbookmarkflag-override)
+    - [procedure GetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-getbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
+    - [procedure SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-setbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
+    - [procedure InternalGotoBookmark(pBM: Pointer); override;](#procedure-internalgotobookmarkpbm-pointer-override)
+    - [procedure InternalSetToRecord(RecBuf: TRecordBuffer); override;](#procedure-internalsettorecordrecbuf-trecordbuffer-override)
+    - [function  BookmarkValid(BM: TBookmark): Boolean; override;](#function--bookmarkvalidbm-tbookmark-boolean-override)
+    - [function  CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer; override;](#function--comparebookmarksbookmark1-bookmark2-tbookmark-integer-override)
+  - [Navigation methods](#navigation-methods)
+    - [procedure InternalFirst; override;](#procedure-internalfirst-override)
+    - [procedure InternalLast; override;](#procedure-internallast-override)
+  - [Editing methods](#editing-methods)
+    - [procedure InternalInitRecord(RecBuf: TRecordBuffer); override;](#procedure-internalinitrecordrecbuf-trecordbuffer-override)
+    - [procedure InternalPost; override;](#procedure-internalpost-override)
+    - [procedure InternalAddRecord(RecBuf: Pointer; IsAppend: Boolean); override;](#procedure-internaladdrecordrecbuf-pointer-isappend-boolean-override)
+    - [procedure InternalEdit; override;](#procedure-internaledit-override)
+    - [procedure InternalCancel; override;](#procedure-internalcancel-override)
+    - [procedure InternalDelete; override;](#procedure-internaldelete-override)
+  - [Open and Close methods](#open-and-close-methods)
+    - [function  IsCursorOpen: Boolean; override;](#function--iscursoropen-boolean-override)
+    - [procedure InternalOpen; override;](#procedure-internalopen-override)
+    - [procedure InternalClose; override;](#procedure-internalclose-override)
+  - [Field methods](#field-methods)
+    - [function  GetFieldData(Field: TField; Buffer: Pointer): Boolean; override;](#function--getfielddatafield-tfield-buffer-pointer-boolean-override)
+    - [procedure SetFieldData(Field: TField; Buffer: Pointer); override;](#procedure-setfielddatafield-tfield-buffer-pointer-override)
+    - [function  CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;](#function--createblobstreamfield-tfield-mode-tblobstreammode-tstream-override)
+- [TMemTable specific](#tmemtable-specific)
+  - [Demo application](#demo-application)
+  - [Filter Expression Parser](#filter-expression-parser)
+  - [Load from and save to XML](#load-from-and-save-to-xml)
+  - [Tested On](#tested-on)
+
+
+
 ## What is TDataset
 `TDataset` is a [Pascal](https://en.wikipedia.org/wiki/Pascal_(programming_language)) class which represents database data as columns and rows. 
 
@@ -28,13 +75,13 @@ Back in those days an application kept open a connection to a database throughou
 
 # Inheriting TDataset
 
-Creating a `TDataset` descendant is not an easy task. And, believe it or not, there are a lot fo "secrets" and close to zero help.
+Creating a `TDataset` descendant is not an easy task. And, believe it or not, there are a lot of "secrets" and close to zero help.
 
 `TDataset` contains [abstract methods](https://en.wiktionary.org/wiki/abstract_method) and [virtual methods](https://en.wiktionary.org/wiki/virtual_method) that are just stubs.
 
 A `TDataset` descendant, such as the `TMemTable`, has to override these abstract and virtual methods and provide its own implementation.
 
-Here is the absolute minimum of methods a descendant class has to override in order to provide the basic functionality. They are divided into groups to easy the discussion.
+Here is the absolute minimum of methods a descendant class has to override in order to provide the basic functionality. They are divided into groups to ease the discussion.
 
 ```
   TMemTable = class(TDataSet)
@@ -132,7 +179,7 @@ Except of the actual record data a record buffer contains information about the 
 The `TIntBM` type is declared by `TMemTable` code as following.
 
 ```
-    // The following type is used a bookmark data
+    // The following type is used as bookmark data
     TIntBM = PtrUInt;
     PIntBM = ^TIntBM; 
 ```
@@ -201,7 +248,7 @@ The result of the `GetRecord()` function is of type `TGetResult` which is define
 ```
 TGetResult = (
     grOK,       // everything is ok, a record buffer is retrieved
-    grBOF,      // Befin Of File, in the crack before the first record, no record buffer
+    grBOF,      // Begin Of File, in the crack before the first record, no record buffer
     grEOF,      // End Of File, in the crack after the last record, no record buffer
     grError     // an error occured, no record buffer, if DoCheck = True then raise an exception
 );
