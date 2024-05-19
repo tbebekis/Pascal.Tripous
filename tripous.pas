@@ -412,8 +412,10 @@ type
     class function Max(const A, B: Integer): Integer;  overload;
     class function Min(const A, B: Double): Double;    overload;
     class function Max(const A, B: Double): Double;    overload;
+    {
     class function Min(const A, B: Extended): Extended;overload;
     class function Max(const A, B: Extended): Extended;overload;
+    }
 
     { miscs }
     class function InMainThread(): Boolean;
@@ -3756,17 +3758,17 @@ class function  Sys.Max(const A, B: Double): Double;
 begin
   if A > B then Result := A else Result := B;
 end;
-(*--------------------------------------------------------------------------------*)
+{
 class function  Sys.Min(const A, B: Extended): Extended;
 begin
   if A < B then Result := A else Result := B;
 end;
-(*--------------------------------------------------------------------------------*)
+
 class function  Sys.Max(const A, B: Extended): Extended;
 begin
   if A > B then Result := A else Result := B;
 end;
-
+}
 class function Sys.InMainThread(): Boolean;
 begin
    Result := GetCurrentThreadID() = MainThreadID;

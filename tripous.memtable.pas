@@ -465,6 +465,7 @@ uses
 resourcestring
   SUnsupportedFieldType    = 'Fieldtype %s is not supported';
   SReadOnlyField           = 'Field %s cannot be modified, it is read-only.';
+  SSchemaNotDefined        = 'Cannot open dataset. No FieldDefs and no Fields defined.';
 
 
 const
@@ -1469,7 +1470,7 @@ begin
     CursorPosChanged();
     RecBuf := AllocRecordBuffer();
     try
-      Result := (IndexOfBookmark(PIntBM(BM)^) <> -1) and (GetRecord(RecBuf, gmCurrent, False) = grOK);
+      Result := Assigned(BM) and (IndexOfBookmark(PIntBM(BM)^) <> -1) and (GetRecord(RecBuf, gmCurrent, False) = grOK);
     finally
       FreeRecordBuffer(RecBuf);
     end;
@@ -1698,14 +1699,29 @@ procedure TMemTable.InternalOpen;
 var
   i : Integer;
 begin
+  // InternalInitFieldDefs();                  // does nothing in our implementation
+
+  { ignore DefaultFields flag.
+    if DefaultFields is True then we have to create Fields based on FieldDefs.
+    This dataset handles this situation differently. }
+  // if DefaultFields then
+  //  CreateFields();
+
+  if (Fields.Count = 0) and (FieldDefs.Count = 0) then
+    DatabaseError(SSchemaNotDefined);
+
+  if (Fields.Count = 0) and (FieldDefs.Count > 0) then
+    CreateFields();                            // create Fields based on FieldDefs
+
+  if (Fields.Count > 0) then
+  begin
+    FieldDefs.Clear();
+    InitFieldDefsFromFields();                 // create FieldDefs based on Fields
+  end;
+
   for i := 0 to FieldCount - 1 do
     if not IsSupportedFieldType(Fields[i].DataType) then
       DatabaseErrorFmt(SUnsupportedFieldType, [Fields[i].DisplayName], Self);
-
-  InternalInitFieldDefs();
-
-  if DefaultFields then
-    CreateFields;
 
   BindFields(True);
 

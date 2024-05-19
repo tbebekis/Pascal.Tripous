@@ -19,8 +19,8 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
-        <TopLine Value="2"/>
-        <CursorPos X="40" Y="10"/>
+        <TopLine Value="67"/>
+        <CursorPos X="114" Y="83"/>
         <UsageCount Value="215"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -32,10 +32,11 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_SimpleForm"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="23"/>
-        <CursorPos X="29" Y="52"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="49"/>
+        <CursorPos X="54" Y="70"/>
         <UsageCount Value="215"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="o_app.pas"/>
@@ -134,8 +135,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.FilterParser"/>
         <EditorIndex Value="-1"/>
-        <TopLine Value="106"/>
-        <CursorPos X="72" Y="1479"/>
+        <TopLine Value="365"/>
+        <CursorPos X="22" Y="374"/>
         <UsageCount Value="217"/>
       </Unit>
       <Unit>
@@ -143,9 +144,9 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.MemTable"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="2218"/>
-        <CursorPos X="60" Y="2247"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="1696"/>
+        <CursorPos X="30" Y="1708"/>
         <UsageCount Value="217"/>
         <Loaded Value="True"/>
       </Unit>
@@ -153,10 +154,11 @@
         <Filename Value="..\..\tripous.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="77"/>
-        <CursorPos X="31" Y="71"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="3748"/>
+        <CursorPos X="32" Y="3763"/>
         <UsageCount Value="215"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frm_xmlform.pas"/>
@@ -178,7 +180,7 @@
         <UnitName Value="frm_LookUpField"/>
         <EditorIndex Value="-1"/>
         <CursorPos Y="13"/>
-        <UsageCount Value="170"/>
+        <UsageCount Value="176"/>
       </Unit>
       <Unit>
         <Filename Value="frm_calcfield.pas"/>
@@ -189,7 +191,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="37"/>
         <CursorPos X="23" Y="56"/>
-        <UsageCount Value="168"/>
+        <UsageCount Value="174"/>
       </Unit>
       <Unit>
         <Filename Value="o_memtable.pas"/>
@@ -210,9 +212,9 @@
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
         <UnitName Value="DB"/>
-        <EditorIndex Value="4"/>
-        <TopLine Value="1417"/>
-        <CursorPos X="60" Y="1421"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="1511"/>
+        <CursorPos X="15" Y="1530"/>
         <UsageCount Value="107"/>
         <Loaded Value="True"/>
       </Unit>
@@ -226,10 +228,11 @@
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\dataset.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="1561"/>
-        <CursorPos X="3" Y="1565"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="212"/>
+        <CursorPos Y="217"/>
         <UsageCount Value="114"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="G:\My Drive\Dev\Lazarus\MemTable_Miscs\tpk_DB.pas"/>
@@ -288,7 +291,7 @@
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\systemh.inc"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="5"/>
         <TopLine Value="322"/>
         <CursorPos X="3" Y="344"/>
         <UsageCount Value="118"/>
@@ -317,129 +320,141 @@
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\heaph.inc"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="4"/>
         <TopLine Value="67"/>
         <CursorPos X="76" Y="86"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\lcl\include\control.inc"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="2959"/>
+        <CursorPos Y="2976"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="28">
+    <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1266" Column="27" TopLine="1243"/>
+        <Caret Line="1713" TopLine="1695"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2532" Column="32" TopLine="2510"/>
+        <Caret Line="1714" TopLine="1695"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="3675" Column="24" TopLine="3645"/>
+        <Caret Line="1716" TopLine="1695"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="3676" Column="24" TopLine="3645"/>
+        <Caret Line="1718" TopLine="1695"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="3671" Column="57" TopLine="106"/>
+        <Caret Line="1719" TopLine="1695"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="108" Column="27" TopLine="106"/>
+        <Caret Line="1722" TopLine="1695"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="58" Column="45" TopLine="52"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1920" Column="42" TopLine="1904"/>
+        <Caret Line="1710" TopLine="1692"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="59" TopLine="52"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="87" Column="3" TopLine="92"/>
+        <Caret Line="1463" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="123" Column="13" TopLine="92"/>
+        <Caret Line="1464" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="177" Column="168" TopLine="141"/>
+        <Caret Line="1466" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="507" Column="71" TopLine="470"/>
+        <Caret Line="1468" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="509" Column="42" TopLine="472"/>
+        <Caret Line="1470" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1135" Column="114" TopLine="1117"/>
+        <Caret Line="1471" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1210" Column="65" TopLine="1187"/>
+        <Caret Line="1472" TopLine="1445"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1920" Column="48" TopLine="1896"/>
+        <Caret Line="1464" TopLine="1445"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="59" TopLine="43"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="1993" Column="62" TopLine="1978"/>
+        <Caret Line="1473" Column="33" TopLine="1445"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="59" TopLine="43"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="54" TopLine="43"/>
+      </Position>
+      <Position>
+        <Filename Value="frm_simpleform.pas"/>
+        <Caret Line="62" TopLine="43"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2104" Column="53" TopLine="2067"/>
+        <Caret Line="1473" Column="33" TopLine="1433"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2208" Column="41" TopLine="2170"/>
+        <Caret Line="252" Column="50" TopLine="245"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2211" Column="71" TopLine="2187"/>
+        <Caret Line="337" Column="27" TopLine="309"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="246" Column="27" TopLine="225"/>
+        <Caret Line="1710" TopLine="1696"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2278" Column="42" TopLine="2249"/>
+        <Caret Line="1713" TopLine="1696"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2284" Column="18" TopLine="2249"/>
+        <Caret Line="1716" TopLine="1696"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2280" Column="73" TopLine="2249"/>
+        <Caret Line="1718" TopLine="1696"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="11" Column="56"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="123" Column="33" TopLine="86"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="245" Column="90" TopLine="211"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2184" Column="23" TopLine="2147"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2216" Column="86" TopLine="2179"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.memtable.pas"/>
-        <Caret Line="2231" Column="96" TopLine="2194"/>
+        <Caret Line="1719" TopLine="1696"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -7,7 +7,7 @@ object MainForm: TMainForm
   ClientHeight = 339
   ClientWidth = 320
   Position = poScreenCenter
-  LCLVersion = '3.0.0.3'
+  LCLVersion = '3.2.0.0'
   object btnSimple: TButton
     Left = 48
     Height = 25
@@ -15,6 +15,7 @@ object MainForm: TMainForm
     Width = 224
     Caption = 'Simple'
     TabOrder = 0
+    OnClick = btnSimpleClick
   end
   object btnBlobs: TButton
     Left = 48
