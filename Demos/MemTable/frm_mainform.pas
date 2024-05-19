@@ -31,7 +31,6 @@ type
     btnSort: TButton;
     btnStatusFilter: TButton;
     btnXML: TButton;
-    procedure btnSimpleClick(Sender: TObject);
   private
     procedure AnyClick(Sender: TObject);
     procedure ShowModalForm(FormClass: TFormClass);
@@ -63,11 +62,6 @@ uses
   ;
 
 { TMainForm }
-
-procedure TMainForm.btnSimpleClick(Sender: TObject);
-begin
-
-end;
 
 procedure TMainForm.AnyClick(Sender: TObject);
 begin

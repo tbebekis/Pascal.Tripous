@@ -94,8 +94,6 @@ begin
   Table.FieldDefs.Add('Amount', ftFloat);
   Table.FieldDefs.Add('Date', ftDate);
 
-  Table.CreateDataset;
-
   DS := TDataSource.Create(Self);
   DS.DataSet := Table;
   Grid.DataSource := DS;

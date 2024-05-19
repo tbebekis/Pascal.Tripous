@@ -15,7 +15,6 @@ object MainForm: TMainForm
     Width = 224
     Caption = 'Simple'
     TabOrder = 0
-    OnClick = btnSimpleClick
   end
   object btnBlobs: TButton
     Left = 48

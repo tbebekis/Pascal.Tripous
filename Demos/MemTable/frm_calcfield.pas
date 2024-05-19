@@ -53,6 +53,9 @@ begin
 
   Table.FieldDefs.AddString('FirstName', 16);
   Table.FieldDefs.AddString('LastName', 16);
+
+  // we have to call CreateDataset() for the fields to be created
+  // otherwise we have to add fields using TFieldXXXX.Create(tblCustomer)
   Table.CreateDataset();
 
   Table.AddCalcField('FullName', ftWideString, 100);

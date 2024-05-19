@@ -62,8 +62,6 @@ begin
   tblMaster := TMemTable.Create(Self);
   tblMaster.FieldDefs.Add('Id', ftAutoInc);
   tblMaster.FieldDefs.Add('Name', ftString, 100);
-  //tblMaster.FieldDefs.Add('Data', ftString, 100);
-  tblMaster.CreateDataset;
 
   dsMaster := TDataSource.Create(Self);
   dsMaster.DataSet := tblMaster;
@@ -82,8 +80,6 @@ begin
   tblDetail := TMemTable.Create(Self);
   tblDetail.FieldDefs.Add('MasterId', ftInteger);
   tblDetail.FieldDefs.Add('Name', ftString, 100);
-
-  tblDetail.CreateDataset;
 
   dsDetail := TDataSource.Create(Self);
   dsDetail.DataSet := tblDetail;

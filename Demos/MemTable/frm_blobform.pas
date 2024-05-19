@@ -74,7 +74,6 @@ begin
   Table.FieldDefs.Add('Name', ftString, 100);
   Table.FieldDefs.Add('Memo', ftMemo);
   Table.FieldDefs.Add('Image', ftGraphic);
-  Table.CreateDataset;
 
   DS := TDataSource.Create(Self);
   DS.DataSet := Table;

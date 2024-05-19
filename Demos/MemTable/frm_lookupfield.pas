@@ -64,31 +64,31 @@ var
   Countries : array of string = ('Greece', 'Italy', 'Spain');
   Customers : array of string = ('Good Foods Co.', 'Oils Co.', 'Great Bank', 'Constructions Co.');
 begin
+  tblCountry := TMemTable.Create(Self);
+  tblCountry.FieldDefs.Add('Id', ftAutoInc);
+  tblCountry.FieldDefs.AddString('Name', 20);
+  tblCountry.Active := True;
+
+  for i := Low(Countries) to High(Countries) do
+  begin
+    tblCountry.Append();
+    tblCountry.FieldByName('Name').AsString := Countries[i];
+    tblCountry.Post();
+  end;
+
    tblCustomer := TMemTable.Create(Self);
    tblCustomer.FieldDefs.Add('Id', ftAutoInc);
    tblCustomer.FieldDefs.AddString('Name', 20);
    tblCustomer.FieldDefs.Add('CountryId', ftInteger);
+
+   // we have to call CreateDataset() for the fields to be created
+   // otherwise we have to add fields using TFieldXXXX.Create(tblCustomer)
    tblCustomer.CreateDataset();
 
-   tblCountry := TMemTable.Create(Self);
-   tblCountry.FieldDefs.Add('Id', ftAutoInc);
-   tblCountry.FieldDefs.AddString('Name', 20);
-   tblCountry.CreateDataset;
-
    tblCustomer.AddLookUpField('Customer', 'CountryId', tblCountry, 'Id', 'Name');
-
-   tblCountry.Active := True;
-   for i := Low(Countries) to High(Countries) do
-   begin
-     tblCountry.Append();
-     tblCountry.FieldByName('Name').AsString := Countries[i];
-     tblCountry.Post();
-   end;
-
+   tblCustomer.Active := True;
 
    Randomize();
-
-   tblCustomer.Active := True;
 
    for i := Low(Customers) to High(Customers) do
    begin

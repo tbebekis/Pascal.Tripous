@@ -53,12 +53,9 @@ var
 begin
   Label1.Caption := 'Click on a column caption to sort the column' + #10 + 'Cycles through Asc, Desc and None';
 
-  // master
   Table := TMemTable.Create(Self);
   Table.FieldDefs.Add('Id', ftAutoInc);
   Table.FieldDefs.Add('Name', ftString, 100);
-  //Table.FieldDefs.Add('Data', ftString, 100);
-  Table.CreateDataset;
 
   DS := TDataSource.Create(Self);
   DS.DataSet := Table;

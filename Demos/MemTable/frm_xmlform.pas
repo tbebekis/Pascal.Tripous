@@ -118,8 +118,6 @@ begin
   Table.FieldDefs.Add('DATETIME', ftDateTime);
   //Table.FieldDefs.Add('GRAPHIC', ftGraphic);
 
-  Table.CreateDataset;
-
   Table.Active := True;
   for i := 0 to RowCount - 1 do
   begin

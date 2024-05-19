@@ -70,10 +70,18 @@ begin
 
   // master
   Table := TMemTable.Create(Self);
-  Table.FieldDefs.Add('Id', ftAutoInc);
-  Table.FieldDefs.Add('Name', ftString, 100);
 
-  Table.CreateDataset;
+  { create TFields by using FieldDefs ... }
+  //Table.FieldDefs.Add('Id', ftAutoInc);
+  //Table.FieldDefs.Add('Name', ftString, 100);
+
+  { ... or directly create TFields }
+  Table.AddField('Id', ftAutoInc);
+  Table.AddField('Name', ftString, 100);
+
+  { CreateDataset() is actually needed only when the dataset
+    has Lookup or Calculated fields }
+  // Table.CreateDataset();
 
   DS := TDataSource.Create(Self);
   DS.DataSet := Table;

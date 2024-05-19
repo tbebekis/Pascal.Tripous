@@ -33,6 +33,7 @@ type
 
   { TDatasetHelper }
   TDatasetHelper = class helper for TDataset
+    function  AddField(const FieldName: string; FieldType: TFieldType; Size: Integer = 0; Precision: Integer = -1; Required: Boolean = False; ReadOnly: Boolean = False; CodePage: TSystemCodePage = CP_UTF8) : TField;
     function  AddLookUpField(const FieldName, KeyFields: string; LookupDataSet: TDataSet; const LookupKeyFields, LookupResultField: string): TField;
     function  AddCalcField(const FieldName: string; FieldType: TFieldType; FieldSize: Integer = 0): TField;
   end;
@@ -48,10 +49,10 @@ type
     class procedure SaveToXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
     class procedure SaveToXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean = False);
 
-    class procedure FromXmlDoc(Table: TDataset; Doc: TXMLDocument; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure FromXmlText(Table: TDataset; XmlText: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure LoadFromXmlFile(Table: TDataset; const FileName: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure LoadFromXmlStream(Table: TDataset; Stream: TStream; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+    class procedure FromXmlDoc(Table: TDataset; Doc: TXMLDocument; SchemaOnly: Boolean = False);
+    class procedure FromXmlText(Table: TDataset; XmlText: string; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean = False);
   end;
 
   (*============================================================================
@@ -377,7 +378,6 @@ type
 
     { additional }
     procedure CreateDataset();
-    procedure CreateDatasetOpen();
     procedure EmptyDataSet;
     procedure CancelUpdates();
 
@@ -510,7 +510,44 @@ begin
   Result := Add(FieldName, ftString, Size, 0, Required, ReadOnly, Count + 1, CodePage);
 end;
 
+function TDatasetHelper.AddField(const FieldName: string; FieldType: TFieldType; Size: Integer; Precision: Integer; Required, ReadOnly: Boolean; CodePage: TSystemCodePage): TField;
+var
+  Field: TField;
+  FieldClass : TFieldClass;
+begin
 
+  { NOTE: No way to set CodePage to UTF8 when creating a TField }
+  if (FieldType = ftString) and (CodePage = CP_UTF8) then
+     FieldClass := TWideStringField
+  else
+    FieldClass := DB.DefaultFieldClasses[FieldType];
+
+  Field := FieldClass.Create(Self);
+  Field.DataSet         := Self;
+  Field.FieldName       := FieldName;
+  Field.DisplayLabel    := FieldName;
+  Field.Size            := Size;
+  Field.Required        := Required;
+  Field.ReadOnly        := ReadOnly;
+
+  { NOTE: No way to set CodePage to UTF8 when creating a TField }
+  {
+  if (Field is TStringField) then
+    TStringField(Field).CodePage := CodePage
+  else if (Field is TMemoField) then
+    TMemoField(Field).CodePage := CodePage
+  else
+  }
+
+  if (Field is TFloatField) then
+    TFloatField(Field).Precision := Precision
+  else if (Field is TBCDField) then
+    TBCDField(Field).Precision := Precision
+  else if (Field is TFmtBCDField) then
+    TFmtBCDField(Field).Precision := Precision;
+
+  Result := Field;
+end;
 
 { TDatasetHelper }
 function  TDatasetHelper.AddLookUpField(const FieldName, KeyFields: string; LookupDataSet: TDataSet; const LookupKeyFields, LookupResultField: string): TField;
@@ -849,7 +886,7 @@ begin
   end;
 end;
 
-class procedure XmlPersistor.FromXmlDoc(Table: TDataset; Doc: TXMLDocument; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+class procedure XmlPersistor.FromXmlDoc(Table: TDataset; Doc: TXMLDocument; SchemaOnly: Boolean = False);
 
   {-------------------------------------------------------------------}
   function AsVariant(const Value: Variant; Default: Variant): Variant;
@@ -988,7 +1025,8 @@ begin
     FieldDef := Table.FieldDefs.Add(FieldName, FieldType, FieldSize, Precision, Required, ReadOnly, FieldNo, CodePage);
   end;
 
-  CreateDatasetProc();
+  //CreateDatasetProc();
+  Table.Active := True;
 
   // data ======================================================
   if not SchemaOnly then
@@ -1072,7 +1110,7 @@ begin
 
 end;
 
-class procedure XmlPersistor.FromXmlText(Table: TDataset; XmlText: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+class procedure XmlPersistor.FromXmlText(Table: TDataset; XmlText: string; SchemaOnly: Boolean = False);
 var
   Doc : TXMLDocument;
   SS  : TStringStream;
@@ -1083,7 +1121,7 @@ begin
   try
     ReadXMLFile(Doc, SS);
     try
-      FromXmlDoc(Table, Doc, CreateDatasetProc, SchemaOnly);
+      FromXmlDoc(Table, Doc, SchemaOnly);
     finally
       Doc.Free();
     end;
@@ -1092,7 +1130,7 @@ begin
   end;
 end;
 
-class procedure XmlPersistor.LoadFromXmlFile(Table: TDataset; const FileName: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+class procedure XmlPersistor.LoadFromXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
 var
   Doc   : TXMLDocument;
 begin
@@ -1101,19 +1139,19 @@ begin
 
   ReadXMLFile(Doc, FileName);
   try
-    FromXmlDoc(Table, Doc, CreateDatasetProc, SchemaOnly);
+    FromXmlDoc(Table, Doc, SchemaOnly);
   finally
     Doc.Free();
   end;
 end;
 
-class procedure XmlPersistor.LoadFromXmlStream(Table: TDataset; Stream: TStream; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean);
+class procedure XmlPersistor.LoadFromXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean);
 var
   Doc   : TXMLDocument;
 begin
   ReadXMLFile(Doc, Stream);
   try
-    FromXmlDoc(Table, Doc, CreateDatasetProc, SchemaOnly);
+    FromXmlDoc(Table, Doc, SchemaOnly);
   finally
     Doc.Free();
   end;
@@ -2576,12 +2614,6 @@ begin
 
 end;
 
-procedure TMemTable.CreateDatasetOpen();
-begin
-  CreateDataset;
-  Open();
-end;
-
 procedure TMemTable.EmptyDataSet;
 begin
   if Active then
@@ -3793,7 +3825,7 @@ begin
   Old := AutoIncEnabled;
   AutoIncEnabled := False;
   try
-    XmlPersistor.FromXmlText(Self, XmlText, Addr(Self.CreateDataset), SchemaOnly);
+    XmlPersistor.FromXmlText(Self, XmlText, SchemaOnly);
   finally
     AutoIncEnabled := Old;
   end;
@@ -3801,12 +3833,12 @@ end;
 
 procedure TMemTable.LoadFromXmlFile(const FileName: string; SchemaOnly: Boolean);
 begin
-  XmlPersistor.LoadFromXmlFile(Self, FileName, Addr(Self.CreateDataset), SchemaOnly);
+  XmlPersistor.LoadFromXmlFile(Self, FileName, SchemaOnly);
 end;
 
 procedure TMemTable.LoadFromXmlStream(Stream: TStream; SchemaOnly: Boolean);
 begin
-  XmlPersistor.LoadFromXmlStream(Self, Stream, Addr(Self.CreateDataset), SchemaOnly);
+  XmlPersistor.LoadFromXmlStream(Self, Stream, SchemaOnly);
 end;
 
 end.

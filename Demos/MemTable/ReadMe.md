@@ -18,47 +18,49 @@ The `TMemTable` is an in-memory `TDataset` which has most of the features a Pasc
 ## Content table
 
 - [Crafting an in-memory TDataset descendant in Free Pascal - Lazarus: the ultimate adventure.](#crafting-an-in-memory-tdataset-descendant-in-free-pascal---lazarus-the-ultimate-adventure)
-  - [Content table](#content-table)
-  - [What is TDataset](#what-is-tdataset)
+	- [Content table](#content-table)
+	- [What is TDataset](#what-is-tdataset)
 - [Inheriting TDataset](#inheriting-tdataset)
-  - [The Record Buffer](#the-record-buffer)
-  - [Record Buffer methods](#record-buffer-methods)
-    - [function  GetRecordSize(): Word; override;](#function--getrecordsize-word-override)
-    - [function  AllocRecordBuffer(): TRecordBuffer; override;](#function--allocrecordbuffer-trecordbuffer-override)
-    - [procedure FreeRecordBuffer(var RecBuf: TRecordBuffer); override;](#procedure-freerecordbuffervar-recbuf-trecordbuffer-override)
-    - [function  GetRecord(RecBuf: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;](#function--getrecordrecbuf-trecordbuffer-getmode-tgetmode-docheck-boolean-tgetresult-override)
-  - [Bookmark methods](#bookmark-methods)
-    - [function  GetBookmarkFlag(RecBuf: TRecordBuffer): TBookmarkFlag; override;](#function--getbookmarkflagrecbuf-trecordbuffer-tbookmarkflag-override)
-    - [procedure SetBookmarkFlag(RecBuf: TRecordBuffer; Value: TBookmarkFlag); override;](#procedure-setbookmarkflagrecbuf-trecordbuffer-value-tbookmarkflag-override)
-    - [procedure GetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-getbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
-    - [procedure SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-setbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
-    - [procedure InternalGotoBookmark(pBM: Pointer); override;](#procedure-internalgotobookmarkpbm-pointer-override)
-    - [procedure InternalSetToRecord(RecBuf: TRecordBuffer); override;](#procedure-internalsettorecordrecbuf-trecordbuffer-override)
-    - [function  BookmarkValid(BM: TBookmark): Boolean; override;](#function--bookmarkvalidbm-tbookmark-boolean-override)
-    - [function  CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer; override;](#function--comparebookmarksbookmark1-bookmark2-tbookmark-integer-override)
-  - [Navigation methods](#navigation-methods)
-    - [procedure InternalFirst; override;](#procedure-internalfirst-override)
-    - [procedure InternalLast; override;](#procedure-internallast-override)
-  - [Editing methods](#editing-methods)
-    - [procedure InternalInitRecord(RecBuf: TRecordBuffer); override;](#procedure-internalinitrecordrecbuf-trecordbuffer-override)
-    - [procedure InternalPost; override;](#procedure-internalpost-override)
-    - [procedure InternalAddRecord(RecBuf: Pointer; IsAppend: Boolean); override;](#procedure-internaladdrecordrecbuf-pointer-isappend-boolean-override)
-    - [procedure InternalEdit; override;](#procedure-internaledit-override)
-    - [procedure InternalCancel; override;](#procedure-internalcancel-override)
-    - [procedure InternalDelete; override;](#procedure-internaldelete-override)
-  - [Open and Close methods](#open-and-close-methods)
-    - [function  IsCursorOpen: Boolean; override;](#function--iscursoropen-boolean-override)
-    - [procedure InternalOpen; override;](#procedure-internalopen-override)
-    - [procedure InternalClose; override;](#procedure-internalclose-override)
-  - [Field methods](#field-methods)
-    - [function  GetFieldData(Field: TField; Buffer: Pointer): Boolean; override;](#function--getfielddatafield-tfield-buffer-pointer-boolean-override)
-    - [procedure SetFieldData(Field: TField; Buffer: Pointer); override;](#procedure-setfielddatafield-tfield-buffer-pointer-override)
-    - [function  CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;](#function--createblobstreamfield-tfield-mode-tblobstreammode-tstream-override)
+	- [The Record Buffer](#the-record-buffer)
+	- [Record Buffer methods](#record-buffer-methods)
+		- [function  GetRecordSize(): Word; override;](#function--getrecordsize-word-override)
+		- [function  AllocRecordBuffer(): TRecordBuffer; override;](#function--allocrecordbuffer-trecordbuffer-override)
+		- [procedure FreeRecordBuffer(var RecBuf: TRecordBuffer); override;](#procedure-freerecordbuffervar-recbuf-trecordbuffer-override)
+		- [function  GetRecord(RecBuf: TRecordBuffer; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override;](#function--getrecordrecbuf-trecordbuffer-getmode-tgetmode-docheck-boolean-tgetresult-override)
+	- [Bookmark methods](#bookmark-methods)
+		- [function  GetBookmarkFlag(RecBuf: TRecordBuffer): TBookmarkFlag; override;](#function--getbookmarkflagrecbuf-trecordbuffer-tbookmarkflag-override)
+		- [procedure SetBookmarkFlag(RecBuf: TRecordBuffer; Value: TBookmarkFlag); override;](#procedure-setbookmarkflagrecbuf-trecordbuffer-value-tbookmarkflag-override)
+		- [procedure GetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-getbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
+		- [procedure SetBookmarkData(RecBuf: TRecordBuffer; Data: Pointer); override;](#procedure-setbookmarkdatarecbuf-trecordbuffer-data-pointer-override)
+		- [procedure InternalGotoBookmark(pBM: Pointer); override;](#procedure-internalgotobookmarkpbm-pointer-override)
+		- [procedure InternalSetToRecord(RecBuf: TRecordBuffer); override;](#procedure-internalsettorecordrecbuf-trecordbuffer-override)
+		- [function  BookmarkValid(BM: TBookmark): Boolean; override;](#function--bookmarkvalidbm-tbookmark-boolean-override)
+		- [function  CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer; override;](#function--comparebookmarksbookmark1-bookmark2-tbookmark-integer-override)
+	- [Navigation methods](#navigation-methods)
+		- [procedure InternalFirst; override;](#procedure-internalfirst-override)
+		- [procedure InternalLast; override;](#procedure-internallast-override)
+	- [Editing methods](#editing-methods)
+		- [procedure InternalInitRecord(RecBuf: TRecordBuffer); override;](#procedure-internalinitrecordrecbuf-trecordbuffer-override)
+		- [procedure InternalPost; override;](#procedure-internalpost-override)
+		- [procedure InternalAddRecord(RecBuf: Pointer; IsAppend: Boolean); override;](#procedure-internaladdrecordrecbuf-pointer-isappend-boolean-override)
+		- [procedure InternalEdit; override;](#procedure-internaledit-override)
+		- [procedure InternalCancel; override;](#procedure-internalcancel-override)
+		- [procedure InternalDelete; override;](#procedure-internaldelete-override)
+	- [Open and Close methods](#open-and-close-methods)
+		- [function  IsCursorOpen: Boolean; override;](#function--iscursoropen-boolean-override)
+		- [procedure InternalOpen; override;](#procedure-internalopen-override)
+		- [procedure InternalClose; override;](#procedure-internalclose-override)
+	- [Field methods](#field-methods)
+		- [function  GetFieldData(Field: TField; Buffer: Pointer): Boolean; override;](#function--getfielddatafield-tfield-buffer-pointer-boolean-override)
+		- [procedure SetFieldData(Field: TField; Buffer: Pointer); override;](#procedure-setfielddatafield-tfield-buffer-pointer-override)
+		- [function  CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;](#function--createblobstreamfield-tfield-mode-tblobstreammode-tstream-override)
 - [TMemTable specific](#tmemtable-specific)
-  - [Demo application](#demo-application)
-  - [Filter Expression Parser](#filter-expression-parser)
-  - [Load from and save to XML](#load-from-and-save-to-xml)
-  - [Tested On](#tested-on)
+	- [Demo application](#demo-application)
+	- [Filter Expression Parser](#filter-expression-parser)
+	- [Load from and save to XML](#load-from-and-save-to-xml)
+	- [Helper classes](#helper-classes)
+	- [Two ways to define fields](#two-ways-to-define-fields)
+	- [Tested On](#tested-on)
 
 
 
@@ -740,12 +742,65 @@ The "*load from/save to XML*" functionality resides in a totally independent `fu
     class procedure SaveToXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
     class procedure SaveToXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean = False);
 
-    class procedure FromXmlDoc(Table: TDataset; Doc: TXMLDocument; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure FromXmlText(Table: TDataset; XmlText: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure LoadFromXmlFile(Table: TDataset; const FileName: string; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
-    class procedure LoadFromXmlStream(Table: TDataset; Stream: TStream; CreateDatasetProc: TCreateDatasetProc; SchemaOnly: Boolean = False);
+    class procedure FromXmlDoc(Table: TDataset; Doc: TXMLDocument; SchemaOnly: Boolean = False);
+    class procedure FromXmlText(Table: TDataset; XmlText: string; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlFile(Table: TDataset; const FileName: string; SchemaOnly: Boolean = False);
+    class procedure LoadFromXmlStream(Table: TDataset; Stream: TStream; SchemaOnly: Boolean = False);   
   end;
  ```
+
+## Helper classes
+
+There are two helper classes in `tripous.memtable.pas`
+
+```
+  TFieldDefsStringFieldHelper = class helper for TFieldDefs
+    { For the Size of an ftString field to be respected, in characters, even for non-English characters,
+      the CodePage should be CP_UTF8. Not CP_ACP.
+
+      SEE: https://forum.lazarus.freepascal.org/index.php/topic,6950.msg516328.html#msg516328 }
+    function AddString(FieldName: string; Size: Integer; Required: Boolean = False; ReadOnly: Boolean = False; CodePage: TSystemCodePage = CP_UTF8): TFieldDef;
+  end;
+ 
+  TDatasetHelper = class helper for TDataset
+    function  AddField(const FieldName: string; FieldType: TFieldType; Size: Integer = 0; Precision: Integer = -1; Required: Boolean = False; ReadOnly: Boolean = False; CodePage: TSystemCodePage = CP_UTF8) : TField;
+    function  AddLookUpField(const FieldName, KeyFields: string; LookupDataSet: TDataSet; const LookupKeyFields, LookupResultField: string): TField;
+    function  AddCalcField(const FieldName: string; FieldType: TFieldType; FieldSize: Integer = 0): TField;
+  end;   
+```
+
+The `TDatasetHelper` is there just to ease field creation. 
+
+The `TDatasetHelper.AddField()` adds `TField` instances directly to the dataset without using `TFieldDefs`. But there is **no way** to add a `TStringField` with `CP_UTF8` codepage when not using `TFieldDefs`. So this method creates a `TWideStringField` instance when an `ftString` field type is asked.
+
+A `TStringField` is always created using a `CP_ACP` codepage, unless it is created by using a specific overload of the `TFieldDefs.Add()` function, which allows to pass the desired codepage. So no other way.
+
+## Two ways to define fields
+
+There are two ways to define fields in `TMemTable`
+
+- using `TFieldDefs`
+- using `TFields`
+
+```
+  Table := TMemTable.Create(Self);
+
+  { create TFields by using FieldDefs ... }
+  // Table.FieldDefs.Add('Id', ftAutoInc);
+  // Table.FieldDefs.Add('Name', ftString, 100);
+
+  { ... or directly create TFields }
+  Table.AddField('Id', ftAutoInc);
+  Table.AddField('Name', ftString, 100);
+
+  { CreateDataset() is actually needed only when the dataset
+    has Lookup or Calculated fields }
+  // Table.CreateDataset();
+
+  // this creates TField instances in case TFieldDefs are used
+  Table.Active := True;   
+```
+
  
 ## Tested On
 - FPC 3.2.2
