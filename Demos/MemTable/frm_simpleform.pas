@@ -68,7 +68,6 @@ begin
   btnGetBookmark.OnClick := Addr(AnyClick);
   btnGoToBookmark.OnClick := Addr(AnyClick);
 
-  // master
   Table := TMemTable.Create(Self);
 
   { create TFields by using FieldDefs ... }
