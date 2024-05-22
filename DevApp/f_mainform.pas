@@ -21,7 +21,7 @@ uses
   , Tripous
   , Tripous.Data
   , LazFileUtils
-  , DB
+  , DB, SQLDB
   //, Generics.Collections
   //, csvdataset
   ,Laz2_DOM, RTTIGrids
@@ -38,6 +38,7 @@ type
     btnTest: TButton;
     dsGrid: TDataSource;
     Grid: TDBGrid;
+    SQLQuery1: TSQLQuery;
   private
     tblPsw: TBufTable;
     procedure BufTableCreate();

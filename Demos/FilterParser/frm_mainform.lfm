@@ -1,0 +1,113 @@
+object MainForm: TMainForm
+  Left = 653
+  Height = 401
+  Top = 233
+  Width = 552
+  Caption = 'MainForm'
+  ClientHeight = 401
+  ClientWidth = 552
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object Panel1: TPanel
+    Left = 0
+    Height = 88
+    Top = 0
+    Width = 552
+    Align = alTop
+    ClientHeight = 88
+    ClientWidth = 552
+    TabOrder = 0
+    object btnExecuteParser: TButton
+      Left = 64
+      Height = 25
+      Top = 50
+      Width = 144
+      Caption = 'Execute Parser'
+      TabOrder = 0
+    end
+    object Label1: TLabel
+      Left = 32
+      Height = 15
+      Top = 22
+      Width = 26
+      Caption = 'Filter'
+    end
+    object btnExecuteScanner: TButton
+      Left = 216
+      Height = 25
+      Top = 50
+      Width = 144
+      Caption = 'Execute Scanner'
+      TabOrder = 1
+    end
+    object btnClearLog: TButton
+      Left = 384
+      Height = 25
+      Top = 50
+      Width = 144
+      Caption = 'Clear Log'
+      TabOrder = 2
+    end
+    object cboFilter: TComboBox
+      Left = 64
+      Height = 23
+      Top = 19
+      Width = 464
+      Font.CharSet = ANSI_CHARSET
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ItemHeight = 15
+      ParentFont = False
+      TabOrder = 3
+      Text = 'cboFilter'
+    end
+  end
+  object Pager: TPageControl
+    Left = 0
+    Height = 313
+    Top = 88
+    Width = 552
+    ActivePage = tabVariables
+    Align = alClient
+    TabIndex = 1
+    TabOrder = 1
+    object tabLog: TTabSheet
+      Caption = 'Log'
+      ClientHeight = 285
+      ClientWidth = 544
+      object mmoLog: TMemo
+        Left = 0
+        Height = 285
+        Top = 0
+        Width = 544
+        Align = alClient
+        Font.CharSet = ANSI_CHARSET
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Lines.Strings = (
+          'mmoLog'
+        )
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 0
+      end
+    end
+    object tabVariables: TTabSheet
+      Caption = 'Variables'
+      ClientHeight = 285
+      ClientWidth = 544
+      object gridVariables: TDBGrid
+        Left = 0
+        Height = 285
+        Top = 0
+        Width = 544
+        Align = alClient
+        Color = clWindow
+        Columns = <>
+        TabOrder = 0
+      end
+    end
+  end
+end

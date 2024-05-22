@@ -20,7 +20,6 @@ type
    TSetOfFieldType    = set of TFieldType;
 
   { TBufTable }
-
   TBufTable = class(TBufDataset)
   private
     FTableName : string;
@@ -40,9 +39,7 @@ type
   end;
 
   { DbSys }
-
   DbSys = class
-
   private
     class function GetBCDFieldTypes: TSetOfFieldType; static;
     class function GetBlobFieldTypess: TSetOfFieldType; static;

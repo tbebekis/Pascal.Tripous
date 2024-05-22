@@ -1,13 +1,13 @@
 object MainForm: TMainForm
-  Left = 1260
+  Left = 601
   Height = 441
-  Top = 577
+  Top = 200
   Width = 651
   Caption = 'MainForm'
   ClientHeight = 441
   ClientWidth = 651
   Position = poScreenCenter
-  LCLVersion = '3.0.0.3'
+  LCLVersion = '3.2.0.0'
   object btnTest: TButton
     Left = 16
     Height = 25
@@ -29,5 +29,12 @@ object MainForm: TMainForm
   object dsGrid: TDataSource
     Left = 40
     Top = 75
+  end
+  object SQLQuery1: TSQLQuery
+    FieldDefs = <>
+    Params = <>
+    Macros = <>
+    Left = 147
+    Top = 76
   end
 end
