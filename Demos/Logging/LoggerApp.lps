@@ -20,7 +20,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
-        <IsVisibleTab Value="True"/>
         <TopLine Value="141"/>
         <CursorPos X="59" Y="159"/>
         <UsageCount Value="47"/>
@@ -31,10 +30,21 @@
         <Filename Value="..\..\tripous.logs.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Logs"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="1491"/>
-        <CursorPos Y="1507"/>
+        <TopLine Value="1645"/>
+        <CursorPos X="18" Y="1663"/>
         <UsageCount Value="47"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="697"/>
+        <CursorPos X="16" Y="723"/>
+        <UsageCount Value="42"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -65,16 +75,6 @@
         <TopLine Value="136"/>
         <CursorPos X="10" Y="157"/>
         <UsageCount Value="7"/>
-      </Unit>
-      <Unit>
-        <Filename Value="..\..\tripous.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="Tripous"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="697"/>
-        <CursorPos X="16" Y="723"/>
-        <UsageCount Value="42"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\sysutils\sysutilh.inc"/>
@@ -419,18 +419,6 @@
     </Units>
     <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="frm_mainform.pas"/>
-        <Caret Line="157" Column="49" TopLine="141"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="155" Column="44" TopLine="139"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="198" Column="25" TopLine="168"/>
-      </Position>
-      <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
         <Caret Line="207" Column="25" TopLine="177"/>
       </Position>
@@ -537,6 +525,18 @@
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
         <Caret Line="1048" TopLine="1031"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.logs.pas"/>
+        <Caret Line="1497" Column="28" TopLine="1491"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.logs.pas"/>
+        <Caret Line="798" Column="34" TopLine="790"/>
+      </Position>
+      <Position>
+        <Filename Value="..\..\tripous.logs.pas"/>
+        <Caret Line="729" Column="19" TopLine="711"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -27,8 +27,6 @@ type
     ,loFatal  = $20
   );
 
-  XXX = TQueue  ;
-
   TLogPropLengthDictionary = specialize TFPGMap<string, Word>;
 
   TLogTextProc = procedure(LogText: string) of object;
@@ -89,17 +87,6 @@ type
     // A dictionary with params passed when the log message was formatted. For use by structured log listeners
     property Properties: IVariantDictionary read GetProperties;
   end;
-   (*
-  { ILogScope }
-  ILogScope = interface
-    ['{2C03850A-186C-407C-9AD4-5C401E7EB951}']
-    function GetId: string;
-    function GetProperties: IVariantDictionary;
-
-    property Id : string read GetId;
-    property Properties: IVariantDictionary read GetProperties;
-  end;
-  *)
 
   { ILogSource }
   ILogSource = interface
@@ -532,9 +519,6 @@ begin
     SB.Free();
   end;
 
-{ TODO: if (Info.Properties != null && Info.Properties.Count > 0)
-   Text = Text + " Properties = " + Json.Serialize(Info.Properties);
-}
 end;
 
 { TLogToMainThreadListener }
@@ -710,10 +694,6 @@ begin
     SB.Free();
   end;
 
-{ TODO: if (Info.Properties != null && Info.Properties.Count > 0)
-   Text = Text + " Properties = " + Json.Serialize(Info.Properties);
-}
-
 end;
 
 { TLogJob }
@@ -747,9 +727,6 @@ type
     function GetProperties: IVariantDictionary;
   public
     constructor Create(Source: TLogSource; const aId: string = ''; const ScopeParams: IVariantDictionary = nil);
-    destructor Destroy; override;
-
-    procedure BeforeDestruction; override;
 
     property Id : string read GetId;
     property Properties: IVariantDictionary read GetProperties;
@@ -802,6 +779,13 @@ type
 
 
 { TLogScope }
+constructor TLogScope.Create(Source: TLogSource; const aId: string; const ScopeParams: IVariantDictionary);
+begin
+  inherited Create();
+  FLogSource := Source;
+  FId := aId;
+  FProperties := ScopeParams;
+end;
 
 function TLogScope.GetId: string;
 begin
@@ -813,28 +797,8 @@ begin
   Result := FProperties;
 end;
 
-constructor TLogScope.Create(Source: TLogSource; const aId: string; const ScopeParams: IVariantDictionary);
-begin
-  inherited Create();
-  FLogSource := Source;
-  FId := aId;
-  FProperties := ScopeParams;
-end;
-
-destructor TLogScope.Destroy;
-begin
-
-  inherited Destroy;
-end;
-
-procedure TLogScope.BeforeDestruction;
-begin
-
-  inherited BeforeDestruction;
-end;
 
 { TLogSource }
-
 constructor TLogSource.Create(AName: string);
 begin
   inherited Create();
@@ -1083,7 +1047,6 @@ begin
     SB.Free();
   end;
 
-
 end;
 
 procedure TLogInfo.SaveToFile(Folder: string);
@@ -1250,6 +1213,8 @@ begin
 
   Logger.FLogJobThreadTerminated := True;
 end;
+
+
 
 { Logger }
 class constructor Logger.Create();
