@@ -10,9 +10,18 @@ uses
   ,SysUtils
   ,SyncObjs
   ,Variants
-  ,Contnrs
-  ,FGL
-
+  ,Forms
+  ,Controls
+  ,Graphics
+  ,Dialogs
+  ,ExtCtrls
+  ,StdCtrls
+  ,DBGrids
+  ,DBCtrls
+  ,ComCtrls
+  ,DB
+  ,BufDataset
+  ,fgl
   ,Tripous
   ;
  
@@ -30,6 +39,26 @@ type
   TLogPropLengthDictionary = specialize TFPGMap<string, Word>;
 
   TLogTextProc = procedure(LogText: string) of object;
+
+  ILogInfo = interface;
+
+  { TLogRecord }
+  TLogRecord = class
+  public
+    Date: string;
+    Time: string;
+    User: string;
+    Host: string;
+    Level: string;
+    Source: string;
+    Scope: string;
+    EventId: string;
+    Text: string;
+
+    LogText: string;
+
+    constructor Create(Info: ILogInfo);
+  end;
 
   { ILogInfo }
   ILogInfo = interface
@@ -54,6 +83,10 @@ type
 
     function  ToString: ansistring; override;
     procedure SaveToFile(Folder: string);
+
+    function GetPropertiesAsSingleLine(): string;
+    function GetPropertiesAsTextList(): string;
+    function CreateLogRecord(): TLogRecord;
 
     // Returns the UTC date-time this info created
     property TimeStamp: TDateTime read  GetTimeStamp;
@@ -124,27 +157,48 @@ type
     and automatically removes itself from Logger.Listeners when destroyed. }
   TLogListener = class
   protected
+    FLock         : SyncObjs.TCriticalSection;
+    FLockCount    : Integer;
+
+    procedure Lock();
+    procedure UnLock();
+
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
     procedure ProcessLog(const Info: ILogInfo); virtual; abstract;
-  public
-    procedure AfterConstruction(); override;
-    procedure BeforeDestruction(); override;
-  end;
-
-  { TLogFile }
-  TLogFile = class
-  private
-    IsClosed : Boolean;
-    F        : TextFile;
-    Size     : SizeInt;
   public
     constructor Create();
     destructor Destroy(); override;
 
-    procedure CreateLogFile(FilePath: string);
-    procedure CloseLogFile();
+    procedure AfterConstruction(); override;
+    procedure BeforeDestruction(); override;
+  end;
 
-    procedure AppendLine(Line: string);
+  { TFormLogListener }
+  TFormLogListener = class(TLogListener)
+  private
+    type
+    { TLogTable }
+    TLogTable = class(TBufDataset)
+    protected
+      procedure LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField); override;
+    public
+      constructor Create(AOwner: TComponent); override;
+    end;
+  private
+    FLogTable   : TLogTable;
+    FDS         : TDatasource;
+    FLogForm    : TForm;
+    FSafeList   : TSafeObjectList;
+
+    procedure CallLogProc();
+    procedure InitializeGrid(Grid: TDBGrid);
+    procedure ClearData();
+  protected
+    { CAUTION: ProcessLog() is always called from inside a secondary thread. }
+    procedure ProcessLog(const Info: ILogInfo); override;
+  public
+    constructor Create();
+    destructor Destroy(); override;
   end;
 
   { TFileLogListener }
@@ -172,11 +226,6 @@ type
   private
     FLogTextList  : TStringList;
     FLogProc      : TLogTextProc;
-    FLock         : SyncObjs.TCriticalSection;
-    FLockCount    : Integer;
-
-    procedure Lock();
-    procedure UnLock();
 
     procedure CallLogProc();
   protected
@@ -198,8 +247,6 @@ type
 
   { TLogLineListener }
   TLogLineListener = class(TLogToMainThreadListener)
-  private
-    FLengths       : TLogPropLengthDictionary;
   protected
     function  GetLogInfoText(const Info: ILogInfo): string; override;
   public
@@ -208,7 +255,6 @@ type
   end;
 
   { TLogJob }
-
   TLogJob = class
   private
     FListener: TLogListener;
@@ -229,6 +275,7 @@ type
     FSafeList        : TSafeObjectList;
     FLogThread       : TThread;
     FLogJobThreadTerminated: Boolean;
+    FLineLengths     : TLogPropLengthDictionary;
 
     class function GetActive: Boolean; static;
     class procedure SetActive(Value: Boolean); static;
@@ -275,6 +322,9 @@ type
     class function  GetHostName(): string;
     class function  FormatParams(Text: string; const Params: IVariantDictionary): string;
 
+    class function  GetAsText(LogInfo: ILogInfo): string;
+    class function  GetAsLine(LogInfo: ILogInfo): string;
+
     { properties }
     class property Active: Boolean read GetActive write SetActive;
     class property LogFolder: string read GetLogFolder write FLogFolder;
@@ -292,6 +342,23 @@ uses
   {$IFDEF UNIX} ,unix{$ENDIF}
   {$IFDEF WINDOWS} ,Windows{$ENDIF}
   ;
+
+{ TLogRecord }
+constructor TLogRecord.Create(Info: ILogInfo);
+begin
+  inherited Create();
+  Date      := Info.Date       ;
+  Time      := Info.Time       ;
+  User      := Info.User       ;
+  Host      := Info.Host       ;
+  Level     := Info.LevelText  ;
+  Source    := Info.Source     ;
+  Scope     := Info.ScopeId    ;
+  EventId   := Info.EventId    ;
+  Text      := Info.Text       ;
+
+  LogText   := Logger.GetAsText(Info);
+end;
 
 
 type
@@ -335,6 +402,10 @@ type
     function  ToString: ansistring; override;
     procedure SaveToFile(Folder: string = '');
 
+    function GetPropertiesAsSingleLine(): string;
+    function GetPropertiesAsTextList(): string;
+    function CreateLogRecord(): TLogRecord;
+
     property TimeStamp: TDateTime read  GetTimeStamp;
     property TimeStampText: string read GetTimeStampText;
     property Date: string read GetDate;
@@ -357,347 +428,10 @@ type
 
 
 
-{ TLogFile }
-constructor TLogFile.Create();
-begin
-  inherited Create();
-  IsClosed := True;
-end;
 
-destructor TLogFile.Destroy;
-begin
-  CloseLogFile();
-  inherited Destroy;
-end;
 
-procedure TLogFile.CloseLogFile();
-begin
-  if not IsClosed then
-  begin
-    Close(F);
-    IsClosed := True;
-    Size     := 0;
-  end;
-end;
-
-procedure TLogFile.CreateLogFile(FilePath: string);
-begin
-  CloseLogFile();
-  Assign(F, FilePath);
-
-  {$I-} // without this, if rewrite fails then a runtime error will be generated
-  Rewrite(F);
-  {$I+}
-  if IOResult <> 0 then
-    raise Exception.CreateFmt('Cannot create a log file: %s', [FilePath]);
-
-  IsClosed := False;
-end;
-
-procedure TLogFile.AppendLine(Line: string);
-begin
-  System.WriteLn(F, Line);
-  Size := Size + Length(Line);
-  Flush(F);
-end;
-
-
-
-{ TLogFileListener }
-constructor TFileLogListener.Create(Folder: string; MaxSizeInMB: SizeInt);
-begin
-  inherited Create();
-
-  FLogFile := TLogFile.Create();
-
-  FLengths := TLogPropLengthDictionary.Create() ;
-
-  // prepare the FLengths table
-  FLengths.Add('TimeStamp'  , 24);
-  FLengths.Add('Host'       , 24);
-  FLengths.Add('User'       , 24);
-  FLengths.Add('Level'      , 12);
-  FLengths.Add('EventId'    , 14);
-  FLengths.Add('Source'     , 64);
-  FLengths.Add('Scope'      , 32);
-
-  if Length(Self.FFolder) = 0 then
-    Self.FFolder := Logger.LogFolder
-  else
-    Self.FFolder := Folder;
-
-  if Self.FMaxSizeInMB < 1 then
-     Self.FMaxSizeInMB := 5
-  else
-     Self.FMaxSizeInMB := MaxSizeInMB;
-
-  // create the first file
-  BeginFile();
-end;
-
-destructor TFileLogListener.Destroy;
-begin
-  FLengths.Free();
-  FLogFile.Free();
-  inherited Destroy;
-end;
-
-procedure TFileLogListener.BeginFile();
-var
-  FileName : string;
-  SB       : TAnsiStringBuilder;
-  Line     : string;
-begin
-  if not DirectoryExists(FFolder) then
-    CreateDir(FFolder);
-
-  FileName := 'LOG_' + Logger.DateTimeToFileName(NowUTC()) + '.log';
-  FFilePath := ConcatPaths([FFolder, FileName]);
-
-  SB := TAnsiStringBuilder.Create('');
-  try
-    SB.Append(Logger.RPad('TimeStamp UTC', FLengths['TimeStamp']));
-    SB.Append(Logger.RPad('Host', FLengths['Host']));
-    SB.Append(Logger.RPad('User', FLengths['User']));
-    SB.Append(Logger.RPad('Level', FLengths['Level']));
-    SB.Append(Logger.RPad('EventId', FLengths['EventId']));
-    SB.Append(Logger.RPad('Source', FLengths['Source']));
-    SB.Append(Logger.RPad('Scope', FLengths['Scope']));
-    SB.Append('Text');
-    SB.AppendLine();
-
-    Line :=  SB.ToString();
-  finally
-    SB.Free();
-  end;
-
-  FLogFile.CreateLogFile(FFilePath);
-
-  WriteLine(Line);
-
-end;
-
-procedure TFileLogListener.WriteLine(Line: string);
-begin
-  if Length(Line) > 0 then
-  begin
-    if (FLogFile.Size > (1024 * 1024 * FMaxSizeInMB)) then
-       BeginFile();
-
-    Line := Trim(Line);
-    FLogFile.AppendLine(Line);
-  end;
-end;
-
-procedure TFileLogListener.ProcessLog(const Info: ILogInfo);
-var
-  SB       : TAnsiStringBuilder;
-  Line     : string;
-begin
-  SB := TAnsiStringBuilder.Create('');
-  try
-    SB.Append(Logger.RPad(Info.TimeStampText, FLengths['TimeStamp']));
-    SB.Append(Logger.RPad(Info.Host, FLengths['Host']));
-    SB.Append(Logger.RPad(Info.User, FLengths['User']));
-    SB.Append(Logger.RPad(Info.LevelText, FLengths['Level']));
-    SB.Append(Logger.RPad(Info.EventId, FLengths['EventId']));
-    SB.Append(Logger.RPad(Info.Source, FLengths['Source']));
-    SB.Append(Logger.RPad(Info.ScopeId, FLengths['Scope']));
-
-    if Length(Info.Text) > 0 then
-       SB.Append(Logger.RemoveLineEndings(Info.Text));
-
-    if Length(Info.ExceptionData) > 0 then
-        SB.Append(Logger.RemoveLineEndings(Info.ExceptionData));
-
-    SB.AppendLine();
-
-    Line := SB.ToString();
-
-    WriteLine(Line);
-  finally
-    SB.Free();
-  end;
-
-end;
-
-{ TLogToMainThreadListener }
-
-constructor TLogToMainThreadListener.Create(LogTextProc: TLogTextProc);
-begin
-  inherited Create;
-
-  FLock        := SyncObjs.TCriticalSection.Create();
-  FLogTextList := TStringList.Create();
-
-  if not Assigned(LogTextProc) then
-    raise Exception.CreateFmt('No callback function is provided to %s', [Self.ClassName]);
-
-  FLogProc := LogTextProc;
-end;
-
-destructor TLogToMainThreadListener.Destroy;
-begin
-  FLogTextList.Free();
-  FLock.Free();
-  inherited Destroy;
-end;
-
-procedure TLogToMainThreadListener.Lock;
-begin
-  Inc(FLockCount);
-  if FLockCount = 1 then
-    FLock.Enter;
-end;
-
-procedure TLogToMainThreadListener.UnLock;
-begin
-  Dec(FLockCount);
-  if FLockCount <= 0 then
-  begin
-    FLockCount := 0;
-    FLock.Leave();
-  end;
-end;
-
-procedure TLogToMainThreadListener.ProcessLog(const Info: ILogInfo);
-var
-  LogText: string;
-begin
-  Lock();
-  try
-    LogText := GetLogInfoText(Info);
-    FLogTextList.Add(LogText);
-
-    TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TLogToMainThreadListener.CallLogProc();
-var
-  LogText: string;
-begin
-  Lock();
-  try
-    if FLogTextList.Count > 0 then
-    begin
-      LogText := FLogTextList[0];
-      FLogTextList.Delete(0);
-
-      FLogProc(LogText);
-    end;
-  finally
-    UnLock();
-  end;
-end;
-
-
-
-
-{ TLogTextListener }
-
-constructor TLogTextListener.Create(LogTextProc: TLogTextProc);
-begin
-  inherited Create(LogTextProc);
-end;
-
-function TLogTextListener.GetLogInfoText(const Info: ILogInfo): string;
-
-  procedure AddLine(SB:  TAnsiStringBuilder; Name, Value: string);
-  begin
-     if Length(Value) > 0 then
-     begin
-       Value := Logger.RPad(Name, 12) + ': ' + Value;
-       SB.AppendLine(Value);
-     end;
-  end;
-
-var
-  SB       : TAnsiStringBuilder;
-begin
-  SB := TAnsiStringBuilder.Create('');
-  try
-    AddLine(SB, 'TimeStamp', Info.TimeStampText);
-    AddLine(SB, 'Level', Info.LevelText);
-    AddLine(SB, 'Source', Info.Source);
-    AddLine(SB, 'Scope', Info.ScopeId);
-    AddLine(SB, 'EventId', Info.EventId);
-    AddLine(SB, 'Host', Info.Host);
-    AddLine(SB, 'User', Info.User);
-    AddLine(SB, 'Text', Info.Text);
-    if Length(Info.ExceptionData) > 0 then
-      AddLine(SB, 'Stack', LineEnding + Info.ExceptionData);
-
-    SB.AppendLine();
-
-    Result := SB.ToString();
-  finally
-    SB.Free();
-  end;
-
-end;
-
-
-
-
-
-{ TLogLineListener }
-
-constructor TLogLineListener.Create(LogLineProc: TLogTextProc);
-begin
-  inherited Create(LogLineProc);
-
-  FLengths := TLogPropLengthDictionary.Create();
-
-  // prepare the FLengths table
-  FLengths.Add('TimeStamp'  , 24);
-  FLengths.Add('Host'       , 24);
-  FLengths.Add('User'       , 24);
-  FLengths.Add('Level'      , 12);
-  FLengths.Add('EventId'    , 14);
-  FLengths.Add('Source'     , 64);
-  FLengths.Add('Scope'      , 32);
-end;
-
-destructor TLogLineListener.Destroy;
-begin
-  FLengths.Free;
-  inherited Destroy;
-end;
-
-function TLogLineListener.GetLogInfoText(const Info: ILogInfo): string;
-var
-  SB       : TAnsiStringBuilder;
-begin
-  SB := TAnsiStringBuilder.Create('');
-  try
-    SB.Append(Logger.RPad(Info.TimeStampText, FLengths['TimeStamp']));
-    SB.Append(Logger.RPad(Info.Host, FLengths['Host']));
-    SB.Append(Logger.RPad(Info.User, FLengths['User']));
-    SB.Append(Logger.RPad(Info.LevelText, FLengths['Level']));
-    SB.Append(Logger.RPad(Info.EventId, FLengths['EventId']));
-    SB.Append(Logger.RPad(Info.Source, FLengths['Source']));
-    SB.Append(Logger.RPad(Info.ScopeId, FLengths['Scope']));
-
-    if Length(Info.Text) > 0 then
-       SB.Append(Logger.RemoveLineEndings(Info.Text));
-
-    if Length(Info.ExceptionData) > 0 then
-        SB.Append(Logger.RemoveLineEndings(Info.ExceptionData));
-
-    SB.AppendLine();
-
-    Result := SB.ToString();
-  finally
-    SB.Free();
-  end;
-
-end;
 
 { TLogJob }
-
 constructor TLogJob.Create(Listener: TLogListener; Info: ILogInfo);
 begin
   inherited Create();
@@ -1072,6 +806,66 @@ begin
 
 end;
 
+function TLogInfo.GetPropertiesAsSingleLine(): string;
+var
+  Entry: TKeyValue;
+  Count: Integer;
+  i    : Integer;
+begin
+  Result := '';
+
+  if Assigned(FProperties) then
+  begin
+    Count := FProperties.Count;
+    i     := 0;
+    for Entry in FProperties do
+    begin
+      Inc(i);
+      if not (Variants.VarIsNull(Entry.Value) or Variants.VarIsEmpty(Entry.Value)) then
+      begin
+        Result += Entry.Key;
+        Result += ' = ';
+        Result += Variants.VarToStr(Entry.Value);
+        if i < Count then
+          Result += ', ';
+      end;
+    end;
+  end;
+end;
+
+function TLogInfo.GetPropertiesAsTextList(): string;
+var
+  Entry: TKeyValue;
+  Count: Integer;
+  i    : Integer;
+begin
+  Result := '';
+
+  if Assigned(FProperties) then
+  begin
+    Count := FProperties.Count;
+    i     := 0;
+    for Entry in FProperties do
+    begin
+      Inc(i);
+      if not (Variants.VarIsNull(Entry.Value) or Variants.VarIsEmpty(Entry.Value)) then
+      begin
+        Result += Entry.Key;
+        Result += ' = ';
+        Result += Variants.VarToStr(Entry.Value);
+        if i < Count then
+          Result += LineEnding;
+      end;
+    end;
+  end;
+
+end;
+
+function TLogInfo.CreateLogRecord(): TLogRecord;
+begin
+  Result := TLogRecord.Create(Self as ILogInfo);
+end;
+
 function TLogInfo.GetTimeStamp: TDateTime;
 begin
   Result := FTimeStamp;
@@ -1160,7 +954,22 @@ end;
 
 
 
+
+
+
 { TLogListener }
+constructor TLogListener.Create();
+begin
+  inherited Create();
+  FLock        := SyncObjs.TCriticalSection.Create();
+end;
+
+destructor TLogListener.Destroy;
+begin
+  FLock.Free();
+  inherited Destroy;
+end;
+
 procedure TLogListener.AfterConstruction;
 begin
   inherited AfterConstruction;
@@ -1173,6 +982,618 @@ begin
   inherited BeforeDestruction;
 end;
 
+procedure TLogListener.Lock;
+begin
+  Inc(FLockCount);
+  if FLockCount = 1 then
+    FLock.Enter;
+end;
+
+procedure TLogListener.UnLock;
+begin
+  Dec(FLockCount);
+  if FLockCount <= 0 then
+  begin
+    FLockCount := 0;
+    FLock.Leave();
+  end;
+end;
+
+
+
+type
+  { TLogForm }
+  TLogForm = class(TForm)
+  protected
+    btnClearLog: TButton;
+    btnClearTable: TButton;
+    Grid: TDBGrid;
+    mmoLog: TMemo;
+    mmoText: TDBMemo;
+    Pager: TPageControl;
+    pnlLog: TPanel;
+    pnlTable: TPanel;
+    Splitter: TSplitter;
+    tabLog: TTabSheet;
+    tabTable: TTabSheet;
+
+    Listener: TFormLogListener;
+
+    procedure AnyClick(Sender: TObject);
+    procedure InitializeForm(aListener: TFormLogListener);
+  public
+    function CloseQuery: boolean;  override;
+  end;
+
+
+
+
+{ TLogForm }
+procedure TLogForm.InitializeForm(aListener: TFormLogListener);
+
+const
+  SDfm =
+    'object LogDialog: TLogForm                               ' +
+    '  Left = 396                                               ' +
+    '  Height = 204                                             ' +
+    '  Top = 200                                                ' +
+    '  Width = 711                                              ' +
+    '  Caption = ''LogDialog''                                  ' +
+    '  ClientHeight = 343                                       ' +
+    '  ClientWidth = 711                                        ' +
+    '  FormStyle = fsStayOnTop                                  ' +
+   // '  Position = poMainFormCenter                              ' +
+    '  ShowInTaskBar = stNever                                  ' +
+    '  object Pager: TPageControl                               ' +
+    '    Left = 0                                               ' +
+    '    Height = 343                                           ' +
+    '    Top = 0                                                ' +
+    '    Width = 711                                            ' +
+    '    ActivePage = tabLog                                    ' +
+    '    Align = alClient                                       ' +
+    '    TabIndex = 0                                           ' +
+    '    TabOrder = 0                                           ' +
+    '    object tabLog: TTabSheet                               ' +
+    '      Caption = ''Log''                                      ' +
+    '      ClientHeight = 315                                   ' +
+    '      ClientWidth = 703                                    ' +
+    '      object pnlLog: TPanel                                ' +
+    '        Left = 0                                           ' +
+    '        Height = 28                                        ' +
+    '        Top = 0                                            ' +
+    '        Width = 703                                        ' +
+    '        Align = alTop                                      ' +
+    '        ClientHeight = 28                                  ' +
+    '        ClientWidth = 703                                  ' +
+    '        TabOrder = 0                                       ' +
+    '        object btnClearLog: TButton                        ' +
+    '          Left = 4                                         ' +
+    '          Height = 25                                      ' +
+    '          Top = 1                                          ' +
+    '          Width = 75                                       ' +
+    '          Caption = ''Clear''                                ' +
+    '          TabOrder = 0                                     ' +
+    '        end                                                ' +
+    '      end                                                  ' +
+    '      object mmoLog: TMemo                                 ' +
+    '        Left = 0                                           ' +
+    '        Height = 287                                       ' +
+    '        Top = 28                                           ' +
+    '        Width = 703                                        ' +
+    '        Align = alClient                                   ' +
+    '        Font.CharSet = ANSI_CHARSET                        ' +
+    '        Font.Name = ''Courier New''                          ' +
+    '        Font.Pitch = fpFixed                               ' +
+    '        Font.Quality = fqDraft                             ' +
+    '        ParentFont = False                                 ' +
+    '        ScrollBars = ssAutoBoth                            ' +
+    '        TabOrder = 1                                       ' +
+    '      end                                                  ' +
+    '    end                                                    ' +
+    '    object tabTable: TTabSheet                             ' +
+    '      Caption = ''Table''                                    ' +
+    '      ClientHeight = 315                                   ' +
+    '      ClientWidth = 703                                    ' +
+    '      object pnlTable: TPanel                              ' +
+    '        Left = 0                                           ' +
+    '        Height = 28                                        ' +
+    '        Top = 0                                            ' +
+    '        Width = 703                                        ' +
+    '        Align = alTop                                      ' +
+    '        ClientHeight = 28                                  ' +
+    '        ClientWidth = 703                                  ' +
+    '        TabOrder = 0                                       ' +
+    '        object btnClearTable: TButton                      ' +
+    '          Left = 4                                         ' +
+    '          Height = 25                                      ' +
+    '          Top = 1                                          ' +
+    '          Width = 75                                       ' +
+    '          Caption = ''Clear''                                ' +
+    '          TabOrder = 0                                     ' +
+    '        end                                                ' +
+    '      end                                                  ' +
+    '      object Grid: TDBGrid                                 ' +
+    '        Left = 0                                           ' +
+    '        Height = 79                                       ' +
+    '        Top = 28                                           ' +
+    '        Width = 703                                        ' +
+    '        Align = alTop                                      ' +
+    '        Color = clWindow                                   ' +
+    '        Columns = <>                                       ' +
+    '        TabOrder = 1                                       ' +
+    '      end                                                  ' +
+    '      object Splitter: TSplitter                           ' +
+    '        Cursor = crVSplit                                  ' +
+    '        Left = 0                                           ' +
+    '        Height = 5                                         ' +
+    '        Top = 160                                          ' +
+    '        Width = 703                                        ' +
+    '        Align = alTop                                      ' +
+    '        ResizeAnchor = akTop                               ' +
+    '      end                                                  ' +
+    '      object mmoText: TDBMemo                              ' +
+    '        Left = 0                                           ' +
+    '        Height = 150                                       ' +
+    '        Top = 165                                          ' +
+    '        Width = 703                                        ' +
+    '        Align = alClient                                   ' +
+    '        Font.CharSet = ANSI_CHARSET                        ' +
+    '        Font.Name = ''Courier New''                          ' +
+    '        Font.Pitch = fpFixed                               ' +
+    '        Font.Quality = fqDraft                             ' +
+    '        ParentFont = False                                 ' +
+    '        TabOrder = 3                                       ' +
+    '      end                                                  ' +
+    '    end                                                    ' +
+    '  end                                                      ' +
+    'end                                                        '
+     ;
+
+  procedure ReadFormTextResource(TextResource: string; Form: TCustomForm);
+  var
+    SS     : TStringStream;
+    MS     : TMemoryStream;
+  begin
+    MS := TMemoryStream.Create;
+    SS := TStringStream.Create(TextResource);
+    try
+      SS.Position := 0;
+      ObjectTextToBinary(SS, MS);
+      MS.Position := 0;
+      MS.ReadComponent(Form);
+    finally
+      SS.Free;
+      MS.Free;
+    end;
+  end;
+
+   function FindControl(Container: TWinControl; const ControlName: string): TControl;
+   var
+     i : Integer;
+   begin
+     Result := nil;
+     for i := 0 to Container.ControlCount - 1 do
+     begin
+       if AnsiSameText(ControlName, Container.Controls[i].Name) then
+       begin
+         Result := Container.Controls[i];
+         Break;
+       end else if (Container.Controls[i] is TWinControl) then
+       begin
+         Result := FindControl(TWinControl(Container.Controls[i]), ControlName);
+         if Assigned(Result) then
+            Break;
+       end;
+     end;
+   end;
+
+begin
+  Listener := aListener;
+
+  Classes.RegisterClass(TPageControl);
+  Classes.RegisterClass(TTabSheet);
+  Classes.RegisterClass(TPanel);
+  Classes.RegisterClass(TMemo);
+  Classes.RegisterClass(TButton);
+  Classes.RegisterClass(TDBGrid);
+  Classes.RegisterClass(TSplitter);
+  Classes.RegisterClass(TDBMemo);
+
+  ReadFormTextResource(SDfm, Self);
+
+  Pager           := FindChildControl('Pager') as TPageControl;
+
+  tabLog          := FindControl(Self, 'tabLog') as TTabSheet;
+  pnlLog          := FindControl(Self, 'pnlLog') as TPanel;
+  btnClearLog     := FindControl(Self, 'btnClearLog') as TButton;
+  mmoLog          := FindControl(Self, 'mmoLog') as TMemo;
+
+  tabTable        := FindControl(Self, 'tabTable') as TTabSheet;
+  pnlTable        := FindControl(Self, 'pnlTable') as TPanel;
+  btnClearTable   := FindControl(Self, 'btnClearTable') as TButton;
+  Grid            := FindControl(Self, 'Grid') as TDBGrid;
+  Splitter        := FindControl(Self, 'Splitter') as TSplitter;
+  mmoText         := FindControl(Self, 'mmoText') as TDBMemo;
+
+  mmoText.DataField  := 'Text';
+  mmoText.DataSource := Listener.FDS;
+  mmoText.ReadOnly   := True;
+
+  Listener.InitializeGrid(Grid);
+
+  btnClearLog.OnClick := @AnyClick;
+  btnClearTable.OnClick := @AnyClick;
+
+  Pager.ActivePage := tabLog;
+
+  Top  := 6;
+  Left := Screen.Width - (Width + 12);
+end;
+
+function TLogForm.CloseQuery: boolean;
+begin
+  Result := False;
+  if MessageDlg('Close', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    Result := True;
+end;
+
+procedure TLogForm.AnyClick(Sender: TObject);
+begin
+  if btnClearLog = Sender then
+    mmoLog.Clear()
+  else if btnClearTable = Sender then
+    Listener.ClearData()
+  ;
+end;
+
+
+
+
+{ TFormLogListener.TLogTable }
+constructor TFormLogListener.TLogTable.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+end;
+
+procedure TFormLogListener.TLogTable.LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField);
+begin
+  { nothing }
+end;
+
+
+
+
+
+
+{ TFormLogListener }
+constructor TFormLogListener.Create();
+var
+  Form: TLogForm;
+begin
+  inherited Create();
+  FSafeList := TSafeObjectList.Create(True);
+  FLogTable := TLogTable.Create(nil);
+
+  FLogTable.FieldDefs.Add('Date'    , ftString, 12);
+  FLogTable.FieldDefs.Add('Time'    , ftString, 12);
+  FLogTable.FieldDefs.Add('User'    , ftString, 32);
+  FLogTable.FieldDefs.Add('Host'    , ftString, 32);
+  FLogTable.FieldDefs.Add('Level'   , ftString, 12);
+  FLogTable.FieldDefs.Add('Source'  , ftString, 128);
+  FLogTable.FieldDefs.Add('Scope'   , ftString, 128);
+  FLogTable.FieldDefs.Add('EventId' , ftString, 128);
+  FLogTable.FieldDefs.Add('Text'    , ftMemo);
+
+  FLogTable.CreateDataset();
+  FLogTable.Active := True;
+
+  FDS := TDataSource.Create(nil);
+  FDS.DataSet := FLogTable;
+
+  Form := TLogForm.CreateNew(nil, 0);
+  FLogForm := Form;
+
+  Form.InitializeForm(Self);
+
+  Form.Show();
+end;
+
+destructor TFormLogListener.Destroy;
+begin
+  FLogForm.Free();
+  FDS.Free();
+  FLogTable.Free();
+  FSafeList.Free();
+  inherited Destroy;
+end;
+
+procedure TFormLogListener.InitializeGrid(Grid: TDBGrid);
+var
+  Col : TColumn;
+  i   : Integer;
+begin
+  for i := 0 to FLogTable.FieldCount - 1 do
+  begin
+    if not AnsiSameText('Text', FLogTable.Fields[i].FieldName) then
+    begin
+      Col := Grid.Columns.Add;
+      Col.FieldName := FLogTable.Fields[i].FieldName;
+      Col.ReadOnly := True;
+      Col.Width := 100;
+    end;
+  end;
+
+  Grid.DataSource := FDS;
+end;
+
+procedure TFormLogListener.ClearData();
+begin
+  FLogTable.DisableControls();
+  try
+    FLogTable.Close;
+    FLogTable.Open;
+  finally
+    FLogTable.EnableControls();
+  end;
+end;
+
+procedure TFormLogListener.ProcessLog(const Info: ILogInfo);
+begin
+  FSafeList.Push(TLogRecord.Create(Info));
+  TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
+end;
+
+procedure TFormLogListener.CallLogProc();
+var
+  LogUnit: TLogRecord;
+begin
+  LogUnit := FSafeList.Pop() as TLogRecord;
+  if Assigned(LogUnit) then
+  begin
+    FLogTable.Append();
+    FLogTable.FieldByName('Date'   ).AsString := LogUnit.Date     ;
+    FLogTable.FieldByName('Time'   ).AsString := LogUnit.Time     ;
+    FLogTable.FieldByName('User'   ).AsString := LogUnit.User     ;
+    FLogTable.FieldByName('Host'   ).AsString := LogUnit.Host     ;
+    FLogTable.FieldByName('Level'  ).AsString := LogUnit.Level    ;
+    FLogTable.FieldByName('Source' ).AsString := LogUnit.Source   ;
+    FLogTable.FieldByName('Scope'  ).AsString := LogUnit.Scope    ;
+    FLogTable.FieldByName('EventId').AsString := LogUnit.EventId  ;
+    FLogTable.FieldByName('Text'   ).AsString := LogUnit.Text     ;
+
+    TLogForm(FLogForm).mmoLog.Append(LogUnit.LogText);
+
+    LogUnit.Free();
+
+    FLogTable.Post();
+  end;
+end;
+
+
+
+
+
+{ TLogFileListener }
+constructor TFileLogListener.Create(Folder: string; MaxSizeInMB: SizeInt);
+begin
+  inherited Create();
+
+  FLogFile := TLogFile.Create();
+
+  FLengths := TLogPropLengthDictionary.Create() ;
+
+  // prepare the FLengths table
+  FLengths.Add('TimeStamp'  , 24);
+  FLengths.Add('Host'       , 24);
+  FLengths.Add('User'       , 24);
+  FLengths.Add('Level'      , 12);
+  FLengths.Add('EventId'    , 14);
+  FLengths.Add('Source'     , 64);
+  FLengths.Add('Scope'      , 32);
+
+  if Length(Self.FFolder) = 0 then
+    Self.FFolder := Logger.LogFolder
+  else
+    Self.FFolder := Folder;
+
+  if Self.FMaxSizeInMB < 1 then
+     Self.FMaxSizeInMB := 5
+  else
+     Self.FMaxSizeInMB := MaxSizeInMB;
+
+  // create the first file
+  BeginFile();
+end;
+
+destructor TFileLogListener.Destroy;
+begin
+  FLengths.Free();
+  FLogFile.Free();
+  inherited Destroy;
+end;
+
+procedure TFileLogListener.BeginFile();
+var
+  FileName : string;
+  SB       : TAnsiStringBuilder;
+  Line     : string;
+begin
+  if not DirectoryExists(FFolder) then
+    CreateDir(FFolder);
+
+  FileName := 'LOG_' + Logger.DateTimeToFileName(NowUTC()) + '.log';
+  FFilePath := ConcatPaths([FFolder, FileName]);
+
+  SB := TAnsiStringBuilder.Create('');
+  try
+    SB.Append(Logger.RPad('TimeStamp UTC', FLengths['TimeStamp']));
+    SB.Append(Logger.RPad('Host', FLengths['Host']));
+    SB.Append(Logger.RPad('User', FLengths['User']));
+    SB.Append(Logger.RPad('Level', FLengths['Level']));
+    SB.Append(Logger.RPad('EventId', FLengths['EventId']));
+    SB.Append(Logger.RPad('Source', FLengths['Source']));
+    SB.Append(Logger.RPad('Scope', FLengths['Scope']));
+    SB.Append('Text');
+    SB.AppendLine();
+
+    Line :=  SB.ToString();
+  finally
+    SB.Free();
+  end;
+
+  FLogFile.CreateLogFile(FFilePath);
+
+  WriteLine(Line);
+
+end;
+
+procedure TFileLogListener.WriteLine(Line: string);
+begin
+  if Length(Line) > 0 then
+  begin
+    if (FLogFile.Size > (1024 * 1024 * FMaxSizeInMB)) then
+       BeginFile();
+
+    Line := Trim(Line);
+    FLogFile.AppendLine(Line);
+  end;
+end;
+
+procedure TFileLogListener.ProcessLog(const Info: ILogInfo);
+var
+  SB       : TAnsiStringBuilder;
+  Line     : string;
+begin
+  SB := TAnsiStringBuilder.Create('');
+  try
+    SB.Append(Logger.RPad(Info.TimeStampText, FLengths['TimeStamp']));
+    SB.Append(Logger.RPad(Info.Host, FLengths['Host']));
+    SB.Append(Logger.RPad(Info.User, FLengths['User']));
+    SB.Append(Logger.RPad(Info.LevelText, FLengths['Level']));
+    SB.Append(Logger.RPad(Info.EventId, FLengths['EventId']));
+    SB.Append(Logger.RPad(Info.Source, FLengths['Source']));
+    SB.Append(Logger.RPad(Info.ScopeId, FLengths['Scope']));
+
+    if Length(Info.Text) > 0 then
+       SB.Append(Logger.RemoveLineEndings(Info.Text));
+
+    if Length(Info.ExceptionData) > 0 then
+        SB.Append(Logger.RemoveLineEndings(Info.ExceptionData));
+
+    SB.AppendLine();
+
+    Line := SB.ToString();
+
+    if Assigned(Info.Properties) then
+    begin
+      Line += ' - Properties: ';
+      Line += Info.GetPropertiesAsSingleLine();
+    end;
+
+    WriteLine(Line);
+  finally
+    SB.Free();
+  end;
+
+end;
+
+
+
+
+{ TLogToMainThreadListener }
+constructor TLogToMainThreadListener.Create(LogTextProc: TLogTextProc);
+begin
+  inherited Create;
+
+  FLogTextList := TStringList.Create();
+
+  if not Assigned(LogTextProc) then
+    raise Exception.CreateFmt('No callback function is provided to %s', [Self.ClassName]);
+
+  FLogProc := LogTextProc;
+end;
+
+destructor TLogToMainThreadListener.Destroy;
+begin
+  FLogTextList.Free();
+  inherited Destroy;
+end;
+
+procedure TLogToMainThreadListener.ProcessLog(const Info: ILogInfo);
+var
+  LogText: string;
+begin
+  Lock();
+  try
+    LogText := GetLogInfoText(Info);
+    FLogTextList.Add(LogText);
+
+    TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TLogToMainThreadListener.CallLogProc();
+var
+  LogText: string;
+begin
+  Lock();
+  try
+    if FLogTextList.Count > 0 then
+    begin
+      LogText := FLogTextList[0];
+      FLogTextList.Delete(0);
+
+      FLogProc(LogText);
+    end;
+  finally
+    UnLock();
+  end;
+end;
+
+
+
+
+{ TLogTextListener }
+constructor TLogTextListener.Create(LogTextProc: TLogTextProc);
+begin
+  inherited Create(LogTextProc);
+end;
+
+function TLogTextListener.GetLogInfoText(const Info: ILogInfo): string;
+begin
+  Result := Logger.GetAsText(Info);
+end;
+
+
+
+
+
+{ TLogLineListener }
+constructor TLogLineListener.Create(LogLineProc: TLogTextProc);
+begin
+  inherited Create(LogLineProc);
+end;
+
+destructor TLogLineListener.Destroy;
+begin
+  inherited Destroy;
+end;
+
+function TLogLineListener.GetLogInfoText(const Info: ILogInfo): string;
+begin
+  Result := Logger.GetAsLine(Info);
+end;
+
+
+
+
+
+
+
+
+
 
 type
   { TLogThread }
@@ -1184,7 +1605,6 @@ type
   end;
 
 { TLogThread }
-
 constructor TLogThread.Create();
 begin
   { for a TThread instance to work properly we have to
@@ -1223,6 +1643,17 @@ begin
   FListeners := TList.Create();
   Active     := True ;
   FSafeList  := TSafeObjectList.Create(False);
+
+  // prepare the FLengths table
+  FLineLengths := TLogPropLengthDictionary.Create();
+  FLineLengths.Add('TimeStamp'  , 24);
+  FLineLengths.Add('Host'       , 24);
+  FLineLengths.Add('User'       , 24);
+  FLineLengths.Add('Level'      , 12);
+  FLineLengths.Add('EventId'    , 14);
+  FLineLengths.Add('Source'     , 64);
+  FLineLengths.Add('Scope'      , 32);
+
   FLogThread := TLogThread.Create();
   FLogThread.Start();
 end;
@@ -1234,7 +1665,8 @@ begin
     TThread.CurrentThread.Sleep(500);
 
   FSafeList.Free();
-  FListeners.Free;
+  FListeners.Free();
+  FLineLengths.Free();
   FLock.Free;
 end;
 
@@ -1476,6 +1908,82 @@ begin
   end;
 
   Result := Text;
+end;
+
+class function Logger.GetAsText(LogInfo: ILogInfo): string;
+
+  procedure AddLine(SB:  TAnsiStringBuilder; Name, Value: string);
+  begin
+     if Length(Value) > 0 then
+     begin
+       Value := Logger.RPad(Name, 12) + ': ' + Value;
+       SB.AppendLine(Value);
+     end;
+  end;
+
+var
+  SB       : TAnsiStringBuilder;
+begin
+  SB := TAnsiStringBuilder.Create('');
+  try
+    AddLine(SB, 'TimeStamp', LogInfo.TimeStampText);
+    AddLine(SB, 'Level', LogInfo.LevelText);
+    AddLine(SB, 'Source', LogInfo.Source);
+    AddLine(SB, 'Scope', LogInfo.ScopeId);
+    AddLine(SB, 'EventId', LogInfo.EventId);
+    AddLine(SB, 'Host', LogInfo.Host);
+    AddLine(SB, 'User', LogInfo.User);
+    AddLine(SB, 'Text', LogInfo.Text);
+    if Length(LogInfo.ExceptionData) > 0 then
+      AddLine(SB, 'Stack', LineEnding + LogInfo.ExceptionData);
+
+    if Assigned(LogInfo.Properties) then
+    begin
+      AddLine(SB, 'Properties', ' ');
+      SB.AppendLine(LogInfo.GetPropertiesAsTextList());
+    end;
+
+    //SB.AppendLine();
+    Result := SB.ToString();
+
+  finally
+    SB.Free();
+  end;
+
+end;
+
+class function Logger.GetAsLine(LogInfo: ILogInfo): string;
+var
+  SB       : TAnsiStringBuilder;
+begin
+  SB := TAnsiStringBuilder.Create('');
+  try
+    SB.Append(Logger.RPad(LogInfo.TimeStampText, FLineLengths['TimeStamp']));
+    SB.Append(Logger.RPad(LogInfo.Host, FLineLengths['Host']));
+    SB.Append(Logger.RPad(LogInfo.User, FLineLengths['User']));
+    SB.Append(Logger.RPad(LogInfo.LevelText, FLineLengths['Level']));
+    SB.Append(Logger.RPad(LogInfo.EventId, FLineLengths['EventId']));
+    SB.Append(Logger.RPad(LogInfo.Source, FLineLengths['Source']));
+    SB.Append(Logger.RPad(LogInfo.ScopeId, FLineLengths['Scope']));
+
+    if Length(LogInfo.Text) > 0 then
+       SB.Append(Logger.RemoveLineEndings(LogInfo.Text));
+
+    if Length(LogInfo.ExceptionData) > 0 then
+        SB.Append(Logger.RemoveLineEndings(LogInfo.ExceptionData));
+
+    //SB.AppendLine();
+
+    Result := SB.ToString();
+
+    if Assigned(LogInfo.Properties) then
+    begin
+      Result += ' - Properties: ';
+      Result += LogInfo.GetPropertiesAsSingleLine();
+    end;
+  finally
+    SB.Free();
+  end;
 end;
 
 class procedure Logger.Log(const Info: ILogInfo);

@@ -199,6 +199,23 @@ type
      property Values: TArrayOfVariant read GetValues;
    end;
 
+   { TLogFile }
+   TLogFile = class
+   private
+     IsClosed : Boolean;
+     F        : TextFile;
+     FSize     : SizeInt;
+   public
+     constructor Create();
+     destructor Destroy(); override;
+
+     procedure CreateLogFile(FilePath: string);
+     procedure CloseLogFile();
+
+     procedure AppendLine(Line: string);
+
+     property Size: SizeInt read FSize;
+   end;
 
   { Rtti }
   Rtti = class
@@ -924,6 +941,60 @@ begin
   Inc(FPosition);
   Result := FPosition < FDictionary.FList.Count;
 end;
+
+{ TLogFile }
+constructor TLogFile.Create();
+begin
+  inherited Create();
+  IsClosed := True;
+end;
+
+destructor TLogFile.Destroy;
+begin
+  CloseLogFile();
+  inherited Destroy;
+end;
+
+procedure TLogFile.CloseLogFile();
+begin
+  if not IsClosed then
+  begin
+    Close(F);
+    IsClosed := True;
+    FSize     := 0;
+  end;
+end;
+
+procedure TLogFile.CreateLogFile(FilePath: string);
+var
+  Exists: Boolean;
+begin
+  CloseLogFile();
+  Exists := FileExists(FilePath);
+  Assign(F, FilePath);
+
+  if Exists then
+    Append(F)         // to append text to an existing text file
+  else begin
+    {$I-}             // without this, if rewrite fails then a runtime error will be generated
+    Rewrite(F);       // to create a text file and write to it. If the file exists, it is truncated to zero length.
+    {$I+}
+  end;
+
+  if IOResult <> 0 then
+    raise Exception.CreateFmt('Cannot create or open a log file: %s', [FilePath]);
+
+  IsClosed := False;
+end;
+
+procedure TLogFile.AppendLine(Line: string);
+begin
+  System.WriteLn(F, Line);
+  FSize := FSize + Length(Line);
+  Flush(F);
+end;
+
+
 
 
 

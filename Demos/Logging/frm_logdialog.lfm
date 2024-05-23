@@ -1,0 +1,117 @@
+object LogDialog: TLogDialog
+  Left = 568
+  Height = 204
+  Top = 39
+  Width = 711
+  Caption = 'LogDialog'
+  ClientHeight = 204
+  ClientWidth = 711
+  FormStyle = fsStayOnTop
+  ShowInTaskBar = stNever
+  LCLVersion = '3.2.0.0'
+  object Pager: TPageControl
+    Left = 0
+    Height = 204
+    Top = 0
+    Width = 711
+    ActivePage = tabTable
+    Align = alClient
+    TabIndex = 1
+    TabOrder = 0
+    object tabLog: TTabSheet
+      Caption = 'Log'
+      ClientHeight = 176
+      ClientWidth = 703
+      object pnlLog: TPanel
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 703
+        Align = alTop
+        ClientHeight = 28
+        ClientWidth = 703
+        TabOrder = 0
+        object btnClearLog: TButton
+          Left = 4
+          Height = 25
+          Top = 1
+          Width = 75
+          Caption = 'Clear'
+          TabOrder = 0
+        end
+      end
+      object mmoLog: TMemo
+        Left = 0
+        Height = 148
+        Top = 28
+        Width = 703
+        Align = alClient
+        Font.CharSet = ANSI_CHARSET
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        Lines.Strings = (
+          'mmoLog'
+        )
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+      end
+    end
+    object tabTable: TTabSheet
+      Caption = 'Table'
+      ClientHeight = 176
+      ClientWidth = 703
+      object pnlTable: TPanel
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 703
+        Align = alTop
+        ClientHeight = 28
+        ClientWidth = 703
+        TabOrder = 0
+        object btnClearTable: TButton
+          Left = 4
+          Height = 25
+          Top = 1
+          Width = 75
+          Caption = 'Clear'
+          TabOrder = 0
+        end
+      end
+      object Grid: TDBGrid
+        Left = 0
+        Height = 79
+        Top = 28
+        Width = 703
+        Align = alTop
+        Color = clWindow
+        Columns = <>
+        TabOrder = 1
+      end
+      object Splitter: TSplitter
+        Cursor = crVSplit
+        Left = 0
+        Height = 5
+        Top = 107
+        Width = 703
+        Align = alTop
+        ResizeAnchor = akTop
+      end
+      object mmoText: TDBMemo
+        Left = 0
+        Height = 64
+        Top = 112
+        Width = 703
+        Align = alClient
+        Font.CharSet = ANSI_CHARSET
+        Font.Name = 'Courier New'
+        Font.Pitch = fpFixed
+        Font.Quality = fqDraft
+        ParentFont = False
+        TabOrder = 3
+      end
+    end
+  end
+end

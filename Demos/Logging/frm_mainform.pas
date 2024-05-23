@@ -1,11 +1,10 @@
 unit frm_MainForm;
 
-{$mode objfpc}{$H+}
-
 interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls
+  ,DBGrids, DBCtrls
   ,Tripous
   ,Tripous.Logs
   ;
@@ -25,7 +24,7 @@ type
   private
     FLogListener: TLogListener;
     FFileLogListener: TFileLogListener;
-
+    FFormLogListener: TFormLogListener;
 
     procedure AnyClick(Sender: TObject);
     function GetLogText(): string;
@@ -36,9 +35,6 @@ type
     procedure LogErrorTest();
     procedure LogSourceTest();
     procedure LogSourceAndScopeTest();
-
-    procedure Test();
-    procedure Test2();
   protected
     procedure KeyPress(var Key: char); override;
     procedure DoShow; override;
@@ -52,6 +48,7 @@ implementation
 
 uses
   Variants
+
   ;
 
 {$R *.lfm}
@@ -75,15 +72,19 @@ begin
   { 1. A TLogListener automatically adds itself to Logger.Listeners when created
        and automatically removes itself from Logger.Listeners when destroyed.
     2. TLogTextListener and TLogLineListener inherit from TLogToMainThreadListener
-       which synchronizes updates to MainThread controls  }
+       which synchronizes updates to MainThread controls
+    3. The TFormLogListener shows a Form in the upper right screen corner
+       where it displays log information }
   FLogListener     := TLogTextListener.Create(Addr(LogProc));
   FFileLogListener := TFileLogListener.Create();
+  FFormLogListener := TFormLogListener.Create();
 
   lblLogFolder.Caption := Format('Error logs are saved at folder: %s ', [Logger.LogFolder]);
 end;
 
 procedure TMainForm.DoDestroy;
 begin
+  FreeAndNil(FFormLogListener);
   FreeAndNil(FFileLogListener);
   FreeAndNil(FLogListener);
 
@@ -177,43 +178,6 @@ begin
 
   LogSource.Info(GetLogText());
 end;
-
-procedure TMainForm.Test();
-var
-  Dic: IVariantDictionary;
-  Pair: TKeyValue;
-begin
-  Dic := TVariantDictionary.Create();
-  Dic['Name'] := 'Pascal';
-  Dic['Amount'] := 123;
-
-  for Pair in Dic do
-    LogProc(Format('%s = %s', [Pair.Key, VarToStr(Pair.Value)]));
-
-  //Dic.Free();
-end;
-
-procedure TMainForm.Test2();
-var
-  Dic: IVariantDictionary;
-  S : string;
-begin
-  // 'Customer {CustomerId} order {OrderId} is completed.'
-
-  S := 'Customer {CustomerId} order {OrderId} is completed.'  ;
-
-  Dic := TVariantDictionary.Create();
-  Dic['CustomerId'] := 'Pascal';
-  Dic['OrderId'] := 123;
-
-  S := Logger.FormatParams(S, Dic);
-
-  LogProc(S);
-end;
-
-
-
-
 
 
 
