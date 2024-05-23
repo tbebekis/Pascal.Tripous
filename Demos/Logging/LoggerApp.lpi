@@ -47,6 +47,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Logs"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\..\tripous.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -11,6 +11,7 @@ uses
   , StrUtils
   , Controls
   , Graphics
+  , SyncObjs
   , base64
   , Variants
   , TypInfo
@@ -79,7 +80,125 @@ type
  TArrayOfPointer   = array of Pointer;
  TArrayOfString    = array of string;
 
- TProcedureMethod           = procedure of object;
+ TProcedureMethod  = procedure of object;
+
+ { TSafeObjectList }
+ TSafeObjectList = class
+ private
+   FList        : TList;
+   FLock        : SyncObjs.TCriticalSection;
+   FLockCount   : Integer;
+   FOwnsObjects : Boolean;
+
+   function  GetCount: Integer;
+   function  GetIsEmpty: Boolean;
+   procedure Lock;
+   procedure UnLock;
+ public
+   constructor Create(OwnsObjects: Boolean);
+   destructor Destroy; override;
+
+   procedure Add(Instance: TObject);
+   procedure Insert(Index: Integer; Instance: TObject);
+   procedure Remove(Instance: TObject);
+   procedure RemoveAt(Index: Integer);
+   function  Contains(Instance: TObject): Boolean;
+   procedure Clear();
+
+   procedure Push(Instance: TObject);
+   function  Pop(): TObject;
+
+   property Count: Integer read GetCount;
+   property IsEmpty: Boolean read GetIsEmpty;
+ end;
+
+   { TKeyValue }
+   TKeyValue = class
+   public
+     Key : string;
+     Value : Variant;
+     constructor Create(AKey: string; AValue: Variant);
+   end;
+
+   TVariantDictionary = class;
+
+   { TVariantDictionaryEnumerator }
+   TVariantDictionaryEnumerator = class
+   private
+     FDictionary: TVariantDictionary;
+     FPosition : Integer;
+   public
+     constructor Create();
+
+     function GetCurrent: TKeyValue;
+     procedure Reset;
+
+     function MoveNext: boolean;
+     property Current: TKeyValue read GetCurrent;
+   end;
+
+
+   IVariantDictionary = interface
+   ['{0ECC7A7B-5105-40C1-805F-C5EBD4C1D8FA}']
+     function GetCount: Integer;
+     function  GetValue(const Key: string): Variant;
+     procedure SetValue(const Key: string; Value: Variant);
+
+     procedure Add(const Key: string; const Value: Variant);
+     function  Remove(const Key: string): Boolean;
+     procedure Clear();
+
+     function  ContainsKey(const Key: string): Boolean;
+     function  ContainsValue(const Value: Variant): Boolean;
+
+     function  GetKeys: TArrayOfString;
+     function  GetValues: TArrayOfVariant;
+
+     function IndexOfKey(const Key: string): Integer;
+     function ItemByKey(const Key: string): TKeyValue;
+     function IndexOfValue(const Value: Variant): Integer;
+
+     function GetEnumerator(): TVariantDictionaryEnumerator;
+
+     property Count: Integer read GetCount;
+     property Item[const Key: string]: Variant read GetValue write SetValue; default;
+     property Keys: TArrayOfString read GetKeys;
+     property Values: TArrayOfVariant read GetValues;
+   end;
+
+   { TVariantDictionary }
+   TVariantDictionary = class(TInterfacedObject, IVariantDictionary)
+   private
+     FList : TList;
+     function GetCount: Integer;
+     function  GetValue(const Key: string): Variant;
+     procedure SetValue(const Key: string; Value: Variant);
+   public
+     constructor Create();
+     destructor Destroy(); override;
+
+     procedure Add(const Key: string; const Value: Variant);
+     function  Remove(const Key: string): Boolean;
+     procedure Clear();
+
+     function  ContainsKey(const Key: string): Boolean;
+     function  ContainsValue(const Value: Variant): Boolean;
+
+     function  GetKeys: TArrayOfString;
+     function  GetValues: TArrayOfVariant;
+
+     function IndexOfKey(const Key: string): Integer;
+     function ItemByKey(const Key: string): TKeyValue;
+     function IndexOfValue(const Value: Variant): Integer;
+
+     function GetEnumerator(): TVariantDictionaryEnumerator;
+
+     property Count: Integer read GetCount;
+     property Item[const Key: string]: Variant read GetValue write SetValue; default;
+     property Keys: TArrayOfString read GetKeys;
+     property Values: TArrayOfVariant read GetValues;
+   end;
+
 
   { Rtti }
   Rtti = class
@@ -268,8 +387,6 @@ type
 
     FAppPath                    : string;
     FAppExeName                 : string;
-
-
   private
     class var FProcessMessagesMethod: TProcedureMethod;
     class function GetAppDataFolder: string; static;
@@ -420,6 +537,7 @@ type
     { miscs }
     class function InMainThread(): Boolean;
     class procedure ProcessMessages();
+    class procedure ClearObjectList(List: TList);
 
     { properties }
     class property InvariantFormatSettings    : TFormatSettings read FInvariantFormatSettings;
@@ -449,6 +567,363 @@ uses
   ,fpjsonrtti
 
   ;
+
+{ TSafeObjectList }
+
+constructor TSafeObjectList.Create(OwnsObjects: Boolean);
+begin
+  inherited Create;
+  FOwnsObjects := OwnsObjects;
+
+  FLock := SyncObjs.TCriticalSection.Create();
+  FList := TList.Create();
+end;
+
+destructor TSafeObjectList.Destroy;
+begin
+  Clear();
+  FList.Free();
+  FLock.Free;
+  inherited Destroy;
+end;
+
+procedure TSafeObjectList.Lock;
+begin
+  Inc(FLockCount);
+  if FLockCount = 1 then
+    FLock.Enter;
+end;
+
+procedure TSafeObjectList.UnLock;
+begin
+  Dec(FLockCount);
+  if FLockCount <= 0 then
+  begin
+    FLockCount := 0;
+    FLock.Leave();
+  end;
+end;
+
+function TSafeObjectList.GetIsEmpty: Boolean;
+begin
+  Lock();
+  try
+    Result := FList.Count = 0;
+  finally
+    UnLock();
+  end;
+end;
+
+function TSafeObjectList.GetCount: Integer;
+begin
+  Lock();
+  try
+    Result := FList.Count;
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Add(Instance: TObject);
+begin
+  Lock();
+  try
+    FList.Add(Instance);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Insert(Index: Integer; Instance: TObject);
+begin
+  Lock();
+  try
+    FList.Insert(Index, Instance);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Remove(Instance: TObject);
+begin
+  Lock();
+  try
+    FList.Remove(Instance);
+    if FOwnsObjects then
+       Instance.Free();
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.RemoveAt(Index: Integer);
+var
+  Instance: TObject;
+begin
+  Lock();
+  try
+    Instance := TObject(FList[Index]);
+    Remove(Instance);
+  finally
+    UnLock();
+  end;
+end;
+
+function TSafeObjectList.Contains(Instance: TObject): Boolean;
+begin
+  Lock();
+  try
+    Result := FList.IndexOf(Instance) <> -1;
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Clear();
+begin
+  Lock();
+  try
+    if FOwnsObjects then
+      Sys.ClearObjectList(FList);
+    FList.Clear();
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Push(Instance: TObject);
+begin
+  Lock();
+  try
+    FList.Add(Instance);
+  finally
+    UnLock();
+  end;
+end;
+
+function TSafeObjectList.Pop(): TObject;
+begin
+  Lock();
+  try
+    if FList.Count > 0 then
+    begin
+      Result := TObject(FList.First);
+      FList.Delete(0);
+    end
+    else
+      Result := nil;
+  finally
+    UnLock();
+  end;
+end;
+
+
+
+
+{ TKeyValue }
+
+constructor TKeyValue.Create(AKey: string; AValue: Variant);
+begin
+  Self.Key := AKey;
+  Self.Value := AValue;
+end;
+
+{ TVariantDictionary }
+
+constructor TVariantDictionary.Create();
+begin
+  inherited Create();
+  FList := TList.Create();
+end;
+
+destructor TVariantDictionary.Destroy;
+begin
+  Clear();
+  FList.Free();
+  inherited Destroy;
+end;
+
+procedure TVariantDictionary.Add(const Key: string; const Value: Variant);
+begin
+  Self.Item[Key] := Value;
+end;
+
+function TVariantDictionary.Remove(const Key: string): Boolean;
+var
+  Index: Integer;
+  Pair : TKeyValue;
+begin
+  Result := False;
+  Index := IndexOfKey(Key);
+  if Index <> -1 then
+  begin
+    Pair := TKeyValue(FList[Index]);
+    Pair.Free();
+    FList.Delete(Index);
+    Result := True;
+  end;
+end;
+
+procedure TVariantDictionary.Clear();
+begin
+  while (FList.Count > 0) do
+  begin
+    try
+      TObject(FList[FList.Count - 1]).Free;
+    except
+    end;
+    FList.Delete(FList.Count - 1);
+  end;
+
+  FList.Clear();
+end;
+
+function TVariantDictionary.GetValue(const Key: string): Variant;
+var
+  i   : Integer;
+  Pair: TKeyValue;
+begin
+  Pair := ItemByKey(Key);
+  if Assigned(Pair) then
+     Exit(Pair.Value);
+
+  Result := Null;
+end;
+
+function TVariantDictionary.GetKeys: TArrayOfString;
+var
+  i   : Integer;
+  Pair: TKeyValue;
+begin
+  SetLength(Result, FList.Count);
+
+  for i := 0 to FList.Count do
+  begin
+    Pair := TKeyValue(FList[i]);
+    Result[i] := Pair.Key;
+  end;
+end;
+
+function TVariantDictionary.GetValues: TArrayOfVariant;
+var
+  i   : Integer;
+  Pair: TKeyValue;
+begin
+  SetLength(Result, FList.Count);
+
+  for i := 0 to FList.Count do
+  begin
+    Pair := TKeyValue(FList[i]);
+    Result[i] := Pair.Value;
+  end;
+end;
+
+function TVariantDictionary.GetCount: Integer;
+begin
+  Result := FList.Count;
+end;
+
+
+
+procedure TVariantDictionary.SetValue(const Key: string; Value: Variant);
+var
+  Pair: TKeyValue;
+begin
+  Pair := ItemByKey(Key);
+  if not Assigned(Pair) then
+  begin
+    Pair := TKeyValue.Create(Key, Value);
+    FList.Add(Pair);
+  end;
+
+  Pair.Value:= Value;
+end;
+
+function TVariantDictionary.ContainsValue(const Value: Variant): Boolean;
+begin
+  Result := IndexOfValue(Value) <> -1;
+end;
+
+function TVariantDictionary.IndexOfValue(const Value: Variant): Integer;
+var
+  i : Integer;
+  Pair: TKeyValue;
+begin
+  for i := 0 to FList.Count - 1 do
+  begin
+    Pair := TKeyValue(FList[i]);
+    if VarSameValue(Value, Pair.Value) then
+       Exit(i);
+  end;
+
+  Exit(-1);
+
+end;
+
+function TVariantDictionary.GetEnumerator(): TVariantDictionaryEnumerator;
+begin
+  Result := TVariantDictionaryEnumerator.Create();
+  Result.FDictionary := Self;
+end;
+
+function TVariantDictionary.IndexOfKey(const Key: string): Integer;
+var
+  i : Integer;
+  Pair: TKeyValue;
+begin
+  for i := 0 to FList.Count - 1 do
+  begin
+    Pair := TKeyValue(FList[i]);
+    if AnsiCompareText(Key, Pair.Key) = 0 then
+       Exit(i);
+  end;
+
+  Exit(-1);
+end;
+
+function TVariantDictionary.ItemByKey(const Key: string): TKeyValue;
+var
+  i : Integer;
+  Pair: TKeyValue;
+begin
+  for i := 0 to FList.Count - 1 do
+  begin
+    Pair := TKeyValue(FList[i]);
+    if AnsiCompareText(Key, Pair.Key) = 0 then
+       Exit(Pair);
+  end;
+
+  Exit(nil);
+end;
+
+function TVariantDictionary.ContainsKey(const Key: string): Boolean;
+begin
+  Result := IndexOfKey(Key) <> -1;
+end;
+
+
+{ TVariantDictionaryEnumerator }
+constructor TVariantDictionaryEnumerator.Create();
+begin
+  inherited Create();
+  FPosition := -1;
+end;
+
+function TVariantDictionaryEnumerator.GetCurrent: TKeyValue;
+begin
+   Result := TKeyValue(FDictionary.FList[FPosition]);
+end;
+
+procedure TVariantDictionaryEnumerator.Reset;
+begin
+  FPosition := -1;
+end;
+
+function TVariantDictionaryEnumerator.MoveNext: boolean;
+begin
+  Inc(FPosition);
+  Result := FPosition < FDictionary.FList.Count;
+end;
 
 
 
@@ -3782,7 +4257,17 @@ begin
     Sleep(0);
 end;
 
-
+class procedure Sys.ClearObjectList(List: TList);
+begin
+  while (List.Count > 0) do
+  begin
+    try
+      TObject(List[List.Count - 1]).Free;
+    except
+    end;
+    List.Delete(List.Count - 1);
+  end;
+end;
 
 
 

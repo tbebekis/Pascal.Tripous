@@ -2,6 +2,7 @@ unit Tripous.Logs;
 
 {$mode objfpc}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+{$WARN 5024 off : Parameter "$1" not used}
 interface
 
 uses
@@ -10,8 +11,9 @@ uses
   ,SyncObjs
   ,Variants
   ,Contnrs
-  //,Generics.Collections
   ,FGL
+
+  ,Tripous
   ;
  
 type
@@ -25,7 +27,8 @@ type
     ,loFatal  = $20
   );
 
-  TLogInfoDictionary = specialize TFPGMap<string, Variant>;     // TFPGMap    TDictionary
+  XXX = TQueue  ;
+
   TLogPropLengthDictionary = specialize TFPGMap<string, Word>;
 
   TLogTextProc = procedure(LogText: string) of object;
@@ -40,7 +43,7 @@ type
     function GetHost: string;
     function GetLevel: TLogLevel;
     function GetLevelText: string;
-    function GetProperties: TLogInfoDictionary;
+    function GetProperties: IVariantDictionary;
     function GetScopeId: string;
     function GetSource: string;
     function GetText: string;
@@ -84,14 +87,50 @@ type
     // The exception data, if this is a log regarding an exception
     property ExceptionData: string read GetExceptionData;
     // A dictionary with params passed when the log message was formatted. For use by structured log listeners
-    property Properties: TLogInfoDictionary read GetProperties;
+    property Properties: IVariantDictionary read GetProperties;
   end;
+   (*
+  { ILogScope }
+  ILogScope = interface
+    ['{2C03850A-186C-407C-9AD4-5C401E7EB951}']
+    function GetId: string;
+    function GetProperties: IVariantDictionary;
 
-  {
+    property Id : string read GetId;
+    property Properties: IVariantDictionary read GetProperties;
+  end;
+  *)
+
+  { ILogSource }
   ILogSource = interface
     ['{019F8BB3-E92F-4580-A3BD-A142FFA0B28A}']
+    function  GetActive: Boolean;
+    procedure SetActive(AValue: Boolean);
+    function  GetName: string;
+    procedure SetName(AValue: string);
+
+    procedure EnterScope(Id: string; const ScopeParams: IVariantDictionary = nil);
+    procedure ExitScope();
+
+    procedure Log(EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(EventId: string; Level: TLogLevel; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(Level: TLogLevel; Text: string; const Params: IVariantDictionary = nil);
+
+    procedure Debug(EventId, Text: string);
+    procedure Debug(Text: string);
+
+    procedure Info(EventId, Text: string);
+    procedure Info(Text: string);
+
+    procedure Error(EventId: string; Ex: Exception);
+    procedure Error(Ex: Exception);
+
+    { properties }
+    property Name: string read GetName write SetName;
+    property Active: Boolean read GetActive write SetActive;
   end;
-  }
+
 
   { TLogListener }
   { A TLogListener automatically adds itself to Logger.Listeners when created
@@ -104,7 +143,6 @@ type
     procedure AfterConstruction(); override;
     procedure BeforeDestruction(); override;
   end;
-
 
   { TLogFile }
   TLogFile = class
@@ -182,6 +220,16 @@ type
     destructor Destroy(); override;
   end;
 
+  { TLogJob }
+
+  TLogJob = class
+  private
+    FListener: TLogListener;
+    FInfo    : ILogInfo;
+  public
+    constructor Create(Listener: TLogListener; Info: ILogInfo);
+  end;
+
   { Logger }
   Logger = class
   private class var
@@ -191,6 +239,9 @@ type
     FLockCount       : Integer;
     FListeners       : Classes.TList;
     FMinLevel        : TLogLevel;
+    FSafeList        : TSafeObjectList;
+    FLogThread       : TThread;
+    FLogJobThreadTerminated: Boolean;
 
     class function GetActive: Boolean; static;
     class procedure SetActive(Value: Boolean); static;
@@ -207,9 +258,11 @@ type
     class constructor Create();
     class destructor Destroy();
 
+    class function CreateLogSource(SourceName: string): ILogSource;
+
     { log }
     class procedure Log(const Info: ILogInfo);
-    class procedure Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; Params: array of const);
+    class procedure Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
 
     class procedure Debug(Source, ScopeId, EventId, Text: string);
     class procedure Debug(Source, EventId, Text: string);
@@ -233,6 +286,7 @@ type
     class function  RemoveLineEndings(Line: string): string;
     class function  RPad(Text: string; MaxLength: Integer): string;
     class function  GetHostName(): string;
+    class function  FormatParams(Text: string; const Params: IVariantDictionary): string;
 
     { properties }
     class property Active: Boolean read GetActive write SetActive;
@@ -244,18 +298,16 @@ type
 implementation
 
 uses
-  LazSysUtils
+   LazSysUtils
+  ,StrUtils
   ,DateUtils
   ,TypInfo
-  ,LCLProc
-  ,LazTracer
   {$IFDEF UNIX} ,unix{$ENDIF}
   {$IFDEF WINDOWS} ,Windows{$ENDIF}
   ;
 
 
 type
-
   { TLogInfo }
   TLogInfo = class(TInterfacedObject, ILogInfo)
   private
@@ -264,7 +316,7 @@ type
     FExceptionData: string;
     FHost: string;
     FLevel: TLogLevel;
-    FProperties: TLogInfoDictionary;
+    FProperties: IVariantDictionary;
     FScopeId: string;
     FSource: string;
     FText: string;
@@ -279,7 +331,7 @@ type
     function GetHost: string;
     function GetLevel: TLogLevel;
     function GetLevelText: string;
-    function GetProperties: TLogInfoDictionary;
+    function GetProperties: IVariantDictionary;
     function GetScopeId: string;
     function GetSource: string;
     function GetText: string;
@@ -290,7 +342,7 @@ type
     function GetUser: string;
     procedure SetUser(Value: string);
   public
-    constructor Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; Params: array of const);
+    constructor Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
     destructor Destroy(); override;
 
     function  ToString: ansistring; override;
@@ -312,12 +364,8 @@ type
     property Source: string read GetSource;
     property Exception_ : Exception read GetException;
     property ExceptionData: string read GetExceptionData;
-    property Properties: TLogInfoDictionary read GetProperties;
+    property Properties: IVariantDictionary read GetProperties;
   end;
-
-
-
-
 
 
 
@@ -668,17 +716,304 @@ begin
 
 end;
 
+{ TLogJob }
+
+constructor TLogJob.Create(Listener: TLogListener; Info: ILogInfo);
+begin
+  inherited Create();
+  FListener := Listener;
+  FInfo     := Info;
+end;
 
 
 
 
 
 
+
+
+
+type
+  TLogSource = class;
+
+  { TLogScope }
+  TLogScope = class
+  private
+    FId             : string;
+    FLogSource      : TLogSource;
+    FProperties     : IVariantDictionary;
+
+    function GetId: string;
+    function GetProperties: IVariantDictionary;
+  public
+    constructor Create(Source: TLogSource; const aId: string = ''; const ScopeParams: IVariantDictionary = nil);
+    destructor Destroy; override;
+
+    procedure BeforeDestruction; override;
+
+    property Id : string read GetId;
+    property Properties: IVariantDictionary read GetProperties;
+  end;
+
+  { TLogSource }
+  TLogSource = class(TInterfacedObject, ILogSource)
+  private
+    FName            : string;
+    FActive          : Integer;
+    FLock            : SyncObjs.TCriticalSection;
+    FLockCount       : Integer;
+
+    FScopes          : TList;
+
+    function GetActive: Boolean;
+    function GetCurrentScope: TLogScope;
+    function GetName: string;
+    procedure Lock;
+    procedure SetActive(Value: Boolean);
+    procedure SetName(AValue: string);
+    procedure UnLock;
+
+    property CurrentScope: TLogScope read GetCurrentScope;
+  public
+    constructor Create(AName: string);
+    destructor Destroy; override;
+
+    procedure  EnterScope(Id: string; const ScopeParams: IVariantDictionary = nil);
+    procedure  ExitScope();
+
+    procedure Log(EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(EventId: string; Level: TLogLevel; Text: string; const Params: IVariantDictionary = nil);
+    procedure Log(Level: TLogLevel; Text: string; const Params: IVariantDictionary = nil);
+
+    procedure Debug(EventId, Text: string);
+    procedure Debug(Text: string);
+
+    procedure Info(EventId, Text: string);
+    procedure Info(Text: string);
+    procedure Error(EventId: string; Ex: Exception);
+    procedure Error(Ex: Exception);
+
+    { properties }
+    property Name: string read GetName write SetName;
+    property Active: Boolean read GetActive write SetActive;
+
+  end;
+
+
+{ TLogScope }
+
+function TLogScope.GetId: string;
+begin
+  Result := FId;
+end;
+
+function TLogScope.GetProperties: IVariantDictionary;
+begin
+  Result := FProperties;
+end;
+
+constructor TLogScope.Create(Source: TLogSource; const aId: string; const ScopeParams: IVariantDictionary);
+begin
+  inherited Create();
+  FLogSource := Source;
+  FId := aId;
+  FProperties := ScopeParams;
+end;
+
+destructor TLogScope.Destroy;
+begin
+
+  inherited Destroy;
+end;
+
+procedure TLogScope.BeforeDestruction;
+begin
+
+  inherited BeforeDestruction;
+end;
+
+{ TLogSource }
+
+constructor TLogSource.Create(AName: string);
+begin
+  inherited Create();
+  FLock      := SyncObjs.TCriticalSection.Create();
+  FName      := AName;
+
+  FScopes    := TList.Create();
+
+  Active     := True;
+
+  EnterScope('Default Scope')
+end;
+
+destructor TLogSource.Destroy;
+begin
+  Sys.ClearObjectList(FScopes);
+  FScopes.Free();
+  FLock.Free();
+  inherited Destroy;
+end;
+
+procedure TLogSource.Lock;
+begin
+  Inc(FLockCount);
+  if FLockCount = 1 then
+    FLock.Enter;
+end;
+
+procedure TLogSource.UnLock;
+begin
+  Dec(FLockCount);
+  if FLockCount <= 0 then
+  begin
+    FLockCount := 0;
+    FLock.Leave();
+  end;
+end;
+
+function TLogSource.GetActive: Boolean;
+begin
+  Lock();
+  try
+    Result := FActive > 0;
+  finally
+    UnLock();
+  end;
+end;
+
+function TLogSource.GetCurrentScope: TLogScope;
+begin
+  Result := TLogScope(FScopes.Last);
+end;
+
+function TLogSource.GetName: string;
+begin
+  Result := FName;
+end;
+
+procedure TLogSource.SetName(AValue: string);
+begin
+  FName := AValue;
+end;
+
+procedure TLogSource.SetActive(Value: Boolean);
+begin
+  Lock();
+  try
+    if Value then
+      Inc(FActive)
+    else begin
+      Dec(FActive);
+      if FActive < 0 then
+        FActive := 0;
+    end;
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TLogSource.EnterScope(Id: string; const ScopeParams: IVariantDictionary);
+var
+  Scope: TLogScope;
+begin
+  Lock();
+  try
+    if Trim(Id) = '' then
+      Id := Sys.CreateGuid(True);
+
+    Scope := TLogScope.Create(Self, Id, ScopeParams);
+    FScopes.Add(Scope);
+  finally
+    UnLock();
+  end;
+
+end;
+
+procedure TLogSource.ExitScope();
+begin
+  if FScopes.Count > 1 then
+  begin
+    CurrentScope.Free();
+    FScopes.Delete(FScopes.Count - 1);
+  end;
+end;
+
+procedure TLogSource.Log(EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
+var
+  LogInfo: TLogInfo;
+  Entry: TKeyValue;
+  Scope: TLogScope;
+begin
+
+  Lock();
+  try
+     if Active then
+     begin
+       Scope := CurrentScope;
+       LogInfo := TLogInfo.Create(Self.Name, Scope.Id, EventId, Level, Exception_, Text, Params);
+       if Assigned(Scope.Properties) then
+       begin
+         for Entry in Scope.Properties do
+           LogInfo.Properties[Entry.Key] := Entry.Value;
+       end;
+       Logger.Log(LogInfo);
+     end;
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TLogSource.Log(Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
+begin
+  Log('0', Level, Exception_, Text, Params);
+end;
+
+procedure TLogSource.Log(EventId: string; Level: TLogLevel; Text: string; const Params: IVariantDictionary);
+begin
+  Log(EventId, Level, nil, Text, Params);
+end;
+
+procedure TLogSource.Log(Level: TLogLevel; Text: string; const Params: IVariantDictionary);
+begin
+  Log('0', Level, nil, Text, Params);
+end;
+
+procedure TLogSource.Debug(EventId, Text: string);
+begin
+  Log(EventId, TLogLevel.loDebug, Text);
+end;
+
+procedure TLogSource.Debug(Text: string);
+begin
+  Debug('0', Text);
+end;
+
+procedure TLogSource.Info(EventId, Text: string);
+begin
+  Log(EventId, TLogLevel.loInfo, Text);
+end;
+
+procedure TLogSource.Info(Text: string);
+begin
+  Info('0', Text);
+end;
+
+procedure TLogSource.Error(EventId: string; Ex: Exception);
+begin
+  Log(EventId, TLogLevel.loError, Ex, Ex.Message);
+end;
+
+procedure TLogSource.Error(Ex: Exception);
+begin
+  Error('0', Ex);
+end;
 
 
 
 { TLogInfo }
-constructor TLogInfo.Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; Params: array of const);
+constructor TLogInfo.Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
 begin
    inherited Create;
 
@@ -708,14 +1043,11 @@ begin
    if Assigned(Exception_) then
      FExceptionData := Logger.GetLastExceptionStackAsText();
 
-{
-  TODO: this.Properties = Logger.FormatParams(ref Text, Params);
-if (this.Properties == null)
-    this.Properties = new Dictionary<string, object>();
-
-    SEE: https://www.freepascal.org/docs-html/ref/refsu69.html
-}
-
+   FProperties := Params;
+   if Assigned(FProperties) then
+      FText := Logger.FormatParams(FText, FProperties)
+   else
+     FProperties := TVariantDictionary.Create();
 end;
 
 destructor TLogInfo.Destroy;
@@ -857,7 +1189,7 @@ begin
   Result := FExceptionData;
 end;
 
-function TLogInfo.GetProperties: TLogInfoDictionary;
+function TLogInfo.GetProperties: IVariantDictionary;
 begin
   Result := FProperties;
 end;
@@ -879,21 +1211,74 @@ begin
 end;
 
 
+type
+  { TLogThread }
+  TLogThread = class(TThread)
+  protected
+    procedure Execute(); override;
+  public
+    constructor Create();
+  end;
 
+{ TLogThread }
 
+constructor TLogThread.Create();
+begin
+  { for a TThread instance to work properly we have to
+    1. pass True to constructor in order to create it suspended,
+       so we have to call Start() in order for the Execute() to be called
+    2. make the TThread instance to free itself }
+  inherited Create(True);      // initially suspended, so we have to call Start()
+  FreeOnTerminate := True;     // make it free itself
+end;
+
+procedure TLogThread.Execute();
+var
+  Job: TLogJob;
+begin
+  while not Terminated do
+  begin
+    Job :=  Logger.FSafeList.Pop() as TLogJob;
+    if Assigned(Job) then
+    begin
+      Job.FListener.ProcessLog(Job.FInfo);
+      Job.Free();
+    end else begin
+      Sleep(850);
+    end;
+  end;
+
+  Logger.FLogJobThreadTerminated := True;
+end;
 
 { Logger }
-
 class constructor Logger.Create();
 begin
   FLock      := SyncObjs.TCriticalSection.Create();
   FListeners := TList.Create();
+  Active     := True ;
+  FSafeList  := TSafeObjectList.Create(False);
+  FLogThread := TLogThread.Create();
+  FLogThread.Start();
 end;
 
 class destructor Logger.Destroy();
 begin
+  FLogThread.Terminate();
+  while not FLogJobThreadTerminated do
+    TThread.CurrentThread.Sleep(500);
+
+  FSafeList.Free();
   FListeners.Free;
   FLock.Free;
+end;
+
+class function Logger.CreateLogSource(SourceName: string): ILogSource;
+begin
+  if Trim(SourceName) = '' then
+     SourceName := Sys.CreateGuid(True);
+
+  Result := TLogSource.Create(SourceName);
 end;
 
 class function Logger.GetActive: Boolean; static;
@@ -968,8 +1353,6 @@ begin
   end;
 end;
 
-
-
 class procedure Logger.SetMinLevel(Value: TLogLevel); static;
 begin
   Lock();
@@ -979,8 +1362,6 @@ begin
     UnLock();
   end;
 end;
-
-
 
 class procedure Logger.Add(Listener: TLogListener);
 begin
@@ -1111,47 +1492,33 @@ begin
 {$ENDIF}
 end;
 
-
-type
-  { TLogThread }
-  TLogThread = class(TThread)
-  protected
-    FListener : TLogListener;
-    FInfo     : ILogInfo;
-    procedure Execute(); override;
-  public
-    constructor Create(Listener: TLogListener; const Info: ILogInfo);
+class function Logger.FormatParams(Text: string; const Params: IVariantDictionary): string;
+var
+  Pair: TKeyValue;
+  Value : string;
+  Param: string;
+begin
+  // The Text parameter should be something like the following:
+  // 'Customer {CustomerId} order {OrderId} is completed.';
+  for Pair in Params do
+  begin
+    if not (Variants.VarIsNull(Pair.Value) or Variants.VarIsEmpty(Pair.Value)) then
+    begin
+      Param := '{' + Pair.Key + '}';
+      Value := Variants.VarToStr(Pair.Value);
+      Text := AnsiReplaceText(Text, Param, Value);
+    end;
   end;
 
-{ TLogThread }
-constructor TLogThread.Create(Listener: TLogListener; const Info: ILogInfo);
-begin
-  { for a TThread instance to work properly we have to
-    1. pass True to constructor in order to create it suspended,
-       so we have to call Start() in order for the Execute() to be called
-    2. make the TThread instance to free itself }
-  inherited Create(True);      // initially suspended, so we have to call Start()
-  FreeOnTerminate := True;     // make it free itself
-
-  FListener       := Listener;
-  FInfo           := Info;
+  Result := Text;
 end;
-
-procedure TLogThread.Execute();
-begin
-  try
-    //Sleep(1000 * 3);
-    FListener.ProcessLog(FInfo);
-  except
-  end;
-end;
-
 
 class procedure Logger.Log(const Info: ILogInfo);
 var
   i          : Integer;
   Listener   : TLogListener;
   InfoLevel  : TLogLevel;
+  LogJob     : TLogJob;
 begin
   Lock();
   try
@@ -1161,7 +1528,8 @@ begin
       for i := 0 to FListeners.Count - 1 do
       begin
         Listener := TLogListener(FListeners[i]);
-        TLogThread.Create(Listener, Info).Start();
+        LogJob   := TLogJob.Create(Listener, Info);
+        FSafeList.Push(LogJob);
       end;
     end;
   finally
@@ -1170,7 +1538,7 @@ begin
 
 end;
 
-class procedure Logger.Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; Params: array of const);
+class procedure Logger.Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
 var
   LogInfo: ILogInfo;
 begin
@@ -1185,7 +1553,7 @@ begin
   Level       := loDebug;
   Exception_  := nil;
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Debug(Source, EventId, Text: string);
@@ -1197,7 +1565,7 @@ begin
   EventId     := '';
   ScopeId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Debug(Source, Text: string);
@@ -1209,7 +1577,7 @@ begin
   EventId     := '';
   ScopeId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Debug(Text: string);
@@ -1224,7 +1592,7 @@ begin
   ScopeId     := '';
   Source      := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 
@@ -1235,7 +1603,7 @@ begin
   Level       := loInfo;
   Exception_  := nil;
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Info(Source, EventId, Text: string);
@@ -1247,7 +1615,7 @@ begin
   EventId     := '';
   ScopeId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Info(Source, Text: string);
@@ -1259,7 +1627,7 @@ begin
   EventId     := '';
   ScopeId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Info(Text: string);
@@ -1274,7 +1642,7 @@ begin
   ScopeId     := '';
   Source      := '';
 
-  Log(Source, ScopeId, EventId, Level, Exception_, Text, []);
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
 end;
 
 class procedure Logger.Error(Source, ScopeId, EventId: string; Ex: Exception);
@@ -1285,7 +1653,7 @@ begin
   Level       := loError;
   Text        := '';
 
-  Log(Source, ScopeId, EventId, Level, Ex, Text, []);
+  Log(Source, ScopeId, EventId, Level, Ex, Text, nil);
 end;
 
 class procedure Logger.Error(Source, EventId: string; Ex: Exception);
@@ -1297,7 +1665,7 @@ begin
   Text        := '';
   ScopeId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Ex, Text, []);
+  Log(Source, ScopeId, EventId, Level, Ex, Text, nil);
 end;
 
 class procedure Logger.Error(Source: string; Ex: Exception);
@@ -1310,7 +1678,7 @@ begin
   ScopeId     := '';
   EventId     := '';
 
-  Log(Source, ScopeId, EventId, Level, Ex, Text, []);
+  Log(Source, ScopeId, EventId, Level, Ex, Text, nil);
 end;
 
 class procedure Logger.Error(Ex: Exception);
@@ -1324,7 +1692,7 @@ begin
   EventId     := '';
   Source      := '';
 
-  Log(Source, ScopeId, EventId, Level, Ex, Text, []);
+  Log(Source, ScopeId, EventId, Level, Ex, Text, nil);
 
 end;
 

@@ -1,27 +1,27 @@
 object MainForm: TMainForm
-  Left = 800
+  Left = 634
   Height = 476
   Top = 327
-  Width = 707
+  Width = 873
   Caption = 'MainForm'
   ClientHeight = 476
-  ClientWidth = 707
+  ClientWidth = 873
   Position = poScreenCenter
-  LCLVersion = '3.0.0.3'
+  LCLVersion = '3.2.0.0'
   object Panel1: TPanel
     Left = 0
-    Height = 112
+    Height = 136
     Top = 0
-    Width = 707
+    Width = 873
     Align = alTop
-    ClientHeight = 112
-    ClientWidth = 707
+    ClientHeight = 136
+    ClientWidth = 873
     TabOrder = 0
     object btnLogInfo: TButton
       Left = 40
       Height = 25
       Top = 14
-      Width = 75
+      Width = 120
       Caption = 'Log Info'
       TabOrder = 0
     end
@@ -29,31 +29,47 @@ object MainForm: TMainForm
       Left = 40
       Height = 25
       Top = 44
-      Width = 75
+      Width = 120
       Caption = 'Log Error'
       TabOrder = 1
     end
     object edtInfoText: TEdit
-      Left = 136
+      Left = 168
       Height = 23
-      Top = 15
+      Top = 14
       Width = 472
       TabOrder = 2
       Text = 'This is a test log message'
     end
     object lblLogFolder: TLabel
-      Left = 137
+      Left = 176
       Height = 15
       Top = 49
       Width = 66
       Caption = 'lblLogFolder'
     end
+    object btnLogSource: TButton
+      Left = 40
+      Height = 25
+      Top = 72
+      Width = 120
+      Caption = 'Log Source'
+      TabOrder = 3
+    end
+    object btnLogSourceAndScope: TButton
+      Left = 40
+      Height = 25
+      Top = 100
+      Width = 120
+      Caption = 'Log Source + Scope'
+      TabOrder = 4
+    end
   end
   object mmoLog: TMemo
     Left = 0
-    Height = 364
-    Top = 112
-    Width = 707
+    Height = 340
+    Top = 136
+    Width = 873
     Align = alClient
     Font.CharSet = ANSI_CHARSET
     Font.Name = 'Courier New'
