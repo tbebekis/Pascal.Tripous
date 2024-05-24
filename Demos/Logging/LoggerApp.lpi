@@ -52,6 +52,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>
       </Unit>
+      <Unit>
+        <Filename Value="c_scopetest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="c_ScopeTest"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

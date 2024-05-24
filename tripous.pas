@@ -17,6 +17,7 @@ uses
   , TypInfo
   , DB
   , laz2_DOM
+  , LazSysUtils
   //, Laz2_XMLUtils
 
 
@@ -199,22 +200,36 @@ type
      property Values: TArrayOfVariant read GetValues;
    end;
 
-   { TLogFile }
-   TLogFile = class
-   private
-     IsClosed : Boolean;
-     F        : TextFile;
-     FSize     : SizeInt;
+   { TWriteLineFile }
+   TWriteLineFile = class
+   protected
+     FIsClosed        : Boolean;
+     F                : TextFile;
+
+     FFolder          : string;
+     FDefaultFileName : string;
+     FLastFileName    : string;
+     FColumnLine      : string;
+
+     FSize            : SizeInt;
+     FMaxSizeInMB     : SizeInt;
+
+     procedure BeginFile();
+     procedure CreateFile(FilePath: string);
+     procedure CloseFile();
    public
-     constructor Create();
+     constructor Create(FilePath: string = ''; aColumnLine: string = ''; MaxSizeInMegaBytes: SizeInt = 1);
      destructor Destroy(); override;
 
-     procedure CreateLogFile(FilePath: string);
-     procedure CloseLogFile();
+     procedure WriteLine(Line: string);
 
-     procedure AppendLine(Line: string);
-
-     property Size: SizeInt read FSize;
+     property Folder          : string read FFolder;
+     property DefaultFileName : string read FDefaultFileName;
+     property LastFileName    : string read FLastFileName;
+     property ColumnLine      : string read FColumnLine;
+     property Size            : SizeInt read FSize;
+     property MaxSizeInMB     : SizeInt read FMaxSizeInMB;
+     property IsClosed        : Boolean read FIsClosed;
    end;
 
   { Rtti }
@@ -942,34 +957,64 @@ begin
   Result := FPosition < FDictionary.FList.Count;
 end;
 
-{ TLogFile }
-constructor TLogFile.Create();
+
+
+{ TWriteLineFile }
+constructor TWriteLineFile.Create(FilePath: string; aColumnLine: string; MaxSizeInMegaBytes: SizeInt);
 begin
   inherited Create();
-  IsClosed := True;
+  FIsClosed := True;
+
+  FilePath := Trim(FilePath);
+  if Length(FilePath) = 0 then
+  begin
+    FDefaultFileName := ExtractFileName(ParamStr(0));
+    FDefaultFileName := ChangeFileExt(FDefaultFileName, '.log');
+    FFolder          := ExtractFilePath(ParamStr(0));
+    FFolder          := ConcatPaths([FFolder, 'Logs']);
+  end else begin
+    FDefaultFileName := ExtractFileName(FilePath);
+    FFolder          := ExtractFilePath(FilePath);
+
+    if Length(FFolder) = 0 then
+      FFolder := ExtractFilePath(ParamStr(0));
+  end;
+
+  if MaxSizeInMegaBytes < 1 then
+     Self.FMaxSizeInMB := 5
+  else
+     Self.FMaxSizeInMB := MaxSizeInMegaBytes;
+
+  FColumnLine := Trim(aColumnLine);
+
+  // create the first file
+  BeginFile();
 end;
 
-destructor TLogFile.Destroy;
+destructor TWriteLineFile.Destroy;
 begin
-  CloseLogFile();
+  CloseFile();
   inherited Destroy;
 end;
 
-procedure TLogFile.CloseLogFile();
+procedure TWriteLineFile.BeginFile();
+var
+  FilePath     : string;
 begin
-  if not IsClosed then
-  begin
-    Close(F);
-    IsClosed := True;
-    FSize     := 0;
-  end;
+  if not DirectoryExists(FFolder) then
+    CreateDir(FFolder);
+
+  FLastFileName  := FormatDateTime('yyyy-mm-dd_hh_nn_ss__zzz_', NowUTC()) + FDefaultFileName;
+  FilePath       := ConcatPaths([FFolder, FLastFileName]);
+
+  CreateFile(FilePath);
 end;
 
-procedure TLogFile.CreateLogFile(FilePath: string);
+procedure TWriteLineFile.CreateFile(FilePath: string);
 var
   Exists: Boolean;
 begin
-  CloseLogFile();
+  CloseFile();
   Exists := FileExists(FilePath);
   Assign(F, FilePath);
 
@@ -984,14 +1029,36 @@ begin
   if IOResult <> 0 then
     raise Exception.CreateFmt('Cannot create or open a log file: %s', [FilePath]);
 
-  IsClosed := False;
+  FIsClosed := False;
+
+  if Length(FColumnLine) > 0 then
+     WriteLine(FColumnLine);
 end;
 
-procedure TLogFile.AppendLine(Line: string);
+procedure TWriteLineFile.CloseFile();
 begin
-  System.WriteLn(F, Line);
-  FSize := FSize + Length(Line);
-  Flush(F);
+  if not FIsClosed then
+  begin
+    Close(F);
+    FIsClosed := True;
+    FSize    := 0;
+  end;
+end;
+
+procedure TWriteLineFile.WriteLine(Line: string);
+begin
+  Line := Trim(Line);
+
+  if Length(Line) > 0 then
+  begin
+    if (FSize > (1024 * 1024 * FMaxSizeInMB)) then
+       BeginFile();
+
+    System.WriteLn(F, Line);
+    FSize := FSize + Length(Line);
+    Flush(F);
+  end;
+
 end;
 
 

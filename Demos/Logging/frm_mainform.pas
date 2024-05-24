@@ -17,6 +17,7 @@ type
     btnLogError: TButton;
     btnLogSource: TButton;
     btnLogSourceAndScope: TButton;
+    btnLogSourceAndScope2: TButton;
     edtInfoText: TEdit;
     lblLogFolder: TLabel;
     mmoLog: TMemo;
@@ -25,6 +26,7 @@ type
     FLogListener: TLogListener;
     FFileLogListener: TFileLogListener;
     FFormLogListener: TFormLogListener;
+    FDbLogListener: TDbLogListener;
 
     procedure AnyClick(Sender: TObject);
     function GetLogText(): string;
@@ -35,6 +37,7 @@ type
     procedure LogErrorTest();
     procedure LogSourceTest();
     procedure LogSourceAndScopeTest();
+    procedure LogSourceAndScopeTest2();
   protected
     procedure KeyPress(var Key: char); override;
     procedure DoShow; override;
@@ -48,7 +51,7 @@ implementation
 
 uses
   Variants
-
+  ,c_ScopeTest
   ;
 
 {$R *.lfm}
@@ -65,7 +68,7 @@ begin
   btnLogError.OnClick := Addr(AnyClick);
   btnLogSource.OnClick := Addr(AnyClick);
   btnLogSourceAndScope.OnClick := Addr(AnyClick);
-
+  btnLogSourceAndScope2.OnClick := Addr(AnyClick);
 
   Logger.MinLevel := TLogLevel.loDebug;
 
@@ -74,10 +77,15 @@ begin
     2. TLogTextListener and TLogLineListener inherit from TLogToMainThreadListener
        which synchronizes updates to MainThread controls
     3. The TFormLogListener shows a Form in the upper right screen corner
-       where it displays log information }
+       where it displays log information
+    4. The TDbLogListener saves log information in a database.
+       Using the CreateSQLite() it makes it to use a SQLite database,
+       so the property sqlite3.dll should be in the project folder. }
   FLogListener     := TLogTextListener.Create(Addr(LogProc));
   FFileLogListener := TFileLogListener.Create();
   FFormLogListener := TFormLogListener.Create();
+  FDbLogListener   := TDbLogListener.CreateSQLite();
+  FDbLogListener.RetainDays := 1;
 
   lblLogFolder.Caption := Format('Error logs are saved at folder: %s ', [Logger.LogFolder]);
 end;
@@ -87,6 +95,7 @@ begin
   FreeAndNil(FFormLogListener);
   FreeAndNil(FFileLogListener);
   FreeAndNil(FLogListener);
+  FreeAndNil(FDbLogListener);
 
   inherited DoDestroy;
 end;
@@ -112,6 +121,8 @@ begin
     LogSourceTest()
   else if btnLogSourceAndScope = Sender then
     LogSourceAndScopeTest()
+  else if btnLogSourceAndScope2 = Sender then
+    LogSourceAndScopeTest2()
   ;
 end;
 
@@ -177,6 +188,15 @@ begin
   LogSource.ExitScope();
 
   LogSource.Info(GetLogText());
+end;
+
+procedure TMainForm.LogSourceAndScopeTest2();
+var
+  Dev: TDeveloper;
+begin
+  Dev := TDeveloper.Create();
+  Dev.TestLogSource();
+  Dev.Free();
 end;
 
 

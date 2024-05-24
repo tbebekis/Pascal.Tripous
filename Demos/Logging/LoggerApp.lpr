@@ -17,7 +17,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, frm_MainForm, Tripous.Logs, Tripous;
+  Forms, frm_MainForm, Tripous.Logs, Tripous, c_ScopeTest;
 
 {$R *.res}
 

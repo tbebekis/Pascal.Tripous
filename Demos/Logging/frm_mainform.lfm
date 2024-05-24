@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 634
+  Left = 448
   Height = 476
-  Top = 327
+  Top = 308
   Width = 873
   Caption = 'MainForm'
   ClientHeight = 476
@@ -63,6 +63,14 @@ object MainForm: TMainForm
       Width = 120
       Caption = 'Log Source + Scope'
       TabOrder = 4
+    end
+    object btnLogSourceAndScope2: TButton
+      Left = 192
+      Height = 25
+      Top = 100
+      Width = 208
+      Caption = 'Log Source + Scope 2'
+      TabOrder = 5
     end
   end
   object mmoLog: TMemo
