@@ -168,7 +168,7 @@ begin
   Params['CustomerId'] := 'BigCo';
   Params['OrderId']    := 123;
 
-  LogSource.Log(loInfo, 'Customer {CustomerId} Order with {OrderId} is completed.', Params);
+  LogSource.Log(loInfo, 'Customer {CustomerId} Order with Id {OrderId} is completed.', Params);
 end;
 
 procedure TMainForm.LogSourceAndScopeTest();

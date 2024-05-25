@@ -1802,20 +1802,22 @@ end;
 { Json }
 class function Json.Serialize(Instance: TObject): string;
 var
-  Streamer:  TJSONStreamer;
-  Data: TJSONStringType;
-  JsonData: TJSONData;
+  Streamer  : TJSONStreamer;
+  Data      : TJSONStringType;
+  JsonData  : TJSONData;
 begin
   Streamer := TJSONStreamer.Create(nil);
   try
     Data := Streamer.ObjectToJSONString(Instance);
     JsonData := GetJSON(Data, true);
-    Result := JsonData.FormatJSON();
-    Result := Data;
+    try
+      Result := JsonData.FormatJSON([], 2);
+    finally
+      JsonData.Free();
+    end;
   finally
     FreeAndNil(Streamer);
   end;
-
 end;
 
 class procedure Json.Deserialize(Instance: TObject; Data: string);
@@ -1841,23 +1843,6 @@ var
 begin
   Data := Serialize(Instance);
   Sys.SaveToFile(FilePath, Data);
-  {
-  var
-    Streamer:  TJSONStreamer;
-    Data: TJSONStringType;
-    JsonData: TJSONData;
-  begin
-    Streamer := TJSONStreamer.Create(nil);
-    try
-      Data := Streamer.ObjectToJSONString(Instance);
-      JsonData := GetJSON(Data, true);
-      Data :=  JsonData.FormatJSON();
-      Sys.SaveTextToFile(FilePath, Data);
-    finally
-      FreeAndNil(Streamer);
-    end;
-  end;
-  }
 end;
 
 class procedure Json.LoadFromFile(FilePath: string; Instance: TObject);
@@ -1869,28 +1854,6 @@ begin
      Data := Sys.LoadFromFile(FilePath);
      Deserialize(Instance, Data);
   end;
-{
-var
-  DeStreamer: TJSONDeStreamer;
-  Data: TJSONStringType;
-  Helper: TJsonHelper;
-begin
-  if FileExists(FilePath) then
-  begin
-    DeStreamer := TJSONDeStreamer.Create(nil);
-    Helper := TJsonHelper.Create();
-    try
-      DeStreamer.OnPropertyError   := @Helper.propertyError;
-      DeStreamer.OnRestoreProperty := @Helper.restoreProperty;
-      Data := Sys.LoadTextFromFile(FilePath);
-      DeStreamer.JSONToObject(Data, Instance);
-    finally
-      FreeAndNil(Helper);
-      FreeAndNil(DeStreamer);
-    end;
-  end;
-end;
-}
 end;
 
 

@@ -28,44 +28,68 @@ uses
   ;
  
 type
-  TLogLevel = (
-     loNone   = 0
-    ,loTrace  = 1
-    ,loDebug  = 2
-    ,loInfo   = 4
-    ,loWarn   = 8
-    ,loError  = $10
-    ,loFatal  = $20
+  TLogLevel =  (
+     loNone      = 0
+    ,loTrace     = 1
+    ,loDebug     = 2
+    ,loInfo      = 4
+    ,loWarning   = 8
+    ,loError     = $10
+    ,loFatal     = $20
   );
 
   TLogPropLengthDictionary = specialize TFPGMap<string, Word>;
 
   TLogTextProc = procedure(LogText: string) of object;
 
-  ILogInfo = interface;
+  ILogEntry = interface;
 
   { TLogRecord }
-  TLogRecord = class
+  TLogRecord = class(TPersistent)
+  private
+    FAsJson: string;
+    FAsLine: string;
+    FAsList: string;
+    FId: string;
+    FMessage: string;
+    FProperties: string;
+    FTimeStamp: TDateTime;
+    FDate: string;
+    FTime: string;
+    FUser: string;
+    FHost: string;
+    FLevel: string;
+    FSource: string;
+    FScope: string;
+    FEventId: string;
   public
-    Id: string;
-    TimeStamp: TDateTime;
-    Date: string;
-    Time: string;
-    User: string;
-    Host: string;
-    Level: string;
-    Source: string;
-    Scope: string;
-    EventId: string;
+    constructor Create(Entry: ILogEntry);
 
-    LogText: string;
+    property AsList: string read FAsList;
+    property AsLine: string read FAsLine;
+    property AsJson: string read FAsJson;
+  published
+    property Id         : string     read FId         write FId       ;
+    property TimeStamp  : TDateTime  read FTimeStamp  write FTimeStamp;
+    property Date       : string     read FDate       write FDate     ;
+    property Time       : string     read FTime       write FTime     ;
+    property User       : string     read FUser       write FUser     ;
+    property Host       : string     read FHost       write FHost     ;
+    property Level      : string     read FLevel      write FLevel    ;
+    property Source     : string     read FSource     write FSource   ;
+    property Scope      : string     read FScope      write FScope    ;
+    property EventId    : string     read FEventId    write FEventId  ;
+    property Message    : string     read FMessage    write FMessage  ;
+    property Properties : string     read FProperties write FProperties;
 
-    constructor Create(Info: ILogInfo);
   end;
 
-  { ILogInfo }
-  ILogInfo = interface
+  { ILogEntry }
+  ILogEntry = interface
     ['{BA60D540-FECA-42AB-9B3F-7FC50362EE9F}']
+    function GetAsJson: string;
+    function GetAsLine: string;
+    function GetAsList: string;
     function GetDate: string;
     function GetEventId: string;
     function GetException: Exception;
@@ -121,6 +145,10 @@ type
     property ExceptionData: string read GetExceptionData;
     // A dictionary with params passed when the log message was formatted. For use by structured log listeners
     property Properties: IVariantDictionary read GetProperties;
+
+    property AsList : string read GetAsList;
+    property AsLine : string read GetAsLine;
+    property AsJson : string read GetAsJson;
   end;
 
   { ILogSource }
@@ -145,8 +173,14 @@ type
     procedure Info(EventId, Text: string);
     procedure Info(Text: string);
 
+    procedure Warning(EventId, Text: string);
+    procedure Warning(Text: string);
+
     procedure Error(EventId: string; Ex: Exception);
     procedure Error(Ex: Exception);
+
+    procedure Error(EventId: string; Text: string);
+    procedure Error(Text: string);
 
     { properties }
     property Name: string read GetName write SetName;
@@ -168,7 +202,7 @@ type
     procedure UnLock();
 
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
-    procedure ProcessLog(const Info: ILogInfo); virtual; abstract;
+    procedure ProcessLog(const Entry: ILogEntry); virtual; abstract;
 
     function  GetRetainDays: Integer; virtual;
     procedure SetRetainDays(Value: Integer); virtual;
@@ -180,7 +214,7 @@ type
     constructor Create();
     destructor Destroy(); override;
 
-    // Retain policy. How many days to retain in the database. Defaults to 7
+    // Retain policy. How many days to retain in the storage medium. Defaults to 7
     property RetainDays          : Integer read GetRetainDays write SetRetainDays;
     // Retain policy. How many KB to allow a single log file to grow. Defaults to 512 KB
     property RetainSizeKiloBytes : SizeInt read GetRetainSizeKiloBytes write SetRetainSizeKiloBytes;
@@ -210,7 +244,7 @@ type
     procedure ClearData();
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
-    procedure ProcessLog(const Info: ILogInfo); override;
+    procedure ProcessLog(const Entry: ILogEntry); override;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -225,7 +259,7 @@ type
     procedure ApplyRetainPolicy();
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
-    procedure ProcessLog(const Info: ILogInfo); override;
+    procedure ProcessLog(const Entry: ILogEntry); override;
 
     procedure SetRetainSizeKiloBytes(Value: SizeInt); override;
   public
@@ -249,7 +283,7 @@ type
     procedure Log(LogRecord: TLogRecord);
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
-    procedure ProcessLog(const Info: ILogInfo); override;
+    procedure ProcessLog(const Entry: ILogEntry); override;
   public
     constructor Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
     constructor CreateSQLite(DatabaseName: string = 'LogDB.db3');
@@ -270,8 +304,8 @@ type
     procedure CallLogProc();
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
-    procedure ProcessLog(const Info: ILogInfo); override;
-    function  GetLogInfoText(const Info: ILogInfo): string; virtual; abstract;
+    procedure ProcessLog(const Entry: ILogEntry); override;
+    function  GetLogText(const Entry: ILogEntry): string; virtual; abstract;
   public
     constructor Create(LogTextProc: TLogTextProc); virtual;
     destructor Destroy(); override;
@@ -280,7 +314,7 @@ type
   { TLogTextListener }
   TLogTextListener = class(TLogToMainThreadListener)
   protected
-    function  GetLogInfoText(const Info: ILogInfo): string; override;
+    function  GetLogText(const Entry: ILogEntry): string; override;
   public
     constructor Create(LogTextProc: TLogTextProc); override;
   end;
@@ -288,7 +322,7 @@ type
   { TLogLineListener }
   TLogLineListener = class(TLogToMainThreadListener)
   protected
-    function  GetLogInfoText(const Info: ILogInfo): string; override;
+    function  GetLogText(const Entry: ILogEntry): string; override;
   public
     constructor Create(LogLineProc: TLogTextProc); override;
     destructor Destroy(); override;
@@ -298,13 +332,13 @@ type
   TLogJob = class
   private
     FListener: TLogListener;
-    FInfo    : ILogInfo;
+    FEntry    : ILogEntry;
   public
-    constructor Create(Listener: TLogListener; Info: ILogInfo);
+    constructor Create(Listener: TLogListener; Entry: ILogEntry);
   end;
 
-  { Logger }
-  Logger = class
+ { Logger }
+ Logger = class
  class var
     FActive          : Integer;
     FLogFolder       : string;
@@ -320,20 +354,22 @@ type
     FRetainSizeKiloBytes : SizeInt;
     FRetainPolicyCounter : Integer;
 
-    class function GetActive: Boolean; static;
-    class function GetRetainDays: Integer; static;
-    class function GetRetainPolicyCounter: Integer; static;
-    class function GetRetainSizeKiloBytes: SizeInt; static;
+    class function  GetActive: Boolean; static;
+    class function  GetRetainDays: Integer; static;
+    class function  GetRetainPolicyCounter: Integer; static;
+    class function  GetRetainSizeKiloBytes: SizeInt; static;
     class procedure SetActive(Value: Boolean); static;
-    class function GetMinLevel: TLogLevel; static;
+    class function  GetMinLevel: TLogLevel; static;
     class procedure SetMinLevel(Value: TLogLevel); static;
-    class function GetLogFolder: string; static;
+    class function  GetLogFolder: string; static;
 
     class procedure Lock;
     class procedure UnLock;
 
     class procedure Add(Listener: TLogListener);
     class procedure Remove(Listener: TLogListener);
+
+    class procedure Log(const Entry: ILogEntry);
   public
     class constructor Create();
     class destructor Destroy();
@@ -341,7 +377,6 @@ type
     class function CreateLogSource(SourceName: string): ILogSource;
 
     { log }
-    class procedure Log(const Info: ILogInfo);
     class procedure Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
 
     class procedure Debug(Source, ScopeId, EventId, Text: string);
@@ -353,6 +388,11 @@ type
     class procedure Info(Source, EventId, Text: string);
     class procedure Info(Source, Text: string);
     class procedure Info(Text: string);
+
+    class procedure Warning(Source, ScopeId, EventId, Text: string);
+    class procedure Warning(Source, EventId, Text: string);
+    class procedure Warning(Source, Text: string);
+    class procedure Warning(Text: string);
 
     class procedure Error(Source, ScopeId, EventId: string; Ex: Exception);
     class procedure Error(Source, EventId: string; Ex: Exception);
@@ -373,9 +413,9 @@ type
     class function  GetHostName(): string;
     class function  FormatParams(Text: string; const Params: IVariantDictionary): string;
 
-
-    class function  GetAsText(LogInfo: ILogInfo): string;
-    class function  GetAsLine(LogInfo: ILogInfo): string;
+    class function  GetAsJson(const LogEntry: ILogEntry): string;
+    class function  GetAsList(const LogEntry: ILogEntry): string;
+    class function  GetAsLine(const LogEntry: ILogEntry): string;
     class function  GetLineCaptions(): string;
 
     { properties }
@@ -383,7 +423,7 @@ type
     class property LogFolder: string read GetLogFolder write FLogFolder;
     class property MinLevel: TLogLevel read GetMinLevel write SetMinLevel;
 
-    // Retain policy. How many days to retain in the database. Defaults to 7
+    // Retain policy. How many days to retain in the storage medium. Defaults to 7
     class property RetainDays          : Integer read GetRetainDays write FRetainDays;
     // Retain policy. How many KB to allow a single log file to grow. Defaults to 512 KB
     class property RetainSizeKiloBytes : SizeInt read GetRetainSizeKiloBytes write FRetainSizeKiloBytes;
@@ -404,28 +444,41 @@ uses
   ;
 
 { TLogRecord }
-constructor TLogRecord.Create(Info: ILogInfo);
+constructor TLogRecord.Create(Entry: ILogEntry);
 begin
   inherited Create();
 
-  Id        := Info.Id         ;
-  TimeStamp := Info.TimeStamp  ;
-  Date      := Info.Date       ;
-  Time      := Info.Time       ;
-  User      := Info.User       ;
-  Host      := Info.Host       ;
-  Level     := Info.LevelText  ;
-  Source    := Info.Source     ;
-  Scope     := Info.ScopeId    ;
-  EventId   := Info.EventId    ;
-  LogText   := Logger.GetAsText(Info);
+  Id        := Entry.Id         ;
+  TimeStamp := Entry.TimeStamp  ;
+  Date      := Entry.Date       ;
+  Time      := Entry.Time       ;
+  User      := Entry.User       ;
+  Host      := Entry.Host       ;
+  Level     := Entry.LevelText  ;
+  Source    := Entry.Source     ;
+  Scope     := Entry.ScopeId    ;
+  EventId   := Entry.EventId    ;
+  Message   := Entry.Text       ;
+
+ if Assigned(Entry.Properties) and (Entry.Properties.Count > 0) then
+   Properties := Entry.GetPropertiesAsSingleLine();
+
+ FAsList := Entry.AsList;
+ FAsLine := Entry.AsLine;
+ FAsJson := Entry.AsJson;
 end;
 
 
+
+
 type
-  { TLogInfo }
-  TLogInfo = class(TInterfacedObject, ILogInfo)
+  { TLogEntry }
+  TLogEntry = class(TInterfacedObject, ILogEntry)
   private
+    FAsJson: string;
+    FAsLine: string;
+    FAsList: string;
+
     FId: string;
     FEventId: string;
     FException: Exception;
@@ -439,6 +492,9 @@ type
     FTimeStamp: TDateTime;
     FUser: string;
 
+    function GetAsJson: string;
+    function GetAsLine: string;
+    function GetAsList: string;
     function GetDate: string;
     function GetEventId: string;
     function GetException: Exception;
@@ -484,6 +540,10 @@ type
     property Exception_ : Exception read GetException;
     property ExceptionData: string read GetExceptionData;
     property Properties: IVariantDictionary read GetProperties;
+
+    property AsList : string read GetAsList;
+    property AsLine : string read GetAsLine;
+    property AsJson : string read GetAsJson;
   end;
 
 
@@ -493,11 +553,11 @@ type
 
 
 { TLogJob }
-constructor TLogJob.Create(Listener: TLogListener; Info: ILogInfo);
+constructor TLogJob.Create(Listener: TLogListener; Entry: ILogEntry);
 begin
   inherited Create();
   FListener := Listener;
-  FInfo     := Info;
+  FEntry     := Entry;
 end;
 
 
@@ -563,6 +623,9 @@ type
 
     procedure Info(EventId, Text: string);
     procedure Info(Text: string);
+
+    procedure Warning(EventId, Text: string);
+    procedure Warning(Text: string);
 
     procedure Error(EventId: string; Ex: Exception);
     procedure Error(Ex: Exception);
@@ -705,7 +768,7 @@ end;
 
 procedure TLogSource.Log(EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
 var
-  LogInfo: TLogInfo;
+  LogEntry: TLogEntry;
   Entry: TKeyValue;
   Scope: TLogScope;
 begin
@@ -715,13 +778,13 @@ begin
      if Active then
      begin
        Scope := CurrentScope;
-       LogInfo := TLogInfo.Create(Self.Name, Scope.Id, EventId, Level, Exception_, Text, Params);
+       LogEntry := TLogEntry.Create(Self.Name, Scope.Id, EventId, Level, Exception_, Text, Params);
        if Assigned(Scope.Properties) then
        begin
          for Entry in Scope.Properties do
-           LogInfo.Properties[Entry.Key] := Entry.Value;
+           LogEntry.Properties[Entry.Key] := Entry.Value;
        end;
-       Logger.Log(LogInfo);
+       Logger.Log(LogEntry);
      end;
   finally
     UnLock();
@@ -763,6 +826,16 @@ begin
   Info('0', Text);
 end;
 
+procedure TLogSource.Warning(EventId, Text: string);
+begin
+  Log(EventId, TLogLevel.loWarning, Text);
+end;
+
+procedure TLogSource.Warning(Text: string);
+begin
+  Warning('0', Text);
+end;
+
 procedure TLogSource.Error(EventId: string; Ex: Exception);
 begin
   Log(EventId, TLogLevel.loError, Ex, Ex.Message);
@@ -789,7 +862,7 @@ end;
 
 
 { TLogInfo }
-constructor TLogInfo.Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
+constructor TLogEntry.Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
 var
   Guid: TGuid;
 begin
@@ -830,14 +903,20 @@ begin
       FText := Logger.FormatParams(FText, FProperties)
    else
      FProperties := TVariantDictionary.Create();
+
+
+
+  FAsList := Logger.GetAsList(Self);
+  FAsLine := Logger.GetAsLine(Self);
+  FAsJson := Logger.GetAsJson(Self);
 end;
 
-destructor TLogInfo.Destroy;
+destructor TLogEntry.Destroy;
 begin
   inherited Destroy;
 end;
 
-function TLogInfo.ToString: ansistring;
+function TLogEntry.ToString: ansistring;
 var
   SB: TAnsiStringBuilder;
 begin
@@ -867,7 +946,7 @@ begin
 
 end;
 
-procedure TLogInfo.SaveToFile(Folder: string);
+procedure TLogEntry.SaveToFile(Folder: string);
 var
   FilePath: string;
   List: TStringList;
@@ -890,7 +969,7 @@ begin
 
 end;
 
-function TLogInfo.GetPropertiesAsSingleLine(): string;
+function TLogEntry.GetPropertiesAsSingleLine(): string;
 var
   Entry: TKeyValue;
   Count: Integer;
@@ -917,7 +996,7 @@ begin
   end;
 end;
 
-function TLogInfo.GetPropertiesAsTextList(): string;
+function TLogEntry.GetPropertiesAsTextList(): string;
 var
   Entry: TKeyValue;
   Count: Integer;
@@ -945,92 +1024,107 @@ begin
 
 end;
 
-function TLogInfo.CreateLogRecord(): TLogRecord;
+function TLogEntry.CreateLogRecord(): TLogRecord;
 begin
-  Result := TLogRecord.Create(Self as ILogInfo);
+  Result := TLogRecord.Create(Self as ILogEntry);
 end;
 
-function TLogInfo.GetTimeStamp: TDateTime;
+function TLogEntry.GetTimeStamp: TDateTime;
 begin
   Result := FTimeStamp;
 end;
 
-function TLogInfo.GetTimeStampText: string;
+function TLogEntry.GetTimeStampText: string;
 begin
   Result := FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', TimeStamp);
 end;
 
-function TLogInfo.GetDate: string;
+function TLogEntry.GetDate: string;
 begin
   Result := FormatDateTime('yyyy-mm-dd', TimeStamp);
 end;
 
-function TLogInfo.GetTime: string;
+function TLogEntry.GetAsJson: string;
+begin
+  Result := FAsJson;
+end;
+
+function TLogEntry.GetAsLine: string;
+begin
+  Result := FAsLine;
+end;
+
+function TLogEntry.GetAsList: string;
+begin
+  Result := FAsList;
+end;
+
+function TLogEntry.GetTime: string;
 begin
   Result := FormatDateTime('hh:nn:ss.zzz', TimeStamp);
 end;
 
-function TLogInfo.GetUser: string;
+function TLogEntry.GetUser: string;
 begin
   Result := FUser;
 end;
 
-procedure TLogInfo.SetUser(Value: string);
+procedure TLogEntry.SetUser(Value: string);
 begin
   FUser := Value;
 end;
 
-function TLogInfo.GetHost: string;
+function TLogEntry.GetHost: string;
 begin
   Result := FHost;
 end;
 
-function TLogInfo.GetId: string;
+function TLogEntry.GetId: string;
 begin
   Result := FId;
 end;
 
-function TLogInfo.GetLevel: TLogLevel;
+function TLogEntry.GetLevel: TLogLevel;
 begin
   Result := FLevel;
 end;
 
-function TLogInfo.GetLevelText: string;
+function TLogEntry.GetLevelText: string;
 begin
   Result := Logger.LogLevelToString(Level);
 end;
 
-function TLogInfo.GetEventId: string;
+function TLogEntry.GetEventId: string;
 begin
    Result := FEventId;
 end;
 
-function TLogInfo.GetText: string;
+function TLogEntry.GetText: string;
 begin
   Result := FText;
 end;
 
-function TLogInfo.GetScopeId: string;
+function TLogEntry.GetScopeId: string;
 begin
   Result := FScopeId;
 end;
 
-function TLogInfo.GetSource: string;
+function TLogEntry.GetSource: string;
 begin
   Result := FSource;
 end;
 
-function TLogInfo.GetException: Exception;
+function TLogEntry.GetException: Exception;
 begin
   Result := FException;
 end;
 
-function TLogInfo.GetExceptionData: string;
+function TLogEntry.GetExceptionData: string;
 begin
   Result := FExceptionData;
 end;
 
-function TLogInfo.GetProperties: IVariantDictionary;
+function TLogEntry.GetProperties: IVariantDictionary;
 begin
   Result := FProperties;
 end;
@@ -1454,9 +1548,9 @@ begin
   end;
 end;
 
-procedure TFormLogListener.ProcessLog(const Info: ILogInfo);
+procedure TFormLogListener.ProcessLog(const Entry: ILogEntry);
 begin
-  FSafeList.Push(TLogRecord.Create(Info));
+  FSafeList.Push(TLogRecord.Create(Entry));
   TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
 end;
 
@@ -1476,10 +1570,9 @@ begin
     FLogTable.FieldByName('Source' ).AsString := LogRecord.Source   ;
     FLogTable.FieldByName('Scope'  ).AsString := LogRecord.Scope    ;
     FLogTable.FieldByName('EventId').AsString := LogRecord.EventId  ;
-    FLogTable.FieldByName('Text'   ).AsString := LogRecord.LogText     ;
+    FLogTable.FieldByName('Text'   ).AsString := LogRecord.AsJson   ;
 
-    TLogForm(FLogForm).mmoLog.Append(LogRecord.LogText);
-
+    TLogForm(FLogForm).mmoLog.Append(LogRecord.AsList);
     LogRecord.Free();
 
     FLogTable.Post();
@@ -1507,11 +1600,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TFileLogListener.ProcessLog(const Info: ILogInfo);
+procedure TFileLogListener.ProcessLog(const Entry: ILogEntry);
 var
   Line     : string;
 begin
-  Line := Logger.GetAsLine(Info);
+  Line := Logger.GetAsLine(Entry);
   FLogFile.WriteLine(Line);
 
   Inc(FCounter);
@@ -1578,7 +1671,6 @@ var
 begin
   Inc(FCounter);
 
-
   InsertSql :=
   'insert into AppLog (    ' +
   '   Id                    ' +
@@ -1613,12 +1705,12 @@ begin
     Q.ParamByName('Stamp'      ).AsDateTime := LogRecord.TimeStamp   ;
     Q.ParamByName('Date'       ).AsString   := LogRecord.Date        ;
     Q.ParamByName('Time'       ).AsString   := LogRecord.Time        ;
-    Q.ParamByName('UserName'   ).AsString   := LogRecord.User    ;
-    Q.ParamByName('HostName'   ).AsString   := LogRecord.Host    ;
+    Q.ParamByName('UserName'   ).AsString   := LogRecord.User        ;
+    Q.ParamByName('HostName'   ).AsString   := LogRecord.Host        ;
     Q.ParamByName('Source'     ).AsString   := LogRecord.Source      ;
     Q.ParamByName('Scope'      ).AsString   := LogRecord.Scope       ;
     Q.ParamByName('EventId'    ).AsString   := LogRecord.EventId     ;
-    Q.ParamByName('LogText'    ).AsString   := LogRecord.LogText     ;
+    Q.ParamByName('LogText'    ).AsString   := LogRecord.AsJson      ;
 
     if not Trans.Active then;
        Trans.StartTransaction();
@@ -1716,9 +1808,9 @@ begin
 
 end;
 
-procedure TDbLogListener.ProcessLog(const Info: ILogInfo);
+procedure TDbLogListener.ProcessLog(const Entry: ILogEntry);
 begin
-  FSafeList.Push(TLogRecord.Create(Info));
+  FSafeList.Push(TLogRecord.Create(Entry));
   TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
 end;
 
@@ -1731,8 +1823,6 @@ begin
   begin
     Log(LogRecord);
     LogRecord.Free();
-
-
   end;
 end;
 
@@ -1763,13 +1853,13 @@ begin
   inherited Destroy;
 end;
 
-procedure TLogToMainThreadListener.ProcessLog(const Info: ILogInfo);
+procedure TLogToMainThreadListener.ProcessLog(const Entry: ILogEntry);
 var
   LogText: string;
 begin
   Lock();
   try
-    LogText := GetLogInfoText(Info);
+    LogText := GetLogText(Entry);
     FLogTextList.Add(LogText);
 
     TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
@@ -1805,9 +1895,9 @@ begin
   inherited Create(LogTextProc);
 end;
 
-function TLogTextListener.GetLogInfoText(const Info: ILogInfo): string;
+function TLogTextListener.GetLogText(const Entry: ILogEntry): string;
 begin
-  Result := Logger.GetAsText(Info);
+  Result := Logger.GetAsList(Entry);
 end;
 
 
@@ -1825,9 +1915,9 @@ begin
   inherited Destroy;
 end;
 
-function TLogLineListener.GetLogInfoText(const Info: ILogInfo): string;
+function TLogLineListener.GetLogText(const Entry: ILogEntry): string;
 begin
-  Result := Logger.GetAsLine(Info);
+  Result := Logger.GetAsLine(Entry);
 end;
 
 
@@ -1868,7 +1958,7 @@ begin
     Job :=  Logger.FSafeList.Pop() as TLogJob;
     if Assigned(Job) then
     begin
-      Job.FListener.ProcessLog(Job.FInfo);
+      Job.FListener.ProcessLog(Job.FEntry);
       Job.Free();
     end else begin
       Sleep(850);
@@ -2013,7 +2103,10 @@ class function Logger.GetMinLevel: TLogLevel; static;
 begin
   Lock();
   try
-    Result := FMinLevel;
+    if Ord(FMinLevel) >= Ord(TLogLevel.loTrace) then
+      Result := FMinLevel
+    else
+      Result := TLogLevel.loTrace;
   finally
     UnLock();
   end;
@@ -2109,7 +2202,7 @@ begin
     loTrace   : Result := 'Trace';
     loDebug   : Result := 'Debug';
     loInfo    : Result := 'Info ';
-    loWarn    : Result := 'Warn ';
+    loWarning    : Result := 'Warn ';
     loError   : Result := 'Error';
     loFatal   : Result := 'Fatal';
   end;
@@ -2179,7 +2272,19 @@ begin
   Result := Text;
 end;
 
-class function Logger.GetAsText(LogInfo: ILogInfo): string;
+class function Logger.GetAsJson(const LogEntry: ILogEntry): string;
+var
+  LogRecord: TLogRecord;
+begin
+  LogRecord := TLogRecord.Create(LogEntry);
+  try
+    Result := Json.Serialize(LogRecord);
+  finally
+    LogRecord.Free();
+  end;
+end;
+
+class function Logger.GetAsList(const LogEntry: ILogEntry): string;
 
   procedure AddLine(SB:  TAnsiStringBuilder; Name, Value: string);
   begin
@@ -2195,22 +2300,22 @@ var
 begin
   SB := TAnsiStringBuilder.Create('');
   try
-    AddLine(SB, 'Id', LogInfo.Id);
-    AddLine(SB, 'TimeStamp', LogInfo.TimeStampText);
-    AddLine(SB, 'Level', LogInfo.LevelText);
-    AddLine(SB, 'Source', LogInfo.Source);
-    AddLine(SB, 'Scope', LogInfo.ScopeId);
-    AddLine(SB, 'EventId', LogInfo.EventId);
-    AddLine(SB, 'Host', LogInfo.Host);
-    AddLine(SB, 'User', LogInfo.User);
-    AddLine(SB, 'Text', LogInfo.Text);
-    if Length(LogInfo.ExceptionData) > 0 then
-      AddLine(SB, 'Stack', LineEnding + LogInfo.ExceptionData);
+    AddLine(SB, 'Id', LogEntry.Id);
+    AddLine(SB, 'TimeStamp', LogEntry.TimeStampText);
+    AddLine(SB, 'Level', LogEntry.LevelText);
+    AddLine(SB, 'Source', LogEntry.Source);
+    AddLine(SB, 'Scope', LogEntry.ScopeId);
+    AddLine(SB, 'EventId', LogEntry.EventId);
+    AddLine(SB, 'Host', LogEntry.Host);
+    AddLine(SB, 'User', LogEntry.User);
+    AddLine(SB, 'Text', LogEntry.Text);
+    if Length(LogEntry.ExceptionData) > 0 then
+      AddLine(SB, 'Stack', LineEnding + LogEntry.ExceptionData);
 
-    if Assigned(LogInfo.Properties) and (LogInfo.Properties.Count > 0) then
+    if Assigned(LogEntry.Properties) and (LogEntry.Properties.Count > 0) then
     begin
       AddLine(SB, 'Properties', ' ');
-      SB.AppendLine(LogInfo.GetPropertiesAsTextList());
+      SB.AppendLine(LogEntry.GetPropertiesAsTextList());
     end;
 
     //SB.AppendLine();
@@ -2222,35 +2327,35 @@ begin
 
 end;
 
-class function Logger.GetAsLine(LogInfo: ILogInfo): string;
+class function Logger.GetAsLine(const LogEntry: ILogEntry): string;
 var
   SB       : TAnsiStringBuilder;
 begin
   SB := TAnsiStringBuilder.Create('');
   try
-    SB.Append(Logger.RPad(LogInfo.Id, FLineLengths['Id']));
-    SB.Append(Logger.RPad(LogInfo.TimeStampText, FLineLengths['TimeStamp']));
-    SB.Append(Logger.RPad(LogInfo.Host, FLineLengths['Host']));
-    SB.Append(Logger.RPad(LogInfo.User, FLineLengths['User']));
-    SB.Append(Logger.RPad(LogInfo.LevelText, FLineLengths['Level']));
-    SB.Append(Logger.RPad(LogInfo.EventId, FLineLengths['EventId']));
-    SB.Append(Logger.RPad(LogInfo.Source, FLineLengths['Source']));
-    SB.Append(Logger.RPad(LogInfo.ScopeId, FLineLengths['Scope']));
+    SB.Append(Logger.RPad(LogEntry.Id, FLineLengths['Id']));
+    SB.Append(Logger.RPad(LogEntry.TimeStampText, FLineLengths['TimeStamp']));
+    SB.Append(Logger.RPad(LogEntry.Host, FLineLengths['Host']));
+    SB.Append(Logger.RPad(LogEntry.User, FLineLengths['User']));
+    SB.Append(Logger.RPad(LogEntry.LevelText, FLineLengths['Level']));
+    SB.Append(Logger.RPad(LogEntry.EventId, FLineLengths['EventId']));
+    SB.Append(Logger.RPad(LogEntry.Source, FLineLengths['Source']));
+    SB.Append(Logger.RPad(LogEntry.ScopeId, FLineLengths['Scope']));
 
-    if Length(LogInfo.Text) > 0 then
-       SB.Append(Logger.RemoveLineEndings(LogInfo.Text));
+    if Length(LogEntry.Text) > 0 then
+       SB.Append(Logger.RemoveLineEndings(LogEntry.Text));
 
-    if Length(LogInfo.ExceptionData) > 0 then
-        SB.Append(Logger.RemoveLineEndings(LogInfo.ExceptionData));
+    if Length(LogEntry.ExceptionData) > 0 then
+        SB.Append(Logger.RemoveLineEndings(LogEntry.ExceptionData));
 
     //SB.AppendLine();
 
     Result := SB.ToString();
 
-    if Assigned(LogInfo.Properties) and (LogInfo.Properties.Count > 0) then
+    if Assigned(LogEntry.Properties) and (LogEntry.Properties.Count > 0) then
     begin
       Result += ' - Properties: ';
-      Result += LogInfo.GetPropertiesAsSingleLine();
+      Result += LogEntry.GetPropertiesAsSingleLine();
     end;
   finally
     SB.Free();
@@ -2280,7 +2385,7 @@ begin
   end;
 end;
 
-class procedure Logger.Log(const Info: ILogInfo);
+class procedure Logger.Log(const Entry: ILogEntry);
 var
   i          : Integer;
   Listener   : TLogListener;
@@ -2289,28 +2394,35 @@ var
 begin
   Lock();
   try
-    InfoLevel := Info.Level;
-    if Active and (FMinLevel <> TLogLevel.loNone) and (Ord(InfoLevel) >= Ord(FMinLevel)) then
+    InfoLevel := Entry.Level;
+    if Active and (MinLevel <> TLogLevel.loNone) and (Ord(InfoLevel) >= Ord(MinLevel)) then
     begin
       for i := 0 to FListeners.Count - 1 do
       begin
         Listener := TLogListener(FListeners[i]);
-        LogJob   := TLogJob.Create(Listener, Info);
+        LogJob   := TLogJob.Create(Listener, Entry);
         FSafeList.Push(LogJob);
       end;
     end;
   finally
     UnLock();
   end;
-
 end;
 
 class procedure Logger.Log(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary);
 var
-  LogInfo: ILogInfo;
+  LogEntry: ILogEntry;
 begin
-  LogInfo := TLogInfo.Create(Source, ScopeId, EventId, Level, Exception_, Text, Params);
-  Log(LogInfo);
+  Lock();
+  try
+    if Active and (MinLevel <> TLogLevel.loNone) and (Ord(Level) >= Ord(MinLevel)) then
+    begin
+      LogEntry := TLogEntry.Create(Source, ScopeId, EventId, Level, Exception_, Text, Params);
+      Log(LogEntry);
+    end;
+  finally
+    UnLock();
+  end;
 end;
 
 class procedure Logger.Debug(Source, ScopeId, EventId, Text: string);
@@ -2404,6 +2516,55 @@ var
   Exception_: Exception;
 begin
   Level       := loInfo;
+  Exception_  := nil;
+  EventId     := '0';
+  ScopeId     := '';
+  Source      := '';
+
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
+end;
+
+class procedure Logger.Warning(Source, ScopeId, EventId, Text: string);
+var
+  Level: TLogLevel; Exception_: Exception;
+begin
+  Level       := loWarning;
+  Exception_  := nil;
+
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
+end;
+
+class procedure Logger.Warning(Source, EventId, Text: string);
+var
+  ScopeId: string; Level: TLogLevel; Exception_: Exception;
+begin
+  Level       := loWarning;
+  Exception_  := nil;
+  EventId     := '0';
+  ScopeId     := '';
+
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
+end;
+
+class procedure Logger.Warning(Source, Text: string);
+var
+  ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception;
+begin
+  Level       := loWarning;
+  Exception_  := nil;
+  EventId     := '0';
+  ScopeId     := '';
+
+  Log(Source, ScopeId, EventId, Level, Exception_, Text, nil);
+end;
+
+class procedure Logger.Warning(Text: string);
+var
+  Source, ScopeId, EventId: string;
+  Level: TLogLevel;
+  Exception_: Exception;
+begin
+  Level       := loWarning;
   Exception_  := nil;
   EventId     := '0';
   ScopeId     := '';
