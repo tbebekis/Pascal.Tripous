@@ -1,5 +1,5 @@
 unit frm_MainForm;
-
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses
@@ -85,7 +85,7 @@ begin
   FFileLogListener := TFileLogListener.Create();
   FFormLogListener := TFormLogListener.Create();
   FDbLogListener   := TDbLogListener.CreateSQLite();
-  FDbLogListener.RetainDays := 1;
+
 
   lblLogFolder.Caption := Format('Error logs are saved at folder: %s ', [Logger.LogFolder]);
 end;

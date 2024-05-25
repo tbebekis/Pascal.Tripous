@@ -153,23 +153,39 @@ type
     property Active: Boolean read GetActive write SetActive;
   end;
 
-
   { TLogListener }
   { A TLogListener automatically adds itself to Logger.Listeners when created
     and automatically removes itself from Logger.Listeners when destroyed. }
   TLogListener = class
   protected
-    FLock         : SyncObjs.TCriticalSection;
-    FLockCount    : Integer;
+    FLock                   : SyncObjs.TCriticalSection;
+    FLockCount              : Integer;
+    FRetainDays             : Integer;
+    FRetainSizeKiloBytes    : SizeInt;
+    FRetainPolicyCounter    : Integer;
 
     procedure Lock();
     procedure UnLock();
 
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
     procedure ProcessLog(const Info: ILogInfo); virtual; abstract;
+
+    function  GetRetainDays: Integer; virtual;
+    procedure SetRetainDays(Value: Integer); virtual;
+    function  GetRetainSizeKiloBytes: SizeInt; virtual;
+    procedure SetRetainSizeKiloBytes(Value: SizeInt); virtual;
+    function  GetRetainPolicyCounter: Integer; virtual;
+    procedure SetRetainPolicyCounter(Value: Integer); virtual;
   public
     constructor Create();
     destructor Destroy(); override;
+
+    // Retain policy. How many days to retain in the database. Defaults to 7
+    property RetainDays          : Integer read GetRetainDays write SetRetainDays;
+    // Retain policy. How many KB to allow a single log file to grow. Defaults to 512 KB
+    property RetainSizeKiloBytes : SizeInt read GetRetainSizeKiloBytes write SetRetainSizeKiloBytes;
+    // After how many writes to check whether it is time to apply the retain policy. Defaults to 100
+    property RetainPolicyCounter: Integer read GetRetainPolicyCounter write SetRetainPolicyCounter;
   end;
 
   { TFormLogListener }
@@ -204,11 +220,16 @@ type
   TFileLogListener = class(TLogListener)
   private
     FLogFile       : TWriteLineFile;
+    FCounter       : Integer;
+
+    procedure ApplyRetainPolicy();
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
     procedure ProcessLog(const Info: ILogInfo); override;
+
+    procedure SetRetainSizeKiloBytes(Value: SizeInt); override;
   public
-    constructor Create(FilePath: string = ''; MaxSizeInMB: SizeInt = 2);
+    constructor Create(FilePath: string = '');
     destructor Destroy(); override;
   end;
 
@@ -219,19 +240,16 @@ type
     Trans                 : TSQLTransaction;
     Q                     : TSQLQuery;
     FSafeList             : TSafeObjectList;
-    FRetainDays           : Integer;
-    FRetainPolicyCounter  : Integer;
     FCounter              : Integer;
 
-    function  GetRetainDays: Integer;
-    function  GetRetainPolicyCounter: Integer;
+
     procedure PrepareSQLite3Connection();
     procedure ApplyRetainPolicy();
+    procedure CallLogProc();
+    procedure Log(LogRecord: TLogRecord);
   protected
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
     procedure ProcessLog(const Info: ILogInfo); override;
-    procedure CallLogProc();
-    procedure Log(LogRecord: TLogRecord);
   public
     constructor Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
     constructor CreateSQLite(DatabaseName: string = 'LogDB.db3');
@@ -240,11 +258,6 @@ type
     // Returns the "CREATE TABLE" statement for the log table.
     // The caller has to pass the right text blob type depending on the database. For Firebird is BLOB SUB_TYPE TEXT
     class function GetCreateTableSql(TextBlobType: string): string;
-
-    // Retain policy. How many days to retain in the database. Defaults to 7
-    property RetainDays  : Integer read GetRetainDays write FRetainDays;
-    // After how many writes to check whether it is time to apply the retain policy. Defaults to 100
-    property RetainPolicyCounter: Integer read GetRetainPolicyCounter write FRetainPolicyCounter;
   end;
 
   { TLogToMainThreadListener }
@@ -292,7 +305,7 @@ type
 
   { Logger }
   Logger = class
-  private class var
+ class var
     FActive          : Integer;
     FLogFolder       : string;
     FLock            : SyncObjs.TCriticalSection;
@@ -303,8 +316,14 @@ type
     FLogThread       : TThread;
     FLogJobThreadTerminated: Boolean;
     FLineLengths     : TLogPropLengthDictionary;
+    FRetainDays          : Integer;
+    FRetainSizeKiloBytes : SizeInt;
+    FRetainPolicyCounter : Integer;
 
     class function GetActive: Boolean; static;
+    class function GetRetainDays: Integer; static;
+    class function GetRetainPolicyCounter: Integer; static;
+    class function GetRetainSizeKiloBytes: SizeInt; static;
     class procedure SetActive(Value: Boolean); static;
     class function GetMinLevel: TLogLevel; static;
     class procedure SetMinLevel(Value: TLogLevel); static;
@@ -363,6 +382,13 @@ type
     class property Active: Boolean read GetActive write SetActive;
     class property LogFolder: string read GetLogFolder write FLogFolder;
     class property MinLevel: TLogLevel read GetMinLevel write SetMinLevel;
+
+    // Retain policy. How many days to retain in the database. Defaults to 7
+    class property RetainDays          : Integer read GetRetainDays write FRetainDays;
+    // Retain policy. How many KB to allow a single log file to grow. Defaults to 512 KB
+    class property RetainSizeKiloBytes : SizeInt read GetRetainSizeKiloBytes write FRetainSizeKiloBytes;
+    // After how many writes to check whether it is time to apply the retain policy. Defaults to 100
+    class property RetainPolicyCounter: Integer read GetRetainPolicyCounter write FRetainPolicyCounter;
   end;
 
 
@@ -1020,6 +1046,10 @@ constructor TLogListener.Create();
 begin
   inherited Create();
   FLock        := SyncObjs.TCriticalSection.Create();
+
+  FRetainDays           := Logger.RetainDays;
+  FRetainSizeKiloBytes  := Logger.RetainSizeKiloBytes;
+
   Logger.Add(Self);
 end;
 
@@ -1028,6 +1058,45 @@ begin
   Logger.Remove(Self);
   FLock.Free();
   inherited Destroy;
+end;
+
+function TLogListener.GetRetainDays: Integer;
+begin
+  if FRetainDays >= Logger.RetainDays then
+    Result := FRetainDays
+  else
+    Result := Logger.RetainDays;
+end;
+
+procedure TLogListener.SetRetainDays(Value: Integer);
+begin
+  FRetainDays := Value;
+end;
+
+function TLogListener.GetRetainSizeKiloBytes: SizeInt;
+begin
+  if FRetainSizeKiloBytes >= Logger.RetainSizeKiloBytes then
+    Result := FRetainSizeKiloBytes
+  else
+    Result := Logger.RetainSizeKiloBytes;
+end;
+
+procedure TLogListener.SetRetainSizeKiloBytes(Value: SizeInt);
+begin
+  FRetainSizeKiloBytes := Value;
+end;
+
+function TLogListener.GetRetainPolicyCounter: Integer;
+begin
+  if FRetainPolicyCounter >= Logger.RetainPolicyCounter then
+    Result := FRetainPolicyCounter
+  else
+    Result := Logger.RetainPolicyCounter;
+end;
+
+procedure TLogListener.SetRetainPolicyCounter(Value: Integer);
+begin
+  FRetainPolicyCounter := Value;
 end;
 
 procedure TLogListener.Lock;
@@ -1422,14 +1491,14 @@ end;
 
 
 { TLogFileListener }
-constructor TFileLogListener.Create(FilePath: string; MaxSizeInMB: SizeInt);
+constructor TFileLogListener.Create(FilePath: string);
 var
   ColumnLine : string;
 begin
   inherited Create();
 
   ColumnLine := Logger.GetLineCaptions();
-  FLogFile   := TWriteLineFile.Create(FilePath, ColumnLine, MaxSizeInMB);
+  FLogFile   := TWriteLineFile.Create(FilePath, ColumnLine);
 end;
 
 destructor TFileLogListener.Destroy;
@@ -1444,6 +1513,24 @@ var
 begin
   Line := Logger.GetAsLine(Info);
   FLogFile.WriteLine(Line);
+
+  Inc(FCounter);
+  ApplyRetainPolicy();
+end;
+
+procedure TFileLogListener.SetRetainSizeKiloBytes(Value: SizeInt);
+begin
+  FRetainSizeKiloBytes := Value;
+  FLogFile.RetainSizeKiloBytes := GetRetainSizeKiloBytes();
+end;
+
+procedure TFileLogListener.ApplyRetainPolicy();
+begin
+  if FCounter > RetainPolicyCounter then
+  begin
+    FCounter := 0;
+    FLogFile.DeleteFilesOlderThan(RetainDays);
+  end;
 end;
 
 
@@ -1451,8 +1538,6 @@ end;
 constructor TDbLogListener.Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
 begin
   inherited Create();
-
-  FRetainDays := 7;
 
   FSafeList := TSafeObjectList.Create(True);
 
@@ -1491,6 +1576,9 @@ procedure TDbLogListener.Log(LogRecord: TLogRecord);
 var
   InsertSql : string;
 begin
+  Inc(FCounter);
+
+
   InsertSql :=
   'insert into AppLog (    ' +
   '   Id                    ' +
@@ -1541,6 +1629,8 @@ begin
   finally
     Con.Close();
   end;
+
+  ApplyRetainPolicy();
 
 end;
 
@@ -1600,7 +1690,6 @@ var
   DT   : TDateTime;
   sDate: string;
 begin
-  Inc(FCounter);
   if FCounter > RetainPolicyCounter then
   begin
     FCounter := 0;
@@ -1611,7 +1700,7 @@ begin
       sDate := FormatDateTime('yyyy-mm-dd', DT);
 
       Q.SQL.Text := 'delete from AppLog where Date < :Date ';
-      Q.ParamByName('Date').AsString   := sDate        ;
+      Q.ParamByName('Date').AsString   := sDate;
 
       if not Trans.Active then;
          Trans.StartTransaction();
@@ -1625,21 +1714,6 @@ begin
 
   end;
 
-end;
-
-function TDbLogListener.GetRetainDays: Integer;
-begin
-  if FRetainDays >= 1 then
-    Result := FRetainDays
-  else
-    Result := 1;
-end;
-
-function TDbLogListener.GetRetainPolicyCounter: Integer;
-begin
-  if FRetainPolicyCounter < 10 then
-    FRetainPolicyCounter := 10;
-  Result := FRetainPolicyCounter;
 end;
 
 procedure TDbLogListener.ProcessLog(const Info: ILogInfo);
@@ -1658,7 +1732,7 @@ begin
     Log(LogRecord);
     LogRecord.Free();
 
-    ApplyRetainPolicy();
+
   end;
 end;
 
@@ -1857,6 +1931,30 @@ begin
   finally
     UnLock();
   end;
+end;
+
+class function Logger.GetRetainDays: Integer; static;
+begin
+  if FRetainDays >= 1 then
+    Result := FRetainDays
+  else
+    Result := 7;
+end;
+
+class function Logger.GetRetainSizeKiloBytes: SizeInt; static;
+begin
+  if FRetainSizeKiloBytes >= 512 then
+    Result := FRetainSizeKiloBytes
+  else
+    Result := 512;
+end;
+
+class function Logger.GetRetainPolicyCounter: Integer; static;
+begin
+  if FRetainPolicyCounter >= 100 then
+    Result := FRetainPolicyCounter
+  else
+    Result := 100;
 end;
 
 class procedure Logger.SetActive(Value: Boolean); static;

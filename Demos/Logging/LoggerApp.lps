@@ -10,7 +10,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="38" Y="19"/>
-        <UsageCount Value="94"/>
+        <UsageCount Value="98"/>
       </Unit>
       <Unit>
         <Filename Value="frm_mainform.pas"/>
@@ -19,9 +19,8 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
-        <TopLine Value="78"/>
-        <CursorPos X="37" Y="88"/>
-        <UsageCount Value="94"/>
+        <CursorPos X="34" Y="168"/>
+        <UsageCount Value="98"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -31,20 +30,29 @@
         <UnitName Value="Tripous.Logs"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="25"/>
-        <CursorPos X="24" Y="59"/>
-        <UsageCount Value="94"/>
+        <TopLine Value="156"/>
+        <CursorPos X="51" Y="172"/>
+        <UsageCount Value="98"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\tripous.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="986"/>
-        <CursorPos X="101" Y="1007"/>
-        <UsageCount Value="89"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="1040"/>
+        <CursorPos X="3" Y="1091"/>
+        <UsageCount Value="93"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="c_scopetest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="c_ScopeTest"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="40"/>
+        <CursorPos X="59" Y="63"/>
+        <UsageCount Value="46"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\lcl\forms.pp"/>
@@ -62,10 +70,10 @@
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\rtl-objpas\src\inc\dateutil.inc"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="1581"/>
-        <CursorPos X="43" Y="1597"/>
-        <UsageCount Value="10"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="290"/>
+        <CursorPos X="10" Y="368"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -246,10 +254,11 @@
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\systemh.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="326"/>
-        <CursorPos X="3" Y="347"/>
-        <UsageCount Value="3"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="458"/>
+        <CursorPos X="56" Y="466"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\text.inc"/>
@@ -532,142 +541,151 @@
         <UsageCount Value="8"/>
       </Unit>
       <Unit>
-        <Filename Value="c_scopetest.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="c_ScopeTest"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="40"/>
-        <CursorPos X="59" Y="63"/>
-        <UsageCount Value="42"/>
-      </Unit>
-      <Unit>
         <Filename Value="C:\lazarus\components\lazutils\lazsysutils.pas"/>
         <UnitName Value="LazSysUtils"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="47" Y="18"/>
         <UsageCount Value="12"/>
       </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\components\lazutils\fileutil.pas"/>
+        <UnitName Value="FileUtil"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="161"/>
+        <CursorPos X="22" Y="179"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\math.pp"/>
+        <UnitName Value="Math"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="129"/>
+        <CursorPos X="8" Y="144"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="247" Column="14" TopLine="232"/>
+        <Filename Value="..\..\tripous.pas"/>
+        <Caret Line="1107" TopLine="1092"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="227" Column="15" TopLine="211"/>
+        <Caret Line="1547" Column="46" TopLine="1534"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1630" Column="38" TopLine="1614"/>
+        <Caret Line="248" Column="24" TopLine="232"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="222" Column="16" TopLine="205"/>
+        <Caret Line="1701" Column="39" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="226" Column="28" TopLine="205"/>
+        <Caret Line="1698" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="245" Column="72" TopLine="220"/>
+        <Caret Line="1700" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1455" Column="13" TopLine="1429"/>
+        <Caret Line="1701" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1610" Column="41" TopLine="1584"/>
+        <Caret Line="1702" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1630" Column="38" TopLine="1604"/>
+        <Caret Line="1703" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1632" Column="17" TopLine="1606"/>
+        <Caret Line="1705" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1633" Column="26" TopLine="1607"/>
+        <Caret Line="1706" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1604" TopLine="1588"/>
+        <Caret Line="1708" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1602" TopLine="1588"/>
+        <Caret Line="1709" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1604" TopLine="1601"/>
+        <Caret Line="1710" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1606" TopLine="1600"/>
+        <Caret Line="1711" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1608" TopLine="1600"/>
+        <Caret Line="1713" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1609" TopLine="1600"/>
+        <Caret Line="1701" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1610" TopLine="1600"/>
+        <Caret Line="1699" Column="46" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1631" TopLine="1615"/>
+        <Caret Line="1710" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1632" TopLine="1615"/>
+        <Caret Line="1712" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1633" TopLine="1615"/>
+        <Caret Line="1713" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1610" Column="41" TopLine="1591"/>
+        <Caret Line="1714" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="245" Column="24" TopLine="229"/>
+        <Caret Line="1715" TopLine="1691"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1632" TopLine="1611"/>
+        <Caret Line="1717" TopLine="1694"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1606" TopLine="1590"/>
+        <Caret Line="1699" Column="22" TopLine="1694"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1608" TopLine="1590"/>
+        <Caret Line="1529" TopLine="1516"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1609" TopLine="1590"/>
+        <Caret Line="1688" Column="61" TopLine="1645"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1610" TopLine="1600"/>
+        <Caret Line="325" Column="27" TopLine="318"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1632" TopLine="1616"/>
+        <Caret Line="1937" Column="36" TopLine="1927"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.logs.pas"/>
-        <Caret Line="1647" Column="31" TopLine="1628"/>
+        <Caret Line="1939" Column="7" TopLine="1927"/>
       </Position>
     </JumpHistory>
     <RunParams>

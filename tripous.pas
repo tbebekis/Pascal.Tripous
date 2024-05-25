@@ -6,18 +6,21 @@ unit Tripous;
 interface
 
 uses
-    Classes
-  , SysUtils
-  , StrUtils
-  , Controls
-  , Graphics
-  , SyncObjs
-  , base64
-  , Variants
-  , TypInfo
-  , DB
-  , laz2_DOM
-  , LazSysUtils
+   Classes
+  ,SysUtils
+  ,StrUtils
+  ,DateUtils
+  ,FileUtil
+  ,LazSysUtils
+  ,Controls
+  ,Graphics
+  ,SyncObjs
+  ,base64
+  ,Variants
+  ,TypInfo
+  ,DB
+  ,laz2_DOM
+
   //, Laz2_XMLUtils
 
 
@@ -202,34 +205,38 @@ type
 
    { TWriteLineFile }
    TWriteLineFile = class
+   private
+     function GetRetainSizeKiloBytes: SizeInt;
    protected
-     FIsClosed        : Boolean;
-     F                : TextFile;
+     FIsClosed             : Boolean;
+     F                     : TextFile;
 
-     FFolder          : string;
-     FDefaultFileName : string;
-     FLastFileName    : string;
-     FColumnLine      : string;
+     FFolder               : string;
+     FDefaultFileName      : string;
+     FLastFileName         : string;
+     FColumnLine           : string;
 
-     FSize            : SizeInt;
-     FMaxSizeInMB     : SizeInt;
+     FSize                 : SizeInt;
+     FRetainSizeKiloBytes  : SizeInt;
 
      procedure BeginFile();
      procedure CreateFile(FilePath: string);
      procedure CloseFile();
    public
-     constructor Create(FilePath: string = ''; aColumnLine: string = ''; MaxSizeInMegaBytes: SizeInt = 1);
+     constructor Create(FilePath: string = ''; aColumnLine: string = '');
      destructor Destroy(); override;
 
      procedure WriteLine(Line: string);
+     procedure DeleteFilesOlderThan(Days: Integer = 1);
 
-     property Folder          : string read FFolder;
-     property DefaultFileName : string read FDefaultFileName;
-     property LastFileName    : string read FLastFileName;
-     property ColumnLine      : string read FColumnLine;
-     property Size            : SizeInt read FSize;
-     property MaxSizeInMB     : SizeInt read FMaxSizeInMB;
-     property IsClosed        : Boolean read FIsClosed;
+     property Folder               : string read FFolder;
+     property DefaultFileName      : string read FDefaultFileName;
+     property LastFileName         : string read FLastFileName;
+     property ColumnLine           : string read FColumnLine;
+     property Size                 : SizeInt read FSize;
+
+     property IsClosed             : Boolean read FIsClosed;
+     property RetainSizeKiloBytes  : SizeInt read GetRetainSizeKiloBytes write FRetainSizeKiloBytes;
    end;
 
   { Rtti }
@@ -960,7 +967,7 @@ end;
 
 
 { TWriteLineFile }
-constructor TWriteLineFile.Create(FilePath: string; aColumnLine: string; MaxSizeInMegaBytes: SizeInt);
+constructor TWriteLineFile.Create(FilePath: string; aColumnLine: string);
 begin
   inherited Create();
   FIsClosed := True;
@@ -980,11 +987,6 @@ begin
       FFolder := ExtractFilePath(ParamStr(0));
   end;
 
-  if MaxSizeInMegaBytes < 1 then
-     Self.FMaxSizeInMB := 5
-  else
-     Self.FMaxSizeInMB := MaxSizeInMegaBytes;
-
   FColumnLine := Trim(aColumnLine);
 
   // create the first file
@@ -995,6 +997,14 @@ destructor TWriteLineFile.Destroy;
 begin
   CloseFile();
   inherited Destroy;
+end;
+
+function TWriteLineFile.GetRetainSizeKiloBytes: SizeInt;
+begin
+  if FRetainSizeKiloBytes >= 512 then
+    Result := FRetainSizeKiloBytes
+  else
+    Result := 512;
 end;
 
 procedure TWriteLineFile.BeginFile();
@@ -1051,7 +1061,7 @@ begin
 
   if Length(Line) > 0 then
   begin
-    if (FSize > (1024 * 1024 * FMaxSizeInMB)) then
+    if (FSize > (1024 * RetainSizeKiloBytes)) then
        BeginFile();
 
     System.WriteLn(F, Line);
@@ -1059,6 +1069,52 @@ begin
     Flush(F);
   end;
 
+end;
+
+procedure TWriteLineFile.DeleteFilesOlderThan(Days: Integer);
+var
+  LastFilePath : string;
+  FilePath     : string;
+
+  FileList     : TStringList;
+  i            : Integer;
+
+  Age          : LongInt;
+
+  FileDT       : TDateTime;
+  NowDT        : TDateTime;
+
+  DaysDiff     : Integer;
+begin
+
+  LastFilePath := ConcatPaths([Folder, LastFileName]);
+
+  FileList := FindAllFiles(Folder, '*.*',  False);
+  try
+    i := FileList.IndexOf(LastFilePath);
+    if i <> -1 then
+       FileList.Delete(i);
+
+    NowDT := Now();
+    for i := 0 to FileList.Count - 1 do
+    begin
+      FilePath := FileList[i];
+
+      Age := FileAge(FilePath);
+      if Age <> -1 then
+      begin
+        FileDT   := FileDateToDateTime(Age);
+        DaysDiff := DaysBetween(NowDT, FileDT);
+        if DaysDiff > Days then
+        try
+          DeleteFile(FilePath);
+        except
+        end;
+      end;
+    end;
+  finally
+    FileList.Free();
+  end;
 end;
 
 
