@@ -75,7 +75,7 @@ Log information is produced by the `Logger` class, and further processed, if and
 
 ## The TLogEntry
 
-The `Log(...)` method examines the passed parameters and generates a unit of log information, an instance of a `TLogEntry` class.
+The `Logger.Log(...)` method examines the passed parameters and generates a unit of log information, an instance of a `TLogEntry` class.
 
 ```
   TLogEntry = class(TInterfacedObject, ILogEntry)
@@ -181,7 +181,7 @@ Here is the `Source`.
 
 The `Source` creates a `Default Scope` when it is created. The developer **never** gets a reference to a `Scope`.
 
-The developer may call `EnterScope()` passing a `Scope` name.
+The developer may call `EnterScope(...)` passing it a `Scope` name.
 
 The `ExitScope()` exits the last entered `Scope`. The `Default Scope` cannot exited.
 
@@ -213,7 +213,7 @@ end;
 
 A number of `Log()` methods, of the `Logger` class and the `ILogSource` interface, accept a parameter of type `IVariantDictionary`, under the name `Params`.
 
-And the `TLogEntry` class has a `Properties` property of type `IVariantDictionary`.
+Subsequently the `TLogEntry` class has a `Properties` property of type `IVariantDictionary`.
 
 An `IVariantDictionary` can be created using the `TVariantDictionary` class, found in `Tripous.pas` code unit.
 
@@ -246,7 +246,22 @@ An `IVariantDictionary` can be created using the `TVariantDictionary` class, fou
    end; 
 ```
 
-The `TVariantDictionary` is a dictionary-like class. It is safe to add a `Value` even when the `Key` does **not**  exist.
+The `TVariantDictionary` is a dictionary-like class. 
+
+It is an [enumerable](https://www.freepascal.org/docs-html/ref/refsu59.html) class, i.e. provides a `GetEnumerator()` method and thus it can be used in a `for .. in .. do` statement.
+
+The item type of the `TVariantDictionary` dictionary is the following.
+
+```
+   TKeyValue = class
+   public
+     Key : string;
+     Value : Variant;
+     constructor Create(AKey: string; AValue: Variant);
+   end;   
+```
+
+It is safe to use the `TVariantDictionary.Item[]` default array property in order to add a `Value` even when the `Key` does **not** already  exist.
 
 Here is an example of use along with a `Source`.
 
@@ -334,17 +349,17 @@ There is a list of predefined listener classes.
  
 ## Retain policy
 
-The `Logger` class provides 3 related properties
+The `Logger` class provides 3 properties regarding retain policy.
 
 - `RetainDays: Integer`. How many days to retain the log information in the storage medium. Defaults to 7.
 - `RetainSizeKiloBytes: SizeInt`. How many KB to allow a single log file to grow. Defaults to 512 KB.
 - `RetainPolicyCounter: Integer`. After how many log writes to check whether it is time to apply the retain policy. Defaults to 100.
 
-The `TLogListener` has the exact same properties. Its constructor uses the corresponding `Logger` properties as default values for its own properties.
+The `TLogListener` has the exact same properties. Its constructor uses the corresponding `Logger` properties as the get the default values for its own properties.
 
 A descendant `TLogListener` may or may not involve retain policy.
 
-The predefined log listeners respect these settings.
+The predefined log listeners respect these settings though.
 
 ## Demo application
 There is a demo application displaying 
