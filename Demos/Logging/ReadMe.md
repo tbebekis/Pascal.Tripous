@@ -48,6 +48,9 @@ That static `Logger` class provides a set of static log methods.
     class procedure Error(Source, EventId: string; Text: string);
     class procedure Error(EventId: string; Text: string);
     class procedure Error(Text: string); 
+
+    class property Active: Boolean read GetActive write SetActive;
+    class property MinLevel: TLogLevel read GetMinLevel write SetMinLevel;   	
   end; 
 ```
 
@@ -75,9 +78,9 @@ Log information is produced by the `Logger` class, and further processed, if and
 The `Log(...)` method examines the passed parameters and generates a unit of log information, an instance of a `TLogEntry` class.
 
 ```
-  TLogEntry = class(TInterfacedObject, ILogEntry)        
+  TLogEntry = class(TInterfacedObject, ILogEntry)
   public
-    constructor Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil); 
+    constructor Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IVariantDictionary = nil);
     destructor Destroy(); override;
 
     property Id: string read GetId;
@@ -88,19 +91,18 @@ The `Log(...)` method examines the passed parameters and generates a unit of log
     property Host: string read GetHost;
 
     property Level: TLogLevel read GetLevel;
-	property Source: string read GetSource;
-	property ScopeId: string read GetScopeId;
+    property Source: string read GetSource;
+    property ScopeId: string read GetScopeId;
     property EventId: string read GetEventId;
-    property Text: string read GetText;    
+    property Text: string read GetText;
     property Exception_ : Exception read GetException;
-
-	property Properties: IVariantDictionary read GetProperties;    
-  end;   
+    property Properties: IVariantDictionary read GetProperties;    
+  end;  
 ```
 
 ## The TLogListener(s)
 
-Then the `Logger` class passes **asynchronously**, meaning **using a thread**, that newly created `TLogEntry` instance to a number of registered log listeners for further processing. 
+Then the `Logger` class passes that newly created `TLogEntry` instance to a number of registered log listeners for further processing, **asynchronously**, meaning **using a thread**. 
 
 The `Logger` static class keeps a list of registered log listeners and calls them when a new `TLogEntry` is created, passing the enty.
 
@@ -325,7 +327,7 @@ OrderId = 123
 There is a list of predefined listener classes.
 
 - `TFileLogListener`. Writes log information to a log (text) file. Each `TLogEntry` occupies a single line of text. The first line contains the captions.
-- `TDbLogListener`. Writes log information to a database table. Any database supported by Lazarus [SqlDB](https://wiki.freepascal.org/SQLdb_Tutorial1) may used.
+- `TSqlDbLogListener`. Writes log information to a database table. Any database supported by Lazarus [SqlDB](https://wiki.freepascal.org/SQLdb_Tutorial1) may used.
 - `TFormLogListener`. Shows a `TForm` when created where it displays log information in a memo and in a grid.
 - `TLogTextListener`. Passes log information, as list of text lines, to a callback method.
 - `TLogLineListener`. Passes log information, as a single line of text, to a callback method.

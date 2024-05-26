@@ -26,7 +26,7 @@ type
     FLogListener: TLogListener;
     FFileLogListener: TFileLogListener;
     FFormLogListener: TFormLogListener;
-    FDbLogListener: TDbLogListener;
+    FDbLogListener: TSqlDbLogListener;
 
     procedure AnyClick(Sender: TObject);
     function GetLogText(): string;
@@ -78,13 +78,13 @@ begin
        which synchronizes updates to MainThread controls
     3. The TFormLogListener shows a Form in the upper right screen corner
        where it displays log information
-    4. The TDbLogListener saves log information in a database.
+    4. The TSqlDbLogListener saves log information in a database.
        Using the CreateSQLite() it makes it to use a SQLite database,
        so the property sqlite3.dll should be in the project folder. }
   FLogListener     := TLogTextListener.Create(Addr(LogProc));
   FFileLogListener := TFileLogListener.Create();
   FFormLogListener := TFormLogListener.Create();
-  FDbLogListener   := TDbLogListener.CreateSQLite();
+  FDbLogListener   := TSqlDbLogListener.CreateSQLite();
 
 
   lblLogFolder.Caption := Format('Error logs are saved at folder: %s ', [Logger.LogFolder]);

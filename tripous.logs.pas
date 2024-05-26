@@ -267,8 +267,8 @@ type
     destructor Destroy(); override;
   end;
 
-  { TDbLogListener }
-  TDbLogListener = class(TLogListener)
+  { TSqlDbLogListener }
+  TSqlDbLogListener = class(TLogListener)
   private
     Con                   : TSQLConnector;
     Trans                 : TSQLTransaction;
@@ -533,10 +533,10 @@ type
 
     property Level: TLogLevel read GetLevel;
     property LevelText: string read GetLevelText;
+    property Source: string read GetSource;
+    property ScopeId: string read GetScopeId;
     property EventId: string read GetEventId;
     property Text: string read GetText;
-    property ScopeId: string read GetScopeId;
-    property Source: string read GetSource;
     property Exception_ : Exception read GetException;
     property ExceptionData: string read GetExceptionData;
     property Properties: IVariantDictionary read GetProperties;
@@ -1246,14 +1246,13 @@ const
   SDfm =
     'object LogDialog: TLogForm                               ' +
     '  Left = 396                                               ' +
-    '  Height = 204                                             ' +
+    '  Height = 360                                             ' +
     '  Top = 200                                                ' +
     '  Width = 711                                              ' +
     '  Caption = ''LogDialog''                                  ' +
     '  ClientHeight = 343                                       ' +
     '  ClientWidth = 711                                        ' +
     '  FormStyle = fsStayOnTop                                  ' +
-   // '  Position = poMainFormCenter                              ' +
     '  ShowInTaskBar = stNever                                  ' +
     '  object Pager: TPageControl                               ' +
     '    Left = 0                                               ' +
@@ -1325,7 +1324,7 @@ const
     '      end                                                  ' +
     '      object Grid: TDBGrid                                 ' +
     '        Left = 0                                           ' +
-    '        Height = 79                                       ' +
+    '        Height = 140                                       ' +
     '        Top = 28                                           ' +
     '        Width = 703                                        ' +
     '        Align = alTop                                      ' +
@@ -1627,8 +1626,8 @@ begin
 end;
 
 
-{ TDbLogListener }
-constructor TDbLogListener.Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
+{ TSqlDbLogListener }
+constructor TSqlDbLogListener.Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
 begin
   inherited Create();
 
@@ -1651,12 +1650,12 @@ begin
   PrepareSQLite3Connection();
 end;
 
-constructor TDbLogListener.CreateSQLite(DatabaseName: string);
+constructor TSqlDbLogListener.CreateSQLite(DatabaseName: string);
 begin
   Create('SQLite3', 'localhost', DatabaseName, '', '');
 end;
 
-destructor TDbLogListener.Destroy;
+destructor TSqlDbLogListener.Destroy;
 begin
   Q.Free();
   Trans.Free();
@@ -1665,7 +1664,7 @@ begin
   inherited Destroy();
 end;
 
-procedure TDbLogListener.Log(LogRecord: TLogRecord);
+procedure TSqlDbLogListener.Log(LogRecord: TLogRecord);
 var
   InsertSql : string;
 begin
@@ -1726,7 +1725,7 @@ begin
 
 end;
 
-class function TDbLogListener.GetCreateTableSql(TextBlobType: string): string;
+class function TSqlDbLogListener.GetCreateTableSql(TextBlobType: string): string;
 begin
   Result :=
   'create table AppLog (                   ' +
@@ -1746,7 +1745,7 @@ begin
   Result := Format(Result, [TextBlobType]);
 end;
 
-procedure TDbLogListener.PrepareSQLite3Connection();
+procedure TSqlDbLogListener.PrepareSQLite3Connection();
 var
   SQLite3Con: TSQLite3Connection;
   SQLiteTrans : TSQLTransaction;
@@ -1777,7 +1776,7 @@ begin
   end;
 end;
 
-procedure TDbLogListener.ApplyRetainPolicy();
+procedure TSqlDbLogListener.ApplyRetainPolicy();
 var
   DT   : TDateTime;
   sDate: string;
@@ -1808,13 +1807,13 @@ begin
 
 end;
 
-procedure TDbLogListener.ProcessLog(const Entry: ILogEntry);
+procedure TSqlDbLogListener.ProcessLog(const Entry: ILogEntry);
 begin
   FSafeList.Push(TLogRecord.Create(Entry));
   TThread.Synchronize(TThread.CurrentThread, Addr(CallLogProc));
 end;
 
-procedure TDbLogListener.CallLogProc();
+procedure TSqlDbLogListener.CallLogProc();
 var
   LogRecord: TLogRecord;
 begin
