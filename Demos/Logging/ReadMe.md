@@ -355,7 +355,7 @@ The `Logger` class provides 3 properties regarding retain policy.
 - `RetainSizeKiloBytes: SizeInt`. How many KB to allow a single log file to grow. Defaults to 512 KB.
 - `RetainPolicyCounter: Integer`. After how many log writes to check whether it is time to apply the retain policy. Defaults to 100.
 
-The `TLogListener` has the exact same properties. Its constructor uses the corresponding `Logger` properties as the get the default values for its own properties.
+The `TLogListener` has the exact same properties. Its constructor uses the corresponding `Logger` properties in order to get the default values for its own properties.
 
 A descendant `TLogListener` may or may not involve retain policy.
 
