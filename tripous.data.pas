@@ -19,24 +19,7 @@ type
 
    TSetOfFieldType    = set of TFieldType;
 
-  { TBufTable }
-  TBufTable = class(TBufDataset)
-  private
-    FTableName : string;
-    FFixedSource : TDataSource;
-  protected
-    procedure LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField); override;
 
-    procedure SetActive (Value : Boolean); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-
-    procedure SaveToFileXml(FilePath: string);
-
-    { properties }
-    property TableName   : string read FTableName write FTableName;
-    property FixedSource : TDataSource read FFixedSource;
-  end;
 
   { DbSys }
   DbSys = class
@@ -106,40 +89,7 @@ type
 
 implementation
 
-uses
-   XMLDatapacketReader
-   ;
 
-
-{ TBufTable }
-
-constructor TBufTable.Create(AOwner: TComponent);
-begin
-  inherited;
-  FFixedSource := TDataSource.Create(Self);
-  FFixedSource.Dataset := Self;
-end;
-
-procedure TBufTable.SaveToFileXml(FilePath: string);
-begin
-  SaveToFile(FilePath, dfXMLUTF8);
-end;
-
-procedure TBufTable.LoadBlobIntoBuffer(FieldDef: TFieldDef;  ABlobBuf: PBufBlobField);
-begin
-  if Assigned(FieldDef) and Assigned(ABlobBuf) then
-  begin
-    //  do nothing. The LoadBlobIntoBuffer() is called by the GetNextPacket() only.
-  end;
-end;
-
-procedure TBufTable.SetActive(Value: Boolean);
-begin
-  if (Value and (Fields.Count = 0) and (FieldDefs.Count > 0)) then
-     CreateDataset();
-
-  inherited SetActive(Value);
-end;
 
 
 

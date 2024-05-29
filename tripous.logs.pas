@@ -225,16 +225,7 @@ type
   { TFormLogListener }
   TFormLogListener = class(TLogListener)
   private
-    type
-    { TLogTable }
-    TLogTable = class(TBufDataset)
-    protected
-      procedure LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField); override;
-    public
-      constructor Create(AOwner: TComponent); override;
-    end;
-  private
-    FLogTable   : TLogTable;
+    FLogTable   : TBufTable;
     FDS         : TDatasource;
     FLogForm    : TForm;
     FSafeList   : TSafeObjectList;
@@ -1459,16 +1450,6 @@ end;
 
 
 
-{ TFormLogListener.TLogTable }
-constructor TFormLogListener.TLogTable.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-end;
-
-procedure TFormLogListener.TLogTable.LoadBlobIntoBuffer(FieldDef: TFieldDef; ABlobBuf: PBufBlobField);
-begin
-  { nothing }
-end;
 
 
 
@@ -1482,7 +1463,7 @@ var
 begin
   inherited Create();
   FSafeList := TSafeObjectList.Create(True);
-  FLogTable := TLogTable.Create(nil);
+  FLogTable := TBufTable.Create(nil);
 
   FLogTable.FieldDefs.Add('Date'    , ftString, 12);
   FLogTable.FieldDefs.Add('Time'    , ftString, 12);
@@ -1678,6 +1659,7 @@ begin
   '  ,Time                  ' +
   '  ,UserName              ' +
   '  ,HostName              ' +
+  '  ,Level                 ' +
   '  ,Source                ' +
   '  ,Scope                 ' +
   '  ,EventId               ' +
@@ -1689,6 +1671,7 @@ begin
   '  , :Time                ' +
   '  , :UserName            ' +
   '  , :HostName            ' +
+  '  , :Level               ' +
   '  , :Source              ' +
   '  , :Scope               ' +
   '  , :EventId             ' +
@@ -1706,6 +1689,7 @@ begin
     Q.ParamByName('Time'       ).AsString   := LogRecord.Time        ;
     Q.ParamByName('UserName'   ).AsString   := LogRecord.User        ;
     Q.ParamByName('HostName'   ).AsString   := LogRecord.Host        ;
+    Q.ParamByName('Level'      ).AsString   := LogRecord.Level       ;
     Q.ParamByName('Source'     ).AsString   := LogRecord.Source      ;
     Q.ParamByName('Scope'      ).AsString   := LogRecord.Scope       ;
     Q.ParamByName('EventId'    ).AsString   := LogRecord.EventId     ;
@@ -1735,6 +1719,7 @@ begin
   '  ,Time       nvarchar(12) not null     ' +
   '  ,UserName   nvarchar(32)              ' +
   '  ,HostName   nvarchar(32)              ' +
+  '  ,Level      nvarchar(32)              ' +
   '  ,Source     nvarchar(128)             ' +
   '  ,Scope      nvarchar(128)             ' +
   '  ,EventId    nvarchar(128)             ' +
