@@ -7,7 +7,7 @@ object MainForm: TMainForm
   ClientHeight = 441
   ClientWidth = 651
   Position = poScreenCenter
-  LCLVersion = '3.2.0.0'
+  LCLVersion = '3.4.0.0'
   object btnTest: TButton
     Left = 16
     Height = 25

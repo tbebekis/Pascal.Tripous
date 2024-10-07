@@ -16,10 +16,26 @@ uses
   ;
 
 type
-
    TSetOfFieldType    = set of TFieldType;
 
+   { TSqlConnectionInfo }
+   TSqlConnectionInfo = class(TCollectionItem)
+   private
+     FName: string;
+     FProvider: string;
+   public
+     constructor Create();
+   published
+     property Name: string read FName write FName;
+     property Provider: string read FProvider write FProvider;
+   end;
 
+   { TSqlConnectionInfoList }
+   TSqlConnectionInfoList = class(TCollection)
+   public
+     constructor Create();
+     procedure Add(Item: TSqlConnectionInfo);
+   end;
 
   { DbSys }
   DbSys = class
@@ -72,8 +88,6 @@ type
 
     class procedure ParamsAssign(Params: TParams; tblParams: TDataset); overload;
 
-
-
     { properties }
     class property StringFieldTypes  : TSetOfFieldType read GetStringFieldTypes;
     class property WideStringFieldTypes : TSetOfFieldType read GetWideStringFieldTypes;
@@ -82,12 +96,30 @@ type
     class property BCDFieldTypes : TSetOfFieldType read GetBCDFieldTypes;
     class property DateTimeFieldTypes : TSetOfFieldType read GetDateTimeFieldTypes;
     class property BlobFieldTypes  : TSetOfFieldType read GetBlobFieldTypess;
-
   end;
 
 
 
 implementation
+
+{ TSqlConnectionInfo }
+
+constructor TSqlConnectionInfo.Create();
+begin
+  inherited Create(nil);
+end;
+
+{ TSqlConnectionInfoList }
+
+constructor TSqlConnectionInfoList.Create();
+begin
+  inherited Create(TSqlConnectionInfo);
+end;
+
+procedure TSqlConnectionInfoList.Add(Item: TSqlConnectionInfo);
+begin
+  Item.Collection := Self;
+end;
 
 
 

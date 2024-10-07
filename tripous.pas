@@ -261,8 +261,8 @@ type
      property FixedSource : TDataSource read FFixedSource;
    end;
 
-  { Rtti }
-  Rtti = class
+  { Reflection }
+  Reflection = class
   public
     { info }
     class function  IsSameType(Info1, Info2: PTypeInfo): Boolean;
@@ -616,6 +616,41 @@ type
   end;
 
 
+  { TGenList }
+  generic TGenList<T> = class(TPersistent)     // generic TGenList<T: TPersistent> = class(TPersistent)
+  private
+    FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
+    FCount: SizeInt;
+    function GetCount: Integer;
+    function GetItem(Index: SizeInt): T;
+    function GetItemList: specialize TArray<T>;
+    procedure SetItem(Index: SizeInt; Item: T);
+  protected
+    function AdjustCapacityForItem(): SizeInt;  virtual;
+    function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
+  public
+    constructor Create(); virtual;
+    destructor Destroy(); override;
+
+    procedure Clear(); virtual;
+
+    function  Add(Item: T): Integer; virtual;
+    procedure Insert(Index: Integer; Item: T); virtual;
+    procedure Remove(Item: T); virtual;
+    procedure RemoveAt(Index: Integer); virtual;
+
+    procedure AddRange(constref Range: array of T); virtual;
+    procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
+
+    function Contains(Item: T): Boolean; virtual;
+    function IndexOf(Item: T): Integer; virtual;
+
+    property Count: Integer read GetCount;
+
+    property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+  //published
+  //  property ItemList: specialize TArray<T> read GetItemList write FItemList;
+  end;
 
 
 implementation
@@ -625,6 +660,7 @@ uses
   ,laz2_XMLWrite
   ,jsonscanner
   ,fpjson
+  //,jsonparser
   ,fpjsonrtti
   ,XMLDatapacketReader
 
@@ -1176,8 +1212,8 @@ end;
 
 
 
-{ Rtti }
-class function Rtti.IsSameType(Info1, Info2: PTypeInfo): Boolean;
+{ Reflection }
+class function Reflection.IsSameType(Info1, Info2: PTypeInfo): Boolean;
 begin
   if Info1 = Info2 then
     Result := True
@@ -1185,7 +1221,7 @@ begin
     Result := (Info1^.Kind = Info2^.Kind) and SameStr(Info1^.Name, Info2^.Name) and SameStr(UnitNameOf(Info1), UnitNameOf(Info2));
 end;
 
-class function Rtti.IsSubRange(Info: PTypeInfo): Boolean;
+class function Reflection.IsSubRange(Info: PTypeInfo): Boolean;
 var
   Data : PTypeData;
 begin
@@ -1200,7 +1236,7 @@ begin
   end;
 end;
 
-class function Rtti.IsOrdinal(Info: PTypeInfo): Boolean;
+class function Reflection.IsOrdinal(Info: PTypeInfo): Boolean;
 begin
   Result := Info^.Kind in [tkChar, tkBool, tkWChar, tkSet, tkEnumeration, tkInteger, tkInt64, tkQword];
 end;
@@ -1211,7 +1247,7 @@ end;
   WARNING: This function works by comparing the names (strings)
   of classes, NOT the pointers of the classes (class references)
 ----------------------------------------------------------------------------*)
-class function Rtti.InheritsFrom(Instance: TObject; const aClassName: string; InfoList: TStrings): Boolean;
+class function Reflection.InheritsFrom(Instance: TObject; const aClassName: string; InfoList: TStrings): Boolean;
 var
   C          : TClass;
   List       : TStringList;
@@ -1254,7 +1290,7 @@ begin
 
 end;
 
-class function Rtti.UnitNameOf(Info: PTypeInfo): string;
+class function Reflection.UnitNameOf(Info: PTypeInfo): string;
 {---------------------------------------------}
 function  EnumTypeUnitName(Info: PTypeInfo): string;
 var
@@ -1292,7 +1328,7 @@ begin
   end;
 end;
 
-class function Rtti.BaseOf(Info: PTypeInfo): PTypeInfo;
+class function Reflection.BaseOf(Info: PTypeInfo): PTypeInfo;
 var
   Data : PTypeData;
 begin
@@ -1317,7 +1353,7 @@ begin
 
 end;
 
-class function Rtti.TypeSizeOf(Info: PTypeInfo): Integer;
+class function Reflection.TypeSizeOf(Info: PTypeInfo): Integer;
 var
   Data: PTypeData;
 begin
@@ -1352,13 +1388,13 @@ begin
 
 end;
 
-class function Rtti.HasProperty(Instance: TObject; const PropertyName: string): Boolean;
+class function Reflection.HasProperty(Instance: TObject; const PropertyName: string): Boolean;
 begin
   Result := GetPropInfo(Instance.ClassInfo, PropertyName) <> nil;
 end;
 
 (*--------------------------------------------------------------------------------*)
-class function Rtti.SetValueToInt(Info: PTypeInfo; const SetVar): Integer;
+class function Reflection.SetValueToInt(Info: PTypeInfo; const SetVar): Integer;
 var
   BitShift   : Integer;
   TmpInt64   : Int64;
@@ -1381,7 +1417,7 @@ begin
   Move(TmpInt64, Result, ResBytes);
 end;
 (*--------------------------------------------------------------------------------*)
-class procedure Rtti.IntToSetValue(Info: PTypeInfo; var SetVar; const Value: Integer);
+class procedure Reflection.IntToSetValue(Info: PTypeInfo; var SetVar; const Value: Integer);
 var
   BitShift: Integer;
   TmpInt64: Int64;
@@ -1399,7 +1435,7 @@ begin
   Move(TmpInt64, SetVar, ResBytes);
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.SetValueToStr(Info: PTypeInfo; const SetVar; const Brackets: Boolean): string;
+class function Reflection.SetValueToStr(Info: PTypeInfo; const SetVar; const Brackets: Boolean): string;
 var
   Value     : TIntegerSet;
   EnumValue : 0..System.SizeOf(Integer) * 8 - 1;
@@ -1424,7 +1460,7 @@ begin
     Result := '[' + Result + ']';
 end;
 (*----------------------------------------------------------------------------*)
-class procedure Rtti.StrToSetValue(Info: PTypeInfo; var SetVar; const Value: string);
+class procedure Reflection.StrToSetValue(Info: PTypeInfo; var SetVar; const Value: string);
 const
   SInvalidSetStr = '''%s'' is not a valid set string';
 var
@@ -1469,7 +1505,7 @@ begin
 
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.SetLiteralsToStr(Info: PTypeInfo): string;
+class function Reflection.SetLiteralsToStr(Info: PTypeInfo): string;
 var
   i   : Integer;
   List : TStringList;
@@ -1487,7 +1523,7 @@ begin
 
 end;
 (*----------------------------------------------------------------------------*)
-class procedure Rtti.EnumTypeToList(Info: PTypeInfo; List: TStrings; PrefixCut: Integer);
+class procedure Reflection.EnumTypeToList(Info: PTypeInfo; List: TStrings; PrefixCut: Integer);
 var
  pTD : PTypeData;
  i   : integer;
@@ -1505,14 +1541,14 @@ begin
 
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EnumValueToStr(Info: PTypeInfo; Value: Integer; PrefixCut: Integer): string;
+class function Reflection.EnumValueToStr(Info: PTypeInfo; Value: Integer; PrefixCut: Integer): string;
 begin
   Result := GetEnumName(Info, Value);
   if  (PrefixCut <> 0) then
     Result := Copy(Result, PrefixCut + 1, Length(Result) - PrefixCut);
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EnumLiteralsMinIndex(Info: PTypeInfo): Integer;
+class function Reflection.EnumLiteralsMinIndex(Info: PTypeInfo): Integer;
 begin
   if (Info = TypeInfo(System.Boolean))  then
     Result := 0
@@ -1522,7 +1558,7 @@ begin
     Result := GetTypeData(Info)^.MinValue
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EnumLiteralsMaxIndex(Info: PTypeInfo): Integer;
+class function Reflection.EnumLiteralsMaxIndex(Info: PTypeInfo): Integer;
 begin
   if (Info = TypeInfo(System.Boolean))  then
     Result := 1
@@ -1539,7 +1575,7 @@ Ord(True) = 1	            Ord(True) <> 0
 Succ(False) = True	      Succ(False) = True
 Pred(True) = False	      Pred(False) = True
  ----------------------------------------------------------------------------*)
-class function Rtti.EnumLiteralsToStr(Info: PTypeInfo): string;
+class function Reflection.EnumLiteralsToStr(Info: PTypeInfo): string;
 var
  pData : PTypeData;
  i     : Integer;
@@ -1561,7 +1597,7 @@ begin
 
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EnumLiteralByIndex(Info: PTypeInfo; Index: Integer): string;
+class function Reflection.EnumLiteralByIndex(Info: PTypeInfo; Index: Integer): string;
 var
   pData : PTypeData;
   P     : PShortString;
@@ -1597,7 +1633,7 @@ begin
   end;
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EnumIndexOfLiteral(Info: PTypeInfo; const Name: string): Integer;
+class function Reflection.EnumIndexOfLiteral(Info: PTypeInfo; const Name: string): Integer;
 var
   Data : PTypeData;
 begin
@@ -1610,19 +1646,19 @@ begin
     Result := -1;
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.EventsEqual(A, B: TMethod): Boolean;
+class function Reflection.EventsEqual(A, B: TMethod): Boolean;
 begin
   Result := (A.Code = B.Code) and (A.Data = B.Data);
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.NotifyEventsEqual(A, B: TNotifyEvent): Boolean;
+class function Reflection.NotifyEventsEqual(A, B: TNotifyEvent): Boolean;
 begin
   Result := EventsEqual(TMethod(A), TMethod(B));
 end;
 (*----------------------------------------------------------------------------*)
 { replaces the event of an object with the event of another object.
   Returns the TMethod of the old event }
-class function Rtti.ReplaceEvent(TargetObject: TObject; TargetEventName: string; NewObject: TObject; NewEventName: string): TMethod;
+class function Reflection.ReplaceEvent(TargetObject: TObject; TargetEventName: string; NewObject: TObject; NewEventName: string): TMethod;
 var
   Method : TMethod;
 begin
@@ -1669,7 +1705,7 @@ end;
          Event;
      end;
 -------------------------------------------------------------------------------*)
-class function Rtti.ReplaceEvent2(TargetObject: TObject; TargetEventName: string; NewObject: TObject; NewEventMethod: Pointer): TMethod;
+class function Reflection.ReplaceEvent2(TargetObject: TObject; TargetEventName: string; NewObject: TObject; NewEventMethod: Pointer): TMethod;
 var
   Method   : TMethod;
   PropInfo : PPropInfo;
@@ -1691,7 +1727,7 @@ begin
   TypInfo.SetMethodProp(TargetObject, PropInfo, Method);
 end;
 
-class function Rtti.ComponentToString(Component: TComponent): string;
+class function Reflection.ComponentToString(Component: TComponent): string;
 var
   MS     : TMemoryStream;
   SS     : TStringStream;
@@ -1717,7 +1753,7 @@ begin
   end;
 end;
 (*----------------------------------------------------------------------------*)
-class function Rtti.StringToComponent(Owner: TComponent; Parent: TComponent; Component: TComponent; Value: string): TComponent;
+class function Reflection.StringToComponent(Owner: TComponent; Parent: TComponent; Component: TComponent; Value: string): TComponent;
 var
   SS     : TStringStream;
   MS     : TMemoryStream;
@@ -1746,7 +1782,7 @@ end;
 (*----------------------------------------------------------------------------
  Reads a text .dfm and creates the components of the Form
  ----------------------------------------------------------------------------*)
- class procedure Rtti.ReadFormTextResource(TextResource: string; Form: TComponent);
+ class procedure Reflection.ReadFormTextResource(TextResource: string; Form: TComponent);
 var
   SS     : TStringStream;
   MS     : TMemoryStream;
@@ -1763,7 +1799,7 @@ begin
     MS.Free;
   end;
 end;
-class procedure Rtti.CreatePascalFiles(Form: TComponent; aUnitName: string = '');
+class procedure Reflection.CreatePascalFiles(Form: TComponent; aUnitName: string = '');
 const
   cUnit =
           'unit %s;                                                                         ' + #13 +
@@ -1861,6 +1897,7 @@ var
   JsonData  : TJSONData;
 begin
   Streamer := TJSONStreamer.Create(nil);
+  Streamer.Options := Streamer.Options + [jsoUseFormatString];
   try
     Data := Streamer.ObjectToJSONString(Instance);
     JsonData := GetJSON(Data, true);
@@ -2317,7 +2354,7 @@ var
 begin
 
 
-  if Rtti.HasProperty(Table, 'TableName') then
+  if Reflection.HasProperty(Table, 'TableName') then
      Xml.SetAttr(TopNode, 'TableName', Xml.StrToXml(GetStrProp(Table, 'TableName')));
 
   Node := Xml.AddNode(TopNode, 'schema');
@@ -2422,7 +2459,7 @@ var
   FieldDef  : TFieldDef;
 begin
 
-  if Rtti.HasProperty(Table, 'TableName') and (GetStrProp(Table, 'TableName') = '') and (Xml.GetAttr(TopNode, 'TableName', '') <> '') then
+  if Reflection.HasProperty(Table, 'TableName') and (GetStrProp(Table, 'TableName') = '') and (Xml.GetAttr(TopNode, 'TableName', '') <> '') then
      SetStrProp(Table, 'TableName', (Xml.GetAttr(TopNode, 'TableName', '')));
 
 
@@ -2559,7 +2596,7 @@ var
 begin
   FS := Sys.InvariantFormatSettings;
 
-  if Rtti.HasProperty(Table, 'TableName')  and (GetStrProp(Table, 'TableName') = '') and (Xml.GetAttr(TopNode, 'TableName', '') <> '') then
+  if Reflection.HasProperty(Table, 'TableName')  and (GetStrProp(Table, 'TableName') = '') and (Xml.GetAttr(TopNode, 'TableName', '') <> '') then
     SetStrProp(Table, 'TableName', (Xml.GetAttr(TopNode, 'TableName', '')));
 
   Node  := TopNode.FindNode('data') as TDOMElement;
@@ -4478,6 +4515,146 @@ begin
     end;
     List.Delete(List.Count - 1);
   end;
+end;
+
+{ TGenList }
+
+function TGenList.GetCount: Integer;
+begin
+  Result := Length(FItems);
+end;
+
+function TGenList.GetItem(Index: SizeInt): T;
+begin
+  Result := FItems[Index];
+end;
+
+function TGenList.GetItemList: specialize TArray<T>;
+begin
+  Result := FItems;
+end;
+
+procedure TGenList.SetItem(Index: SizeInt; Item: T);
+begin
+  FItems[Index] := Item;
+end;
+
+function TGenList.AdjustCapacityForItem(): SizeInt;
+begin
+  Result := Length(FItems);
+
+  if (FCount < 4) and (Result < 4) then
+    SetLength(FItems, 4)
+  else if FCount = High(FCount) then
+    OutOfMemoryError()
+  else if FCount = Result then
+    SetLength(FItems, Result * 2);
+
+  Result := FCount;
+  Inc(FCount);
+end;
+
+function TGenList.AdjustCapacityForRange(RangeCount: SizeInt): SizeInt;
+begin
+  if RangeCount < 0 then
+    raise EArgumentOutOfRangeException.Create('Argument out of range');
+
+  if RangeCount = 0 then
+    Exit(FCount - 1);
+
+  if (FCount = 0) and (Length(FItems) = 0) then
+    SetLength(FItems, 4)
+  else if FCount = High(FCount) then
+    OutOfMemoryError();
+
+  Result := Length(FItems);
+  while Pred(FCount + RangeCount) >= Result do
+  begin
+    SetLength(FItems, Result * 2);
+    Result := Length(FItems);
+  end;
+
+  Result := FCount;
+  Inc(FCount, RangeCount);
+end;
+
+constructor TGenList.Create();
+begin
+  inherited Create();
+
+end;
+
+destructor TGenList.Destroy();
+begin
+  inherited Destroy();
+end;
+
+procedure TGenList.Clear();
+begin
+
+end;
+
+function TGenList.Add(Item: T): Integer;
+var
+  pInfo: PTypeInfo;
+begin
+  FItems := Concat(FItems, [Item]);
+  Result := Length(FItems);
+  pInfo := TypeInfo(Item);
+end;
+
+procedure TGenList.Insert(Index: Integer; Item: T);
+begin
+  System.Insert([Item], FItems, Index);
+end;
+
+procedure TGenList.Remove(Item: T);
+begin
+  RemoveAt(IndexOf(Item));
+end;
+
+procedure TGenList.RemoveAt(Index: Integer);
+begin
+  System.Delete(FItems, Index, 1);
+end;
+
+procedure TGenList.AddRange(constref Range: array of T);
+var
+  Item: T;
+begin
+  for Item in Range do
+    Add(Item);
+end;
+
+procedure TGenList.InsertRange(Index: SizeInt; constref Range: array of T);
+var
+  Item: T;
+  i: SizeInt;
+begin
+  i := 0;
+  for Item in Range do
+  begin
+    Insert(Index + i, Item);
+    Inc(i);
+  end;
+end;
+
+function TGenList.Contains(Item: T): Boolean;
+begin
+  Result := IndexOf(Item) <> -1;
+end;
+
+function TGenList.IndexOf(Item: T): Integer;
+var
+  i : Integer;
+begin
+  for i := Low(FItems) to High(FItems) do
+  begin
+    if FItems[i] = Item then
+      Exit(i);
+  end;
+
+  Exit(-1);
 end;
 
 
