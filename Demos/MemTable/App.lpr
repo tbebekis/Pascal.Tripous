@@ -5,15 +5,14 @@ program App;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF DEBUG}
-  SysUtils,
-  {$ENDIF}
-
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
   {$IFDEF HASAMIGA}
   athreads,
+  {$ENDIF}
+  {$IFDEF DEBUG}
+  SysUtils,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, frm_MainForm, frm_simpleform, o_App, frm_SortForm,
