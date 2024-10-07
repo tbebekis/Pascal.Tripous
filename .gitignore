@@ -4,3 +4,7 @@
 *.trc
 *.log
 *.lps
+sqlite3.dll
+SQLiteSpy.db3
+Data.XML
+Test.Xml
