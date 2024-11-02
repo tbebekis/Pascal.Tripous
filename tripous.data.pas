@@ -1,7 +1,7 @@
 unit Tripous.Data;
 
 {$mode objfpc}{$H+}
-
+{$WARN 5024 off : Parameter "$1" not used}
 interface
 
 uses
@@ -21,20 +21,52 @@ type
    { TSqlConnectionInfo }
    TSqlConnectionInfo = class(TCollectionItem)
    private
+     FAutoCreateGenerators: Boolean;
+     FConnectionString: string;
      FName: string;
      FProvider: string;
    public
-     constructor Create();
+     constructor Create(ACollection: TCollection = nil); override;
    published
      property Name: string read FName write FName;
      property Provider: string read FProvider write FProvider;
+     property ConnectionString: string read FConnectionString write FConnectionString;
+     property AutoCreateGenerators: Boolean read FAutoCreateGenerators write FAutoCreateGenerators;
    end;
 
    { TSqlConnectionInfoList }
-   TSqlConnectionInfoList = class(TCollection)
+   TSqlConnectionInfoList = class(TPersistent)
+   private
+     fSqlConnections: TCollection;
+     function GetCount: Integer;
+     function GetItem(Index: Integer): TSqlConnectionInfo;
    public
+     const DefaultFilePath = 'SqlConnections.json';
+
      constructor Create();
+     destructor Destroy(); override;
+
+     procedure Clear();
+
+     procedure Load(FilePath: string = DefaultFilePath);
+     procedure Save(FilePath: string = DefaultFilePath);
+
+     procedure Remove(Item: TSqlConnectionInfo);
      procedure Add(Item: TSqlConnectionInfo);
+
+     function  IndexOf(Item: TSqlConnectionInfo): Integer;
+     function  Contains(const Name: string): Boolean;
+     function  Find(const Name: string): TSqlConnectionInfo;
+
+     property Items[Index: Integer]: TSqlConnectionInfo read GetItem ; default;
+     property Count: Integer read GetCount;
+   published
+     property SqlConnections: TCollection read fSqlConnections write fSqlConnections;
+   end;
+
+   TSqlProvider = class
+   public
+     const MsSql = 'MsSql';
    end;
 
   { DbSys }
@@ -104,21 +136,95 @@ implementation
 
 { TSqlConnectionInfo }
 
-constructor TSqlConnectionInfo.Create();
+constructor TSqlConnectionInfo.Create(ACollection: TCollection);
 begin
-  inherited Create(nil);
+  inherited Create(ACollection);
 end;
 
 { TSqlConnectionInfoList }
 
+function TSqlConnectionInfoList.GetItem(Index: Integer): TSqlConnectionInfo;
+begin
+  Result := fSqlConnections.Items[Index] as TSqlConnectionInfo;
+end;
+
+function TSqlConnectionInfoList.GetCount: Integer;
+begin
+  Result := fSqlConnections.Count;
+end;
+
 constructor TSqlConnectionInfoList.Create();
 begin
-  inherited Create(TSqlConnectionInfo);
+  inherited Create();
+  fSqlConnections := TCollection.Create(TSqlConnectionInfo);
+end;
+
+destructor TSqlConnectionInfoList.Destroy();
+begin
+  fSqlConnections.Free();
+  inherited Destroy();
+end;
+
+procedure TSqlConnectionInfoList.Clear();
+begin
+  fSqlConnections.Clear();
+end;
+
+procedure TSqlConnectionInfoList.Load(FilePath: string);
+begin
+  //Clear();
+  Json.LoadFromFile(FilePath, Self);
+end;
+
+procedure TSqlConnectionInfoList.Save(FilePath: string);
+begin
+  Json.SaveToFile(FilePath, Self);
+end;
+
+procedure TSqlConnectionInfoList.Remove(Item: TSqlConnectionInfo);
+var
+  Index: Integer;
+begin
+  Index := IndexOf(Item);
+  if Index >= 0 then
+     fSqlConnections.Delete(Index);
 end;
 
 procedure TSqlConnectionInfoList.Add(Item: TSqlConnectionInfo);
 begin
-  Item.Collection := Self;
+  Item.Collection := fSqlConnections;
+end;
+
+function TSqlConnectionInfoList.IndexOf(Item: TSqlConnectionInfo): Integer;
+var
+  i : Integer;
+begin
+  Result := -1;
+  for i := 0 to fSqlConnections.Count - 1 do
+  begin
+    if Item = fSqlConnections.Items[i] then
+      exit(i);
+  end;
+end;
+
+function TSqlConnectionInfoList.Contains(const Name: string): Boolean;
+begin
+  Result := Find(Name) <> nil;
+end;
+
+function TSqlConnectionInfoList.Find(const Name: string): TSqlConnectionInfo;
+var
+  i : Integer;
+  ConInfo : TSqlConnectionInfo;
+begin
+  Result := nil;
+
+  for i := 0 to fSqlConnections.Count - 1 do
+  begin
+    ConInfo := fSqlConnections.Items[i] as TSqlConnectionInfo;
+    if AnsiSameText(Name, ConInfo.Name) then
+      exit(ConInfo);
+  end;
 end;
 
 

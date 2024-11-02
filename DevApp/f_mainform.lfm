@@ -16,25 +16,26 @@ object MainForm: TMainForm
     Caption = 'btnTest'
     TabOrder = 0
   end
-  object Grid: TDBGrid
-    Left = 66
-    Height = 260
-    Top = 137
-    Width = 520
-    Color = clWindow
-    Columns = <>
-    DataSource = dsGrid
+  object mmoLog: TMemo
+    Left = 121
+    Height = 271
+    Top = 112
+    Width = 446
+    Lines.Strings = (
+      '{'
+      '  "id"     : 123,               '
+      '  "obj"    : { "name": "Hello world!" },               '
+      '  "coll"   : [ { "name": "Object 1" }, { "name": "Object 2" } ],  '
+      '  "strings": [ "Hello 1", "Hello 2" ]                          '
+      '}'
+    )
     TabOrder = 1
   end
-  object dsGrid: TDataSource
-    Left = 40
-    Top = 75
-  end
-  object SQLQuery1: TSQLQuery
-    FieldDefs = <>
-    Params = <>
-    Macros = <>
-    Left = 147
-    Top = 76
+  object SQLConnector1: TSQLConnector
+    Connected = False
+    LoginPrompt = False
+    KeepConnection = False
+    Left = 112
+    Top = 8
   end
 end

@@ -2,7 +2,7 @@ unit f_MainForm;
 
 {$mode objfpc}
 {$H+}
-{$RTTI EXPLICIT FIELDS/PROPERTIES/METHODS([vcPrivate, vcProtected, vcPublic, vcPublished])}
+
 
 interface
 
@@ -41,9 +41,8 @@ type
 
   TMainForm = class(TForm)
     btnTest: TButton;
-    dsGrid: TDataSource;
-    Grid: TDBGrid;
-    SQLQuery1: TSQLQuery;
+    mmoLog: TMemo;
+    SQLConnector1: TSQLConnector;
   private
     tblPsw: TBufTable;
 
@@ -69,8 +68,11 @@ implementation
 {$R *.lfm}
 
 uses
-    fpjson,
-  jsonparser
+    fpjson
+    ,jsonscanner
+
+    //,jsonparser
+    ,fpjsonrtti
     ;
 
 const
@@ -80,32 +82,7 @@ const
 
 
 
-procedure XmlTest();
-var
-  Doc: TXMLDocument;
-  Node: TDOMNode;
-  S : string;
-begin
 
-    Doc := Xml.CreateDoc();
-    Node := Xml.AddNode(Doc.DocumentElement, 'First', True);
-
-    S := 'Ολα καλά' + LB + 'ki ola wraia';
-    Xml.SetCData(Doc.DocumentElement, 'Second', S);
-
-    //Xml.SetChild(Doc.DocumentElement, 'First', 'Paparia');
-    //S := Xml.GetNodeValue(Node, '');
-    //ShowMessage(S);
-
-    //TDOMElement(Node)['FirstName'] := 'Θόδωρος';
-    //S := TDOMElement(Node)['FirstName'];
-    //ShowMessage(S);
-
-    Xml.SaveToFile(Doc, 'Test.Xml');
-
-    S := Xml.DocToText(Doc);
-    ShowMessage(S);
-end;
 
 { TMainForm }
 
@@ -150,7 +127,7 @@ begin
   end;
 
 
-  dsGrid.DataSet := tblPsw;
+  //dsGrid.DataSet := tblPsw;
 end;
 
 procedure TMainForm.BufTableDestroy();
@@ -173,66 +150,17 @@ begin
      Test();
 end;
 
-type
-  TConInfoList = specialize TGenList<TSqlConnectionInfo>;
-
-procedure TestSqlConnectionInfo();
-var
-  SqlConInfoList: TConInfoList; // TSqlConnectionInfoList;
-  SqlConInfo: TSqlConnectionInfo;
-
-  JsonText: string;
-  Flag: Boolean;
-begin
-   SqlConInfoList := TConInfoList.Create(); // TSqlConnectionInfoList.Create();
-   SqlConInfo := TSqlConnectionInfo.Create();
-   SqlConInfo.Name := 'Default';
-   SqlConInfo.Provider := 'MsSql';
-   SqlConInfoList.Add(SqlConInfo);
-
-   SqlConInfo := TSqlConnectionInfo.Create();
-   SqlConInfo.Name := 'Con2';
-   SqlConInfo.Provider := 'Firebird';
-   SqlConInfoList.Add(SqlConInfo);
-
-   SqlConInfo := SqlConInfoList[0];
-   Flag := SqlConInfoList.Contains(SqlConInfo);
-
-   JsonText := Json.Serialize(SqlConInfoList);
-
-end;
-
-type
 
 
-  { TMan }
 
-  TMan = class(TPersistent)
-  private
-    FAge: Integer;
-    FName: string;
-  published
-  //public
-    property Name: string read FName write FName;
-    property Age : Integer read FAge write FAge;
-  end;
 
-procedure TestRttiContext();
-var
-  Context: TRttiContext;
-  Typ : TRttiType;
-  Props: specialize TArray<TRttiProperty>;
-  Len : Integer;
-begin
-   Context := TRttiContext.Create();
-   Typ := Context.GetType(TMan);
-   Props := Typ.GetProperties();
-   Len := Length(Props);
-end;
+
+
 
 procedure TMainForm.Test();
 begin
-  TestSqlConnectionInfo();
+  //DeStreamTest();
+  TestJson();
 end;
 
 

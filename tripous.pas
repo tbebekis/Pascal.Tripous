@@ -21,6 +21,7 @@ uses
   ,DB
   ,bufdataset
   ,laz2_DOM
+  ,fpjsonrtti
 
   //, Laz2_XMLUtils
 
@@ -309,8 +310,31 @@ type
   { Json }
   Json = class
   public
-    class function  Serialize(Instance: TObject): string;
-    class procedure Deserialize(Instance: TObject; Data: string);
+    const DefaultStreamOptions = [
+        //jsoStreamChildren,         // If set, children will be streamed in 'Children' Property
+        //jsoEnumeratedAsInteger,    // Write enumerated as integer. Default is string.
+        //jsoSetAsString,            // Write Set as a string. Default is an array.
+        //jsoSetEnumeratedAsInteger, // Write enumerateds in set array as integers.
+        jsoSetBrackets,            // Use brackets when creating set as array
+        //jsoComponentsInline,       // Always stream components inline. Default is to stream name, unless csSubcomponent in ComponentStyle
+        jsoTStringsAsArray,        // Stream TStrings as an array of strings. Associated objects are not streamed.
+        //jsoTStringsAsObject,       // Stream TStrings as an object : string = { object }
+        jsoDateTimeAsString,       // Format a TDateTime value as a string
+        jsoUseFormatString,        // Use FormatString when creating JSON strings.
+        jsoCheckEmptyDateTime     // If TDateTime value is empty and jsoDateTimeAsString is used, 0 date returns empty string
+        //jsoLegacyDateTime,         // Set this to enable old date/time formatting. Current behaviour is to save date/time as a ISO 9601 value.
+        //jsoLowerPropertyNames,     // Set this to force lowercase names when streaming to JSON.
+        //jsoStreamTList             // Set this to assume that TList contains a list of TObjects. Use with care!
+    ];
+    const DefaultDestreamOptions = [
+        jdoCaseInsensitive,
+        //jdoIgnorePropertyErrors,
+        jdoIgnoreNulls
+        //jdoNullClearsProperty
+    ];
+
+    class function  Serialize(Instance: TObject; Options: TJSONStreamOptions = DefaultStreamOptions): string;
+    class procedure Deserialize(Instance: TObject; JsonText: string; Options: TJSONDestreamOptions = DefaultDestreamOptions]);
 
     class procedure LoadFromFile(FilePath: string; Instance: TObject);
     class procedure SaveToFile(FilePath: string; Instance: TObject);
@@ -661,7 +685,7 @@ uses
   ,jsonscanner
   ,fpjson
   //,jsonparser
-  ,fpjsonrtti
+
   ,XMLDatapacketReader
 
   ;
@@ -1890,14 +1914,14 @@ end;
 
 
 { Json }
-class function Json.Serialize(Instance: TObject): string;
+class function Json.Serialize(Instance: TObject; Options: TJSONStreamOptions): string;
 var
   Streamer  : TJSONStreamer;
   Data      : TJSONStringType;
   JsonData  : TJSONData;
 begin
   Streamer := TJSONStreamer.Create(nil);
-  Streamer.Options := Streamer.Options + [jsoUseFormatString];
+  Streamer.Options := Options;
   try
     Data := Streamer.ObjectToJSONString(Instance);
     JsonData := GetJSON(Data, true);
@@ -1911,7 +1935,7 @@ begin
   end;
 end;
 
-class procedure Json.Deserialize(Instance: TObject; Data: string);
+class procedure Json.Deserialize(Instance: TObject; JsonText: string; Options: TJSONDestreamOptions);
 var
   DeStreamer: TJSONDeStreamer;
   Helper: TJsonHelper;
@@ -1919,9 +1943,10 @@ begin
   DeStreamer := TJSONDeStreamer.Create(nil);
   Helper := TJsonHelper.Create();
   try
+    DeStreamer.Options := Options;
     DeStreamer.OnPropertyError   := @Helper.propertyError;
     DeStreamer.OnRestoreProperty := @Helper.restoreProperty;
-    DeStreamer.JSONToObject(Data, Instance);
+    DeStreamer.JSONToObject(JsonText, Instance);
   finally
     FreeAndNil(Helper);
     FreeAndNil(DeStreamer);
@@ -1930,20 +1955,20 @@ end;
 
 class procedure Json.SaveToFile(FilePath: string; Instance: TObject);
 var
-  Data : string;
+  JsonText : string;
 begin
-  Data := Serialize(Instance);
-  Sys.SaveToFile(FilePath, Data);
+  JsonText := Serialize(Instance);
+  Sys.SaveToFile(FilePath, JsonText);
 end;
 
 class procedure Json.LoadFromFile(FilePath: string; Instance: TObject);
 var
-  Data : string;
+  JsonText : string;
 begin
   if FileExists(FilePath) then
   begin
-     Data := Sys.LoadFromFile(FilePath);
-     Deserialize(Instance, Data);
+     JsonText := Sys.LoadFromFile(FilePath);
+     Deserialize(Instance, JsonText);
   end;
 end;
 
