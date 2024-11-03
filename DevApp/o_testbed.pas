@@ -30,6 +30,34 @@ uses
   ;
 
 
+type
+  generic IBox<T> = interface
+  ['{1420230C-41B4-434D-BB96-BF40341912A1}']
+    function  GetValue(): T;
+    procedure SetValue(V: T);
+
+    property Value: T read GetValue write SetValue;
+  end;
+
+  { TBox }
+  generic TBox<T> = class(TInterfacedObject, specialize IBox<T>)
+  private
+    FOwnsObject: Boolean;
+    FValue: T;
+  public
+    constructor Create(Value: T; OwnsObject: Boolean = False);
+    destructor Destroy(); override;
+
+    function  GetValue(): T;
+    procedure SetValue(V: T);
+
+    property Value: T read GetValue write SetValue;
+    property OwnsObject: Boolean read FOwnsObject;
+  end;
+
+  IObjectBox = specialize IBox<TObject>;
+  TObjectBox = specialize TBox<TObject>;
+
 procedure DeStreamTest();
 procedure TestSqlConnectionInfo();
 procedure TestJson();
@@ -96,6 +124,36 @@ type
     property Coll: TCollection read fColl;
     property strings: TStrings read fStrings;
   end;
+
+  { TBox }
+
+constructor TBox.Create(Value: T; OwnsObject: Boolean);
+begin
+  inherited Create();
+  Self.Value := Value;
+  FOwnsObject := OwnsObject;
+end;
+
+destructor TBox.Destroy();
+begin
+  if (OwnsObject) then
+  try
+     TObject(T).Free();   // exception here
+  except
+  end;
+
+  inherited Destroy();
+end;
+
+function TBox.GetValue(): T;
+begin
+  Result := FValue;
+end;
+
+procedure TBox.SetValue(V: T);
+begin
+  FValue := V;
+end;
 
   constructor TBaseObject.Create;
   begin

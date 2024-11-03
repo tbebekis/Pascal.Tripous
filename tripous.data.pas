@@ -13,6 +13,7 @@ uses
   ,sqldb
 
   ,Tripous
+  ,Tripous.MemTable
   ;
 
 type
@@ -123,20 +124,40 @@ type
    end;
 
    { TSqlStore }
-
    TSqlStore = class
    private
-     FConnectionInfo: TSqlConnectionInfo;
-     FProvider: TSqlProvider;
+     FConnectionInfo  : TSqlConnectionInfo;
+     FProvider        : TSqlProvider;
 
-     FSqlConnector: TSQLConnector;
-     FSqlQuery: TSQLQuery;
-     FSqlTransaction: TSQLTransaction;
+     FSqlConnector    : TSQLConnector;
+     FSqlQuery        : TSQLQuery;
+     FSqlTransaction  : TSQLTransaction;
 
      function GetConnectionName: string;
    public
      constructor Create(ConnectionInfo: TSqlConnectionInfo);
      destructor Destroy(); override;
+
+     function  Select(const SqlText: string; Params: array of const): TMemTable; overload;
+     function  Select(const SqlText: string; Params: array of Variant): TMemTable; overload;
+     function  Select(const SqlText: string; Params: TDataset): TMemTable; overload;
+     function  Select(const SqlText: string): TMemTable; overload;
+
+     procedure SelectTo(Table: TDataset; const SqlText: string; Params: array of const); overload;
+     procedure SelectTo(Table: TDataset; const SqlText: string; Params: array of Variant); overload;
+     procedure SelectTo(Table: TDataset; const SqlText: string; Params: TDataset);overload;
+     procedure SelectTo(Table: TDataset; const SqlText: string);overload;
+
+     function  SelectResults(SqlText: string; const ResultFields: string; const Params: array of const): Variant; overload;
+     function  SelectResults(SqlText: string; const ResultFields: string; const Params: array of Variant): Variant; overload;
+     function  SelectResults(SqlText: string; const ResultFields: string; const Params: TDataset): Variant; overload;
+     function  SelectResults(SqlText: string; const ResultFields: string): Variant; overload;
+
+     function  SelectResult(SqlText: string; Default: Variant; const Params: array of const): Variant; overload;
+     function  SelectResult(SqlText: string; Default: Variant; const Params: array of Variant): Variant; overload;
+     function  SelectResult(SqlText: string; Default: Variant; const Params: TDataset): Variant; overload;
+     function  SelectResult(SqlText: string; Default: Variant): Variant; overload;
+     function  SelectResult(SqlText: string): Variant; overload;
 
      property ConnectionName: string read GetConnectionName;
      property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
@@ -194,7 +215,9 @@ type
     class function  FieldValuesToVariantArray(Dataset: TDataset;  const ResultFields: string): Variant;
     class procedure GetKeyValuesList(List: TStrings; Table: TDataset; const FieldName: string; ModValue: Integer; DiscardBelowZeroes: Boolean);
 
-    class procedure ParamsAssign(Params: TParams; tblParams: TDataset); overload;
+    class procedure AssignParams(Params: TParams; tblParams: TDataset); overload;
+    class procedure AssignParams(Params: TParams; A: array of const); overload;
+    class procedure AssignParams(Params: TParams; A: array of Variant); overload;
 
     { properties }
     class property StringFieldTypes  : TSetOfFieldType read GetStringFieldTypes;
@@ -455,25 +478,444 @@ end;
 
 { TSqlStore }
 
-
-
 constructor TSqlStore.Create(ConnectionInfo: TSqlConnectionInfo);
 begin
   inherited Create();
   FConnectionInfo := ConnectionInfo;
-  FProvider := SqlProviders.FindSqlProvider(ConnectionInfo.Name);
+  FProvider       := SqlProviders.FindSqlProvider(ConnectionInfo.Name);
 
-  FSqlConnector := TSQLConnector.Create(nil);
-  FSqlQuery := TSQLQuery.Create(nil);
+  FSqlConnector   := TSQLConnector.Create(nil);
   FSqlTransaction := TSQLTransaction.Create(nil);
+  FSqlQuery       := TSQLQuery.Create(nil);
+
+  FSqlConnector.Transaction := FSqlTransaction;
+  FSqlQuery.DataBase        := FSqlConnector;
 end;
 
 destructor TSqlStore.Destroy();
 begin
-  FSqlTransaction.Active := False;
   FSqlQuery.Active := False;
+  FSqlTransaction.Active := False;
   FSqlConnector.Connected := False;
+
+  FSqlQuery.Free();
+  FSqlTransaction.Free();
+  FSqlConnector.Free();
+
   inherited Destroy();
+end;
+
+function TSqlStore.Select(const SqlText: string; Params: array of const): TMemTable;
+var
+  Table: TMemTable;
+begin
+  Table  := TMemTable.Create(nil);
+  Result := Table;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      DbSys.CopyDatasetStructure(FSqlQuery, Table, True, True);
+      Table.CreateDataset();
+      Table.Active := True;
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+
+end;
+
+function TSqlStore.Select(const SqlText: string; Params: array of Variant): TMemTable;
+var
+  Table: TMemTable;
+begin
+  Table  := TMemTable.Create(nil);
+  Result := Table;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      DbSys.CopyDatasetStructure(FSqlQuery, Table, True, True);
+      Table.CreateDataset();
+      Table.Active := True;
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.Select(const SqlText: string; Params: TDataset): TMemTable;
+var
+  Table: TMemTable;
+begin
+  Table  := TMemTable.Create(nil);
+  Result := Table;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      DbSys.CopyDatasetStructure(FSqlQuery, Table, True, True);
+      Table.CreateDataset();
+      Table.Active := True;
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+
+end;
+
+function TSqlStore.Select(const SqlText: string): TMemTable;
+begin
+  Result := Select(SqlText, nil);
+end;
+
+procedure TSqlStore.SelectTo(Table: TDataset; const SqlText: string; Params: array of const);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      Table.Active := True;
+      DbSys.EmptyDataset(Table);
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+
+end;
+
+procedure TSqlStore.SelectTo(Table: TDataset; const SqlText: string; Params: array of Variant);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      Table.Active := True;
+      DbSys.EmptyDataset(Table);
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlStore.SelectTo(Table: TDataset; const SqlText: string; Params: TDataset);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      Table.Active := True;
+      DbSys.EmptyDataset(Table);
+      DbSys.CopyDataset(FSqlQuery, Table);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlStore.SelectTo(Table: TDataset; const SqlText: string);
+begin
+   SelectTo(Table, SqlText, nil);
+end;
+
+function TSqlStore.SelectResults(SqlText: string; const ResultFields: string; const Params: array of const): Variant;
+begin
+  Result := Variants.Null;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+         Result := DbSys.FieldValuesToVariantArray(FSqlQuery, ResultFields);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+
+end;
+
+function TSqlStore.SelectResults(SqlText: string; const ResultFields: string; const Params: array of Variant): Variant;
+begin
+  Result := Variants.Null;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+         Result := DbSys.FieldValuesToVariantArray(FSqlQuery, ResultFields);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.SelectResults(SqlText: string; const ResultFields: string; const Params: TDataset): Variant;
+begin
+  Result := Variants.Null;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+         Result := DbSys.FieldValuesToVariantArray(FSqlQuery, ResultFields);
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.SelectResults(SqlText: string; const ResultFields: string): Variant;
+begin
+  Result := SelectResults(SqlText, ResultFields, nil);
+end;
+
+function TSqlStore.SelectResult(SqlText: string; Default: Variant; const Params: array of const): Variant;
+begin
+  Result := Default;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+        Result := FSqlQuery.Fields[0].Value;
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.SelectResult(SqlText: string; Default: Variant; const Params: array of Variant): Variant;
+begin
+  Result := Default;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+        Result := FSqlQuery.Fields[0].Value;
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.SelectResult(SqlText: string; Default: Variant; const Params: TDataset): Variant;
+begin
+  Result := Default;
+
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+      FSqlQuery.Active := True;
+      FSqlQuery.First();
+
+      if FSqlQuery.RecordCount > 0 then;
+        Result := FSqlQuery.Fields[0].Value;
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+function TSqlStore.SelectResult(SqlText: string; Default: Variant): Variant;
+begin
+   Result := SelectResult(SqlText, Default, nil);
+end;
+
+function TSqlStore.SelectResult(SqlText: string): Variant;
+begin
+  Result := SelectResult(SqlText, Variants.Null, nil);
 end;
 
 function TSqlStore.GetConnectionName: string;
@@ -1009,28 +1451,36 @@ var
   List : TStringList;
 begin
   Result := Variants.Null;
-  List := TStringList.Create;
+
+  List   := TStringList.Create;
   try
-   Sys.Split(ResultFields, ';', List);
+    if Sys.IsEmpty(ResultFields) then
+    begin
+      for i := 0 to Dataset.Fields.Count - 1 do
+        List.Add(Dataset.Fields[i].FieldName);
+    end else begin
+      Sys.Split(ResultFields, ';', List);
+    end;
 
-   { we're going to return the value of a SINGLE field }
-   if List.Count = 1 then
-   begin
-     if (Dataset.FindField(List[0]) <> nil) then
-       Result := Dataset.Fields[0].Value
-     else
-       Result := Variants.Null;
+    { we're going to return the value of a SINGLE field }
+    if List.Count = 1 then
+    begin
+      if (Dataset.FindField(List[0]) <> nil) then
+        Result := Dataset.Fields[0].Value
+      else
+        Result := Variants.Null;
 
-   { we're going to return values more than one field }
-   end else if List.Count > 1 then
-   begin
-     Result := VarArrayCreate([0, List.Count - 1], varVariant);
-     for i := 0 to List.Count - 1 do
-       if (Dataset.FindField(List[i]) <> nil) then
-         Result[i] := Dataset.Fields[i].Value
-       else
-         Result[i] := Variants.Null;
-   end;
+    { we're going to return values more than one field }
+    end else if List.Count > 1 then
+    begin
+      Result := VarArrayCreate([0, List.Count - 1], varVariant);
+      for i := 0 to List.Count - 1 do
+        if (Dataset.FindField(List[i]) <> nil) then
+          Result[i] := Dataset.Fields[i].Value
+        else
+          Result[i] := Variants.Null;
+    end;
+
   finally
     List.Free;
   end;
@@ -1114,7 +1564,7 @@ begin
 
 end;
 (*----------------------------------------------------------------------------*)
-class procedure DbSys.ParamsAssign(Params: TParams; tblParams: TDataset);
+class procedure DbSys.AssignParams(Params: TParams; tblParams: TDataset);
 var
   i        : Integer;
   Field    : TField;
@@ -1153,6 +1603,67 @@ begin
   end;
 
 end;
+{ to be used as AssignParams(Params, [Param1, ..., ParamN]); }
+class procedure DbSys.AssignParams(Params: TParams; A: array of const);
+var
+  i : Integer;
+  Stream : TStream;
+begin
+  if (Params.Count > 0) and (Length(A) > 0) then
+  begin
+    for i := 0 to High(A) do
+    begin
+      case A[i].VType of
+        vtInteger       : Params.Items[i].Value := A[i].VInteger;
+        vtBoolean       : Params.Items[i].Value := A[i].VBoolean;
+        vtChar          : Params.Items[i].Value := A[i].VChar;
+        vtExtended      : Params.Items[i].Value := A[i].VExtended^;
+        vtString        : Params.Items[i].Value := A[i].VString^;    // short string
+        vtPointer       : ;                                          // Longint(Args[i].VPointer)
+        vtPChar         : ;
+        vtObject        : begin
+                            Stream := TStream(A[i].VObject);
+                            Params.Items[i].DataType := ftBlob;
+                            Params.Items[i].Size     := Stream.Size;
+                            Stream.Position := 0;
+                            Params.Items[i].LoadFromStream(Stream, ftBlob);
+                          end;
+        vtClass         : ;                                          // Args[i].VClass
+        vtAnsiString    : Params.Items[i].Value := AnsiString(A[i].VAnsiString);
+        vtWideString    : Params.Items[i].Value := WideString(A[i].VWideString);
+        vtInt64         : Params.Items[i].Value := A[i].VInt64^;
+        vtQWord         : Params.Items[i].Value := A[i].VQWord^;
+        vtUnicodeString : Params.Items[i].Value := UnicodeString(A[i].VUnicodeString);
+      end;
+    end;
+  end;
+
+end;
+{ to be used as AssignParams(Params, VarArrayOf([Param1, ..., ParamN])); }
+class procedure DbSys.AssignParams(Params: TParams; A: array of Variant);
+var
+  i : Integer;
+  Stream: TStream;
+begin
+  if (Length(A) > 0) and (Params.Count > 0) then
+  begin
+    for i := Low(A) to High(A) do
+    begin
+      if Sys.IsBox(A[i]) and (Sys.UnBox(A[i]) is TStream) then
+      begin
+        Stream :=  TStream(Sys.UnBox(A[i]));
+        Params.Items[i].DataType := ftBlob;
+        Params.Items[i].Size     := Stream.Size;
+        Stream.Position := 0;
+        Params.Items[i].LoadFromStream(Stream, ftBlob);
+      end else begin
+        Params.Items[i].Value := A[i];
+      end;
+    end;
+  end;
+
+end;
+
 
 
 

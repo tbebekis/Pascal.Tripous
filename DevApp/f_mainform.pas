@@ -165,12 +165,25 @@ begin
   S := ConInfo.Provider;
 end;
 
-
+procedure TestArrayOfConst(V: string; A: array of const);
+var
+  i : Integer;
+  S : string;
+  Obj: TObject;
+begin
+  for i := 0 to High(A) do
+  begin
+    if A[i].VType = vtObject then
+      Obj := A[i].VObject;
+  end;
+end;
 
 procedure TMainForm.Test();
+var
+  SS: TStringStream;
 begin
-  //DeStreamTest();
-  TestConnInfo();
+  SS := TStringStream.Create('Hi there');
+  TestArrayOfConst('test', [SS, 1, 'string', True, 4.5 ]);
 end;
 
 

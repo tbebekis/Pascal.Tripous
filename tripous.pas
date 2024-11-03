@@ -462,6 +462,21 @@ type
     class function LoadGraphicFromStream(Stream: TStream; var Graphic: TGraphic): Boolean;
   end;
 
+(*----------------------------------------------------------------------------
+ A TObject is not directly assignable to a Variant.
+ An Interface is.
+ The IObjectBox is a facility for wrapping TObject objects
+ inside an IInterface object, in order to assign it to a Variant.
+ ----------------------------------------------------------------------------*)
+  IObjectBox = interface(IInterface)
+  ['{E502D3BC-E0AD-40C0-963C-E92BCAB68059}']
+    function get_Instance: TObject;
+    function get_OwnsInstance: Boolean;
+
+    property Instance    : TObject read get_Instance;
+    property OwnsIstance : Boolean read get_OwnsInstance;
+  end;
+
   { Sys }
   Sys = class
   private class var
@@ -564,6 +579,12 @@ type
     class function  VarEquals(const V1, V2: Variant): Boolean;
     class function  VarCompare(const Item1, Item2: Variant): Integer;
     class function  VarToArray(const Source: Variant): TArrayOfVariant;
+
+    { boxing-unboxing plain TObject objects into a Variant }
+    class function BoxObject(Instance: TObject; OwnsIstance: Boolean = False): IObjectBox;
+    class function Box(Instance: TObject; OwnsIstance: Boolean = False): Variant;
+    class function UnBox(Value: Variant): TObject;
+    class function IsBox(const Value: Variant): Boolean;
 
     { arrays }
     class function  StreamToVarArray(const Stream: TStream): Variant;
@@ -3253,6 +3274,63 @@ end;
 
 
 
+
+
+
+
+
+
+type
+(*----------------------------------------------------------------------------*)
+  TObjectBox = class(TInterfacedObject, IObjectBox)
+  private
+    FInstance : TObject;
+    FOwnsInstance : Boolean;
+
+    function get_Instance: TObject;
+    function get_OwnsInstance: Boolean;
+  public
+    constructor Create(Instance: TObject; OwnsIstance: Boolean);
+    destructor Destroy; override;
+
+    property Instance     : TObject read get_Instance;
+    property OwnsIstance  : Boolean read get_OwnsInstance;
+  end;
+
+
+{ TObjectBox }
+(*----------------------------------------------------------------------------*)
+constructor TObjectBox.Create(Instance: TObject; OwnsIstance: Boolean);
+begin
+  inherited Create;
+  FInstance := Instance;
+  FOwnsInstance := OwnsIstance;
+end;
+(*----------------------------------------------------------------------------*)
+destructor TObjectBox.Destroy;
+begin
+  if FOwnsInstance then
+    try
+      FreeAndNil(FInstance)
+    except
+    end;
+
+  inherited;
+end;
+(*----------------------------------------------------------------------------*)
+function TObjectBox.get_Instance: TObject;
+begin
+  Result := FInstance;
+end;
+(*----------------------------------------------------------------------------*)
+function TObjectBox.get_OwnsInstance: Boolean;
+begin
+  Result := FOwnsInstance;
+end;
+
+
+
+
 { Sys }
 (*----------------------------------------------------------------------------*)
 class constructor Sys.Create;
@@ -3941,7 +4019,31 @@ begin
     Result[0] := Source;
   end;
 end;
-
+(*----------------------------------------------------------------------------*)
+class function Sys.BoxObject(Instance: TObject; OwnsIstance: Boolean): IObjectBox;
+begin
+  Result := TObjectBox.Create(Instance, OwnsIstance);
+end;
+(*----------------------------------------------------------------------------*)
+class function Sys.Box(Instance: TObject; OwnsIstance: Boolean): Variant;
+begin
+  Result := BoxObject(Instance, OwnsIstance);
+end;
+(*----------------------------------------------------------------------------*)
+class function Sys.UnBox(Value: Variant): TObject;
+begin
+  if IsBox(Value) then
+    Result := (IInterface(Value) as IObjectBox).Instance
+  else
+    Result := nil;
+end;
+(*----------------------------------------------------------------------------*)
+class function Sys.IsBox(const Value: Variant): Boolean;
+var
+  Intf: IObjectBox;
+begin
+  Result := (not VarIsNull(Value)) and VarIsType(Value, varUnknown) and Variants.VarSupports(Value, IObjectBox, Intf);
+end;
 (*----------------------------------------------------------------------------
   This procedure copies the content of a stream into a "variant array of byte".
   Code by Gary Williams
