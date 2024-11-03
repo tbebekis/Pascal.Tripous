@@ -43,6 +43,8 @@ type
     btnTest: TButton;
     mmoLog: TMemo;
     SQLConnector1: TSQLConnector;
+    SQLQuery1: TSQLQuery;
+    SQLTransaction1: TSQLTransaction;
   private
     tblPsw: TBufTable;
 
@@ -152,15 +154,23 @@ end;
 
 
 
+procedure TestConnInfo();
+var
+  ConInfo: TSqlConnectionInfo;
+  S : string;
+begin
+  ConInfo := TSqlConnectionInfo.Create();
+  ConInfo.ConnectionString := 'Type=MsSql; Host=localhost; Database=AxCon5; User=teo; Psw=1234';
 
-
+  S := ConInfo.Provider;
+end;
 
 
 
 procedure TMainForm.Test();
 begin
   //DeStreamTest();
-  TestJson();
+  TestConnInfo();
 end;
 
 

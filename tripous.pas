@@ -334,7 +334,7 @@ type
     ];
 
     class function  Serialize(Instance: TObject; Options: TJSONStreamOptions = DefaultStreamOptions): string;
-    class procedure Deserialize(Instance: TObject; JsonText: string; Options: TJSONDestreamOptions = DefaultDestreamOptions]);
+    class procedure Deserialize(Instance: TObject; JsonText: string; Options: TJSONDestreamOptions = DefaultDestreamOptions);
 
     class procedure LoadFromFile(FilePath: string; Instance: TObject);
     class procedure SaveToFile(FilePath: string; Instance: TObject);
@@ -497,6 +497,8 @@ type
     class function Base64ToStream(Input: string): TStream;
 
     { strings }
+    class function IsSameText(A: string; B: string): Boolean;
+    class function IsEmpty(const S: string): Boolean;
     class function PathCombine(A: string; B: string): string;
     class function IsLetter(C: Char): Boolean;
 
@@ -1284,7 +1286,7 @@ begin
     List.CaseSensitive := False;
     List.Insert(0, Instance.ClassName);
 
-    if AnsiSameText(ClassName, Instance.ClassName) then
+    if Sys.IsSameText(ClassName, Instance.ClassName) then
     begin
       Result := True;
       Exit; //==>
@@ -1295,7 +1297,7 @@ begin
     begin
       List.Insert(0, C.ClassName);
 
-      if AnsiSameText(ClassName, C.ClassName) then
+      if Sys.IsSameText(ClassName, C.ClassName) then
       begin
         Result := True;
         Exit; //==>
@@ -1664,7 +1666,7 @@ begin
   Data := GetTypeData(Info);
 
   Result := Data^.MaxValue;
-  while (Result >= Data^.MinValue) and not AnsiSameText(Name, EnumLiteralByIndex(Info, Result)) do
+  while (Result >= Data^.MinValue) and not Sys.IsSameText(Name, EnumLiteralByIndex(Info, Result)) do
     Dec(Result);
   if Result < Data^.MinValue then
     Result := -1;
@@ -3402,6 +3404,16 @@ begin
   finally
     InputSS.Free;
   end;
+end;
+
+class function Sys.IsSameText(A: string; B: string): Boolean;
+begin
+  Result := AnsiSameText(A, B);
+end;
+
+class function Sys.IsEmpty(const S: string): Boolean;
+begin
+  Result := IsEmptyStr(S, [#0..#32]);
 end;
 
 (*----------------------------------------------------------------------------*)

@@ -18,19 +18,44 @@ uses
 type
    TSetOfFieldType    = set of TFieldType;
 
+   { forward }
+   TSqlProvider = class;
+
    { TSqlConnectionInfo }
    TSqlConnectionInfo = class(TCollectionItem)
    private
      FAutoCreateGenerators: Boolean;
+     FCharSet: string;
      FConnectionString: string;
+     FConnectorType: string;
+     FDatabaseName: string;
+     FHostName: string;
      FName: string;
+     FPassword: string;
      FProvider: string;
+     FUserName: string;
+     FParams: TStrings;
+     function GetConnectorType: string;
+     function GetProvider: string;
+     procedure SetConnectionString(AValue: string);
    public
      constructor Create(ACollection: TCollection = nil); override;
+     destructor Destroy(); override;
+
+     function  GetSqlProvider(): TSqlProvider;
+     procedure SetupConnection(SqlConnector: TSQLConnector);
+
+     property ConnectorType: string read GetConnectorType;
+     property DatabaseName: string read FDatabaseName;
+     property HostName: string read FHostName;
+     property UserName: string read FUserName;
+     property Password: string read FPassword;
+     property CharSet: string read FCharSet;
+     property Params: TStrings read FParams;
    published
      property Name: string read FName write FName;
-     property Provider: string read FProvider write FProvider;
-     property ConnectionString: string read FConnectionString write FConnectionString;
+     property Provider: string read GetProvider write FProvider;
+     property ConnectionString: string read FConnectionString write SetConnectionString;
      property AutoCreateGenerators: Boolean read FAutoCreateGenerators write FAutoCreateGenerators;
    end;
 
@@ -64,9 +89,60 @@ type
      property SqlConnections: TCollection read fSqlConnections write fSqlConnections;
    end;
 
-   TSqlProvider = class
+   { SqlProviders }
+
+   SqlProviders = class
+   private class var
+     Providers : TList;
    public
-     const MsSql = 'MsSql';
+    const SFirebird = 'Firebird';
+    const SMsSql = 'MsSql';
+
+     class constructor Create();
+     class destructor Destroy();
+
+     class function FindSqlProvider(const ProviderName: string): TSqlProvider;
+   end;
+
+   { TSqlProvider }
+   TSqlProvider = class
+   protected
+     FName: string;
+   public
+     constructor Create(); virtual;
+     destructor Destroy(); override;
+
+     property Name: string read FName;
+   end;
+
+   { TSqlProviderFirebird }
+   TSqlProviderFirebird = class(TSqlProvider)
+   public
+     constructor Create(); override;
+     destructor Destroy(); override;
+   end;
+
+   { TSqlStore }
+
+   TSqlStore = class
+   private
+     FConnectionInfo: TSqlConnectionInfo;
+     FProvider: TSqlProvider;
+
+     FSqlConnector: TSQLConnector;
+     FSqlQuery: TSQLQuery;
+     FSqlTransaction: TSQLTransaction;
+
+     function GetConnectionName: string;
+   public
+     constructor Create(ConnectionInfo: TSqlConnectionInfo);
+     destructor Destroy(); override;
+
+     property ConnectionName: string read GetConnectionName;
+     property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
+     property Provider: TSqlProvider read FProvider;
+     property SqlQuery: TSQLQuery read FSqlQuery;
+
    end;
 
   { DbSys }
@@ -136,9 +212,109 @@ implementation
 
 { TSqlConnectionInfo }
 
+procedure TSqlConnectionInfo.SetConnectionString(AValue: string);
+var
+  List: TStrings;
+  i : Integer;
+  Key, Value: string;
+begin
+
+  FConnectorType := '';
+  FDatabaseName := '';
+  FHostName := '';
+  FUserName := '';
+  FPassword := '';
+  FCharSet  := '';
+
+  FParams.Clear();
+
+  FConnectionString := AValue;
+
+  if not Sys.IsEmpty(FConnectionString) then
+  begin
+    List := Sys.Split(FConnectionString, ';');
+    for i := 0 to List.Count - 1 do
+    begin
+      Key := List.Names[i];
+      Value := Trim(List.Values[Key]);
+      Key := Trim(Key);
+
+      if      Sys.IsSameText(Key, 'Type')
+           or Sys.IsSameText(Key, 'ConnectorType') then
+        FConnectorType := Value
+      else if Sys.IsSameText(Key, 'Database')
+           or Sys.IsSameText(Key, 'DatabaseName')
+           or Sys.IsSameText(Key, 'Database Name')
+           or Sys.IsSameText(Key, 'Initial Catalog')  then
+        FDatabaseName := Value
+      else if Sys.IsSameText(Key, 'Host')
+           or Sys.IsSameText(Key, 'HostName')
+           or Sys.IsSameText(Key, 'Server')
+           or Sys.IsSameText(Key, 'DataSource')
+           or Sys.IsSameText(Key, 'Data Source') then
+        FHostName := Value
+      else if Sys.IsSameText(Key, 'User')
+           or Sys.IsSameText(Key, 'UserName')
+           or Sys.IsSameText(Key, 'User Id')  then
+         FUserName := Value
+      else if Sys.IsSameText(Key, 'Password')
+           or Sys.IsSameText(Key, 'Psw')  then
+         FPassword := Value
+      else if Sys.IsSameText(Key, 'CharSet')  then
+         FCharSet := Value
+      else
+         FParams.Add(List[i]);
+    end;
+  end;
+
+end;
+
+function TSqlConnectionInfo.GetProvider: string;
+begin
+  if not Sys.IsEmpty(FProvider) then
+     Result := FProvider
+  else
+     Result := FConnectorType;
+end;
+
+function TSqlConnectionInfo.GetConnectorType: string;
+begin
+  Result := FConnectorType;
+
+  if not Sys.IsEmpty(FConnectorType) then
+  begin
+    if Sys.IsSameText(FConnectorType, 'MsSql') then
+      Result := 'MSSQLServer'
+  end else
+    Result := Provider;
+end;
+
 constructor TSqlConnectionInfo.Create(ACollection: TCollection);
 begin
   inherited Create(ACollection);
+  FParams := TStringList.Create();
+end;
+
+destructor TSqlConnectionInfo.Destroy();
+begin
+  FParams.Free();
+  inherited Destroy();
+end;
+
+function TSqlConnectionInfo.GetSqlProvider(): TSqlProvider;
+begin
+  Result := SqlProviders.FindSqlProvider(Provider);
+end;
+
+procedure TSqlConnectionInfo.SetupConnection(SqlConnector: TSQLConnector);
+begin
+  SqlConnector.ConnectorType := ConnectorType;
+  SqlConnector.HostName := HostName;
+  SqlConnector.DatabaseName := DatabaseName;
+  SqlConnector.UserName := UserName;
+  SqlConnector.Password := Password;
+  SqlConnector.CharSet := CharSet;
+  SqlConnector.Params.Assign(Params);
 end;
 
 { TSqlConnectionInfoList }
@@ -172,7 +348,7 @@ end;
 
 procedure TSqlConnectionInfoList.Load(FilePath: string);
 begin
-  //Clear();
+  Clear();
   Json.LoadFromFile(FilePath, Self);
 end;
 
@@ -222,11 +398,88 @@ begin
   for i := 0 to fSqlConnections.Count - 1 do
   begin
     ConInfo := fSqlConnections.Items[i] as TSqlConnectionInfo;
-    if AnsiSameText(Name, ConInfo.Name) then
+    if Sys.IsSameText(Name, ConInfo.Name) then
       exit(ConInfo);
   end;
 end;
 
+{ SqlProviders }
+
+class constructor SqlProviders.Create();
+begin
+  Providers := TList.Create();
+
+  Providers.Add(TSqlProviderFirebird.Create());
+end;
+
+class destructor SqlProviders.Destroy();
+begin
+  Sys.ClearObjectList(Providers);
+  Providers.Free();
+end;
+
+class function SqlProviders.FindSqlProvider(const ProviderName: string): TSqlProvider;
+var
+  Item : Pointer;
+begin
+  Result := nil;
+  for Item in Providers do
+    if Sys.IsSameText(ProviderName, TSqlProvider(Item).Name) then
+      exit(TSqlProvider(Item));
+end;
+
+{ TSqlProvider }
+
+constructor TSqlProvider.Create();
+begin
+  inherited Create();
+end;
+
+destructor TSqlProvider.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TSqlProviderFirebird }
+
+constructor TSqlProviderFirebird.Create();
+begin
+  inherited Create();
+  FName := SqlProviders.SFirebird;
+end;
+
+destructor TSqlProviderFirebird.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TSqlStore }
+
+
+
+constructor TSqlStore.Create(ConnectionInfo: TSqlConnectionInfo);
+begin
+  inherited Create();
+  FConnectionInfo := ConnectionInfo;
+  FProvider := SqlProviders.FindSqlProvider(ConnectionInfo.Name);
+
+  FSqlConnector := TSQLConnector.Create(nil);
+  FSqlQuery := TSQLQuery.Create(nil);
+  FSqlTransaction := TSQLTransaction.Create(nil);
+end;
+
+destructor TSqlStore.Destroy();
+begin
+  FSqlTransaction.Active := False;
+  FSqlQuery.Active := False;
+  FSqlConnector.Connected := False;
+  inherited Destroy();
+end;
+
+function TSqlStore.GetConnectionName: string;
+begin
+  Result := FConnectionInfo.Name;
+end;
 
 
 
@@ -699,7 +952,7 @@ var
 begin
   Result := True;
   for i := 0 to Table1.FieldCount - 1 do
-    if not (AnsiSameText(Table1.Fields[i].FieldName, Table2.Fields[i].FieldName) and (Table1.Fields[i].FieldKind = Table2.Fields[i].FieldKind)) then
+    if not (Sys.IsSameText(Table1.Fields[i].FieldName, Table2.Fields[i].FieldName) and (Table1.Fields[i].FieldKind = Table2.Fields[i].FieldKind)) then
     begin
       Result := False;
       Exit; //==>

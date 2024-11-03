@@ -38,4 +38,16 @@ object MainForm: TMainForm
     Left = 112
     Top = 8
   end
+  object SQLQuery1: TSQLQuery
+    FieldDefs = <>
+    Params = <>
+    Macros = <>
+    Left = 51
+    Top = 79
+  end
+  object SQLTransaction1: TSQLTransaction
+    Active = False
+    Left = 47
+    Top = 154
+  end
 end
