@@ -21,7 +21,9 @@ uses
     , Tripous
     , Tripous.Data
     , LazFileUtils
-    , DB, SQLDB
+    , DB
+    , SQLDB
+    , SQLTypes
     , Generics.Collections
     //, csvdataset
     ,Laz2_DOM, RTTIGrids
@@ -61,6 +63,7 @@ type
 procedure DeStreamTest();
 procedure TestSqlConnectionInfo();
 procedure TestJson();
+function TestSchemaInfo(): string;
 
 
 implementation
@@ -274,6 +277,62 @@ begin
 
    M := TMan.Create();
    Json.Deserialize(M, JsonText);
+
+
+end;
+
+type
+  TSqlObjectIdenfierClass = class of TSqlObjectIdenfier;
+
+function TestSchemaInfo(): string;
+var
+   Con : TSQLConnector;
+   SchemaList: TSqlObjectIdentifierList;
+   Trans: TSQLTransaction;
+   List : TStringList;
+   i : Integer;
+   Item : TSqlObjectIdenfier;
+begin
+  // TSchemaType = (stNoSchema, stTables, stSysTables, stProcedures, stColumns, stProcedureParams, stIndexes, stPackages, stSchemata, stSequences);
+  // function GetObjectNames(ASchemaType: TSchemaType; AList : TSqlObjectIdentifierList): Integer; virtual;
+
+  Result := '';
+
+  List := TStringList.Create();
+  Con := TSQLConnector.Create(nil);
+  Trans := TSQLTransaction.Create(Con);
+  Con.Transaction := Trans;
+  SchemaList := TSqlObjectIdentifierList.Create(TSqlObjectIdenfier);
+  try
+    Con.UserName := 'SYSDBA';
+    Con.Password := 'mirodato';
+    Con.ConnectorType := 'Firebird';
+    Con.DatabaseName := 'C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
+    Con.Open();
+    Trans.Active:= True;
+
+    // stTables
+    // stSysTables   ??
+    Con.GetObjectNames(stTables, SchemaList);
+    for i := 0 to SchemaList.Count - 1 do
+    begin
+      Item := TSqlObjectIdenfier(SchemaList[i]);
+      List.Add(Trim(Item.ObjectName) + ' -- ' + Trim(Item.FullName));
+    end;
+
+    Result := List.Text;
+  finally
+    Trans.Active:= False;
+    Con.Close();
+
+    SchemaList.Free();
+    Trans.Free();
+    Con.Free();
+    List.Free();
+  end;
+
+
+
 
 
 end;

@@ -1,10 +1,10 @@
 object MainForm: TMainForm
-  Left = 601
-  Height = 441
-  Top = 200
+  Left = 345
+  Height = 474
+  Top = 145
   Width = 651
   Caption = 'MainForm'
-  ClientHeight = 441
+  ClientHeight = 474
   ClientWidth = 651
   Position = poScreenCenter
   LCLVersion = '3.4.0.0'
@@ -17,10 +17,11 @@ object MainForm: TMainForm
     TabOrder = 0
   end
   object mmoLog: TMemo
-    Left = 121
-    Height = 271
-    Top = 112
-    Width = 446
+    Left = 8
+    Height = 393
+    Top = 64
+    Width = 639
+    Anchors = [akTop, akLeft, akRight, akBottom]
     Lines.Strings = (
       '{'
       '  "id"     : 123,               '
@@ -29,12 +30,14 @@ object MainForm: TMainForm
       '  "strings": [ "Hello 1", "Hello 2" ]                          '
       '}'
     )
+    ScrollBars = ssBoth
     TabOrder = 1
   end
   object SQLConnector1: TSQLConnector
     Connected = False
     LoginPrompt = False
     KeepConnection = False
+    ConnectorType = 'Firebird'
     Left = 112
     Top = 8
   end
@@ -42,12 +45,12 @@ object MainForm: TMainForm
     FieldDefs = <>
     Params = <>
     Macros = <>
-    Left = 51
-    Top = 79
+    Left = 176
+    Top = 8
   end
   object SQLTransaction1: TSQLTransaction
     Active = False
-    Left = 47
-    Top = 154
+    Left = 232
+    Top = 16
   end
 end

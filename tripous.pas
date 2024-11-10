@@ -90,6 +90,13 @@ type
 
  TProcedureMethod  = procedure of object;
 
+ ISyncObject = interface(IInterface)
+   ['{B2411903-F6D1-4FF3-9DA6-E7FDCFE3A702}']
+ { public }
+   procedure Lock;
+   procedure UnLock;
+ end;
+
  { TSafeObjectList }
  TSafeObjectList = class
  private
@@ -643,6 +650,7 @@ type
     }
 
     { miscs }
+    class function CreateSyncObject: ISyncObject;
     class function InMainThread(): Boolean;
     class procedure ProcessMessages();
     class procedure ClearObjectList(List: TList);
@@ -712,6 +720,46 @@ uses
   ,XMLDatapacketReader
 
   ;
+
+type
+
+{ _TSyncObject }
+
+_TSyncObject = class(TInterfacedObject, ISyncObject)
+private
+  FLock   : SyncObjs.TCriticalSection;
+public
+  constructor Create;
+  destructor Destroy; override;
+
+  procedure Lock;
+  procedure UnLock;
+end;
+
+{ _TSyncObject }
+
+constructor _TSyncObject.Create;
+begin
+  FLock := SyncObjs.TCriticalSection.Create();
+end;
+
+destructor _TSyncObject.Destroy;
+begin
+  FLock.Free();
+  inherited Destroy;
+end;
+
+procedure _TSyncObject.Lock;
+begin
+  FLock.Enter();
+end;
+
+procedure _TSyncObject.UnLock;
+begin
+  FLock.Leave();
+end;
+
+
 
 { TSafeObjectList }
 
@@ -4620,6 +4668,12 @@ class function  Sys.Max(const A, B: Double): Double;
 begin
   if A > B then Result := A else Result := B;
 end;
+
+class function Sys.CreateSyncObject: ISyncObject;
+begin
+  Result := _TSyncObject.Create() as ISyncObject;
+end;
+
 {
 class function  Sys.Min(const A, B: Extended): Extended;
 begin
@@ -4649,7 +4703,7 @@ begin
   while (List.Count > 0) do
   begin
     try
-      TObject(List[List.Count - 1]).Free;
+      TObject(List[List.Count - 1]).Free();
     except
     end;
     List.Delete(List.Count - 1);

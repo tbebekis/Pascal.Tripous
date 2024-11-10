@@ -17,10 +17,134 @@ uses
   ;
 
 type
+  TMetaNodeKind = (
+    nkNone,
+    nkDatabases,
+    nkDatabase,
+    nkTables,
+    nkTable,
+    nkFields,
+    nkField,
+    nkIndexes,
+    nkIndex,
+    nkConstraints,
+    nkConstraint,
+    nkViews,
+    nkView,
+    nkTriggers,
+    nkTrigger,
+    nkProcedures,
+    nkProcedure,
+    nkSequences,
+    nkSequence
+  );
+
    TSetOfFieldType    = set of TFieldType;
+
+
 
    { forward }
    TSqlProvider = class;
+   TSqlConnectionInfo = class;
+   TMetaNode = class;
+   TMetaNodeArray = array of TMetaNode;
+   TSqlStore = class;
+
+   { TMetaNode }
+   TMetaNode = class
+   protected
+     FName: string;
+     FNodeKind: TMetaNodeKind;
+     FTag: TObject;
+     FLoaded: Boolean;
+     FLoading: Boolean;
+     function GetDisplayText: string; virtual;
+     function GetNodes: TMetaNodeArray;  virtual;
+
+     procedure ClearObjectList(List: TList); virtual;
+     function  ListToArray(List: TList): TMetaNodeArray; virtual;
+   public
+     procedure Clear(); virtual;
+     procedure Load(); virtual;
+     procedure ReLoad(); virtual;
+
+     property NodeKind: TMetaNodeKind read FNodeKind;
+     property Name: string read FName;
+     property DisplayText: string read GetDisplayText;
+     property Loading: Boolean read FLoading;
+     property Loaded: Boolean read FLoaded;
+
+     property Nodes: TMetaNodeArray read GetNodes;
+
+     property Tag: TObject read FTag write FTag;
+   end;
+
+   { TMetaTable }
+
+   TMetaTable = class(TMetaNode)
+   public
+     constructor Create(const AName: string);
+     destructor Destroy(); override;
+   end;
+
+   { TMetaTables }
+
+   TMetaTables = class(TMetaNode)
+   public
+     constructor Create();
+     destructor Destroy(); override;
+   end;
+
+   { TMetaView }
+
+   TMetaView = class(TMetaNode)
+   public
+     constructor Create(const AName: string);
+     destructor Destroy(); override;
+   end;
+
+   { TMetaViews }
+
+   TMetaViews = class(TMetaNode)
+   public
+     constructor Create();
+     destructor Destroy(); override;
+   end;
+
+   { TMetaDatabase }
+
+   TMetaDatabase = class(TMetaNode)
+   private
+     FConnectionInfo: TSqlConnectionInfo;
+     FTables: TMetaTables;
+     FViews: TMetaViews;
+     FSqlStore: TSqlStore;
+   protected
+     function GetNodes: TMetaNodeArray;  override;
+   public
+     constructor Create(ConnectionInfo: TSqlConnectionInfo);
+     destructor Destroy(); override;
+
+     property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
+     property Tables: TMetaTables read FTables;
+     property Views: TMetaViews read FViews;
+   end;
+
+   { TMetaDatabases }
+
+   TMetaDatabases = class(TMetaNode)
+   private
+     FList: TList;
+   protected
+     function GetNodes: TMetaNodeArray;  override;
+   public
+     constructor Create();
+     destructor Destroy(); override;
+
+     function Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
+     procedure Remove(Database: TMetaDatabase);
+   end;
+
 
    { TSqlConnectionInfo }
    TSqlConnectionInfo = class(TCollectionItem)
@@ -42,6 +166,8 @@ type
    public
      constructor Create(ACollection: TCollection = nil); override;
      destructor Destroy(); override;
+
+     function Clone(): TSqlConnectionInfo;
 
      function  GetSqlProvider(): TSqlProvider;
      procedure SetupConnection(SqlConnector: TSQLConnector);
@@ -146,7 +272,7 @@ type
      procedure SelectTo(Table: TDataset; const SqlText: string; Params: array of const); overload;
      procedure SelectTo(Table: TDataset; const SqlText: string; Params: array of Variant); overload;
      procedure SelectTo(Table: TDataset; const SqlText: string; Params: TDataset);overload;
-     procedure SelectTo(Table: TDataset; const SqlText: string);overload;
+     procedure SelectTo(Table: TDataset; const SqlText: string); overload;
 
      function  SelectResults(SqlText: string; const ResultFields: string; const Params: array of const): Variant; overload;
      function  SelectResults(SqlText: string; const ResultFields: string; const Params: array of Variant): Variant; overload;
@@ -158,6 +284,19 @@ type
      function  SelectResult(SqlText: string; Default: Variant; const Params: TDataset): Variant; overload;
      function  SelectResult(SqlText: string; Default: Variant): Variant; overload;
      function  SelectResult(SqlText: string): Variant; overload;
+
+     function  IntegerResult(SqlText: string; Default: Integer; const Params: array of const): Integer; overload;
+     function  IntegerResult(SqlText: string; Default: Integer; const Params: array of Variant): Integer; overload;
+     function  IntegerResult(SqlText: string; Default: Integer; const Params: TDataset): Integer; overload;
+     function  IntegerResult(SqlText: string; Default: Integer): Integer; overload;
+     function  IntegerResult(SqlText: string): Integer; overload;
+
+     procedure ExecSql(const SqlText: string; Params: array of const); overload;
+     procedure ExecSql(const SqlText: string; Params: array of Variant); overload;
+     procedure ExecSql(const SqlText: string; Params: TDataset);overload;
+     procedure ExecSql(const SqlText: string); overload;
+
+     procedure GetNativeSchema(SchemaName, TableName, SqlText: string; Table: TDataset);
 
      property ConnectionName: string read GetConnectionName;
      property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
@@ -232,6 +371,273 @@ type
 
 
 implementation
+
+
+
+
+
+
+
+
+
+
+{ TMetaNode }
+
+function TMetaNode.GetNodes: TMetaNodeArray;
+begin
+  Result := [];
+end;
+
+function TMetaNode.GetDisplayText: string;
+begin
+  Result := FName;
+end;
+
+procedure TMetaNode.Clear();
+begin
+end;
+
+procedure TMetaNode.Load();
+begin
+end;
+
+procedure TMetaNode.ReLoad();
+begin
+  Clear();
+  Load();
+end;
+
+procedure TMetaNode.ClearObjectList(List: TList);
+begin
+  while (List.Count > 0) do
+  begin
+    try
+      TObject(List[List.Count - 1]).Free();
+    except
+    end;
+    List.Delete(List.Count - 1);
+  end;
+end;
+
+function TMetaNode.ListToArray(List: TList): TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  if (List <> nil) and (List.Count > 0) then
+  begin
+    SetLength(Result, List.Count);
+    for i := 0 to List.Count - 1 do
+      Result[i] := TMetaNode(List[i]);
+  end;
+end;
+
+{ TMetaTable }
+
+constructor TMetaTable.Create(const AName: string);
+begin
+  inherited Create;
+  FName := AName;
+  FNodeKind := nkTable;
+end;
+
+destructor TMetaTable.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TMetaTables }
+
+constructor TMetaTables.Create();
+begin
+  inherited Create;
+  FName := 'Tables';
+  FNodeKind := nkTables;
+end;
+
+destructor TMetaTables.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TMetaView }
+
+constructor TMetaView.Create(const AName: string);
+begin
+  inherited Create;
+  FName := AName;
+  FNodeKind := nkView;
+end;
+
+destructor TMetaView.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TMetaViews }
+
+constructor TMetaViews.Create();
+begin
+  inherited Create;
+  FName := 'Views';
+  FNodeKind := nkViews;
+end;
+
+destructor TMetaViews.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TMetaDatabase }
+
+constructor TMetaDatabase.Create(ConnectionInfo: TSqlConnectionInfo);
+begin
+  inherited Create;
+  FName := ConnectionInfo.Name;
+  FNodeKind := nkDatabase;
+  FConnectionInfo := ConnectionInfo.Clone();
+
+  FTables := TMetaTables.Create();
+  FViews  := TMetaViews.Create();
+
+  FSqlStore := TSqlStore.Create(ConnectionInfo);
+end;
+
+destructor TMetaDatabase.Destroy();
+begin
+  FTables.Free();
+  FViews.Free();
+  FConnectionInfo.Free();
+  FSqlStore.Free();
+  inherited Destroy();
+end;
+
+function TMetaDatabase.GetNodes: TMetaNodeArray;
+begin
+  Result := [];
+  SetLength(Result, 2);
+  Result[0] := Tables;
+  Result[1] := Views;
+end;
+
+{ TMetaDatabases }
+
+constructor TMetaDatabases.Create();
+begin
+  inherited Create;
+  FName := 'Databases';
+  FNodeKind := nkDatabases;
+  FList := TList.Create();
+end;
+
+destructor TMetaDatabases.Destroy();
+begin
+  ClearObjectList(FList);
+  FList.Free();
+  inherited Destroy();
+end;
+
+function TMetaDatabases.Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
+begin
+  Result := TMetaDatabase.Create(ConnectionInfo);
+  FList.Add(Result);
+end;
+
+procedure TMetaDatabases.Remove(Database: TMetaDatabase);
+begin
+  FList.Remove(Database);
+end;
+
+function TMetaDatabases.GetNodes: TMetaNodeArray;
+begin
+   Result := ListToArray(FList);
+end;
+
+
+
+
+
+
+
+
+
+
+type
+
+   { SchemaCacheItem }
+
+   TSchemaCacheItem = class
+   private
+     FConnectionName: string;
+     FSchemaName: string;
+     FSchemaTable: TDataset;
+   public
+     constructor Create(ConnectionName: string; SchemaName: string; SchemaTable: TDataset);
+     destructor Destroy(); override;
+   end;
+
+   SchemaCache = class
+   private
+     class var List: TList;
+   public
+     class constructor Create();
+     class destructor Destroy();
+
+     class function Find(ConnectionName: string; SchemaName: string): TDataset;
+     class procedure Add(ConnectionName: string; SchemaName: string; SchemaTable: TDataset);
+   end;
+
+class constructor SchemaCache.Create();
+begin
+  List := TList.Create();
+end;
+
+class destructor SchemaCache.Destroy();
+begin
+  Sys.ClearObjectList(List);
+  List.Free();
+end;
+
+class function SchemaCache.Find(ConnectionName: string; SchemaName: string): TDataset;
+var
+  i : Integer;
+  Item: TSchemaCacheItem;
+begin
+  for i := 0 to List.Count - 1 do
+  begin
+    Item := TSchemaCacheItem(List[i]);
+    if Sys.IsSameText(Item.FConnectionName, ConnectionName) and Sys.IsSameText(Item.FSchemaName, SchemaName) then
+       Exit(Item.FSchemaTable);
+  end;
+
+  Result := nil;
+end;
+
+class procedure SchemaCache.Add(ConnectionName: string; SchemaName: string; SchemaTable: TDataset);
+var
+  Item: TSchemaCacheItem;
+begin
+  Item := TSchemaCacheItem.Create(ConnectionName, SchemaName, SchemaTable);
+  List.Add(Item);
+end;
+
+{ TSchemaCacheItem }
+
+constructor TSchemaCacheItem.Create(ConnectionName: string; SchemaName: string; SchemaTable: TDataset);
+begin
+  FConnectionName := ConnectionName;
+  FSchemaName := SchemaName;
+  FSchemaTable := SchemaTable;
+end;
+
+destructor TSchemaCacheItem.Destroy();
+begin
+  FSchemaTable.Free();
+  inherited Destroy();
+end;
+
+
+
 
 { TSqlConnectionInfo }
 
@@ -322,6 +728,15 @@ destructor TSqlConnectionInfo.Destroy();
 begin
   FParams.Free();
   inherited Destroy();
+end;
+
+function TSqlConnectionInfo.Clone(): TSqlConnectionInfo;
+var
+  JsonText: string;
+begin
+  Result := TSqlConnectionInfo.Create();
+  JsonText := Json.Serialize(Self);
+  Json.Deserialize(Result, JsonText);
 end;
 
 function TSqlConnectionInfo.GetSqlProvider(): TSqlProvider;
@@ -481,7 +896,7 @@ end;
 constructor TSqlStore.Create(ConnectionInfo: TSqlConnectionInfo);
 begin
   inherited Create();
-  FConnectionInfo := ConnectionInfo;
+  FConnectionInfo := ConnectionInfo.Clone();
   FProvider       := SqlProviders.FindSqlProvider(ConnectionInfo.Name);
 
   FSqlConnector   := TSQLConnector.Create(nil);
@@ -501,6 +916,8 @@ begin
   FSqlQuery.Free();
   FSqlTransaction.Free();
   FSqlConnector.Free();
+
+  FConnectionInfo.Free();
 
   inherited Destroy();
 end;
@@ -917,6 +1334,184 @@ function TSqlStore.SelectResult(SqlText: string): Variant;
 begin
   Result := SelectResult(SqlText, Variants.Null, nil);
 end;
+
+function TSqlStore.IntegerResult(SqlText: string; Default: Integer; const Params: array of const): Integer;
+begin
+  Result := SelectResult(SqlText, Default, Params);
+end;
+
+function TSqlStore.IntegerResult(SqlText: string; Default: Integer; const Params: array of Variant): Integer;
+begin
+  Result := SelectResult(SqlText, Default, Params);
+end;
+
+function TSqlStore.IntegerResult(SqlText: string; Default: Integer; const Params: TDataset): Integer;
+begin
+  Result := SelectResult(SqlText, Default, Params);
+end;
+
+function TSqlStore.IntegerResult(SqlText: string; Default: Integer): Integer;
+begin
+  Result := SelectResult(SqlText, Default, null);
+end;
+
+function TSqlStore.IntegerResult(SqlText: string): Integer;
+begin
+  Result := SelectResult(SqlText, -1, null);
+end;
+
+procedure TSqlStore.ExecSql(const SqlText: string; Params: array of const);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+
+      FSqlQuery.ExecSQL();
+
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlStore.ExecSql(const SqlText: string; Params: array of Variant);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+
+      FSqlQuery.ExecSQL();
+
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlStore.ExecSql(const SqlText: string; Params: TDataset);
+begin
+  FSqlConnector.Connected := True;
+  FSqlTransaction.Active := True;
+  try
+    try
+      if FSqlQuery.SQL.Text <> SqlText then
+      begin
+        FSqlQuery.SQL.Text := SqlText;
+        FSqlQuery.Prepare();
+      end;
+      DbSys.AssignParams(FSqlQuery.Params, Params);
+
+      FSqlQuery.ExecSQL();
+
+    except
+      on E: Exception do
+      // TODO: handle Exception
+      ;
+    end;
+  finally
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlStore.ExecSql(const SqlText: string);
+begin
+  ExecSql(SqlText, nil);
+end;
+
+procedure TSqlStore.GetNativeSchema(SchemaName, TableName, SqlText: string; Table: TDataset);
+var
+  cSelects : array[0..3] of string = ( '%s where %s.ID   = -100000000'  ,
+                                       '%s where %s.CODE = ''00000000''',
+                                       '%s where %s.NAME = ''00000000''',
+                                       '%s where 1 > 2'
+                                      );
+  {-------------------------------------------------}
+  function TryGetFieldList(var SchemaTable: TDataset; SqlText: string): Boolean;
+  begin
+    Result := False;
+    try
+      SchemaTable := Select(SqlText);
+      Result := True;
+    except
+    end;
+  end;
+  {-------------------------------------------------}
+
+var
+  SchemaTable: TDataset;
+  i : Integer;
+  SqlText2 : string;
+begin
+  if Sys.IsEmpty(TableName) then
+    Sys.Error('Cannot get native schema: TableName is empty.');
+
+  if Sys.IsEmpty(SqlText)  then
+    SqlText := Format('select * from %s', [TableName]);
+
+  if Sys.IsEmpty(SchemaName)  then
+    SchemaName := TableName;
+
+  if Table = nil then
+    Sys.Error('Cannot get native schema: Table is nil.');
+
+  SchemaTable := SchemaCache.Find(Self.ConnectionName, SchemaName);
+
+  if SchemaTable = nil then
+  begin
+    for i := Low(cSelects) to High(cSelects) do
+    begin
+       SqlText2 := Format(cSelects[i], [SqlText, TableName]);
+
+      if TryGetFieldList(SchemaTable, SqlText2) then
+      begin
+        SchemaCache.Add(Self.ConnectionName, SchemaName, SchemaTable);
+        break;
+      end;
+    end;
+  end;
+
+  if SchemaTable = nil then
+    Sys.Error('Cannot get native schema for: %s', [SchemaName]);
+
+  DbSys.MergeStructure(SchemaTable, Table);
+end;
+
+
+
+
+
+
+
+
+
 
 function TSqlStore.GetConnectionName: string;
 begin

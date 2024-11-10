@@ -23,7 +23,7 @@ uses
   , Tripous
   , Tripous.Data
   , LazFileUtils
-  , DB, SQLDB
+  , DB, SQLDB, IBConnection
   , Generics.Collections
   //, csvdataset
   ,Laz2_DOM, RTTIGrids
@@ -180,10 +180,10 @@ end;
 
 procedure TMainForm.Test();
 var
-  SS: TStringStream;
+  S: string;
 begin
-  SS := TStringStream.Create('Hi there');
-  TestArrayOfConst('test', [SS, 1, 'string', True, 4.5 ]);
+  S := TestSchemaInfo();
+  mmoLog.Text := S;
 end;
 
 

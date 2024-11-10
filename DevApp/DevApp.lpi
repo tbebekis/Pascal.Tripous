@@ -45,7 +45,7 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="8">
+    <Units Count="9">
       <Unit0>
         <Filename Value="DevApp.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -88,6 +88,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Crypt"/>
       </Unit7>
+      <Unit8>
+        <Filename Value="..\tripous.metadata.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous.Metadata"/>
+      </Unit8>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
