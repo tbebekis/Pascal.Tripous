@@ -102,11 +102,11 @@ type
  private
    FList        : TList;
    FLock        : SyncObjs.TCriticalSection;
-   FLockCount   : Integer;
    FOwnsObjects : Boolean;
 
    function  GetCount: Integer;
    function  GetIsEmpty: Boolean;
+   function GetItem(Index: Integer): TObject;
    procedure Lock;
    procedure UnLock;
  public
@@ -123,7 +123,10 @@ type
    procedure Push(Instance: TObject);
    function  Pop(): TObject;
 
+   procedure Sort(Compare: TListSortCompare);
+
    property Count: Integer read GetCount;
+   property Items[Index: Integer]: TObject read GetItem; default;
    property IsEmpty: Boolean read GetIsEmpty;
  end;
 
@@ -782,19 +785,12 @@ end;
 
 procedure TSafeObjectList.Lock;
 begin
-  Inc(FLockCount);
-  if FLockCount = 1 then
-    FLock.Enter;
+  FLock.Enter();
 end;
 
 procedure TSafeObjectList.UnLock;
 begin
-  Dec(FLockCount);
-  if FLockCount <= 0 then
-  begin
-    FLockCount := 0;
-    FLock.Leave();
-  end;
+   FLock.Leave();
 end;
 
 function TSafeObjectList.GetIsEmpty: Boolean;
@@ -802,6 +798,16 @@ begin
   Lock();
   try
     Result := FList.Count = 0;
+  finally
+    UnLock();
+  end;
+end;
+
+function TSafeObjectList.GetItem(Index: Integer): TObject;
+begin
+  Lock();
+  try
+    Result := TObject(FList[Index]);
   finally
     UnLock();
   end;
@@ -905,6 +911,16 @@ begin
     end
     else
       Result := nil;
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TSafeObjectList.Sort(Compare: TListSortCompare);
+begin
+  Lock();
+  try
+    FList.Sort(Compare);
   finally
     UnLock();
   end;

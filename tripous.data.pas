@@ -17,27 +17,42 @@ uses
   ;
 
 type
-  TMetaNodeKind = (
-    nkNone,
-    nkDatabases,
-    nkDatabase,
-    nkTables,
-    nkTable,
-    nkFields,
-    nkField,
-    nkIndexes,
-    nkIndex,
-    nkConstraints,
-    nkConstraint,
-    nkViews,
-    nkView,
-    nkTriggers,
-    nkTrigger,
-    nkProcedures,
-    nkProcedure,
-    nkSequences,
-    nkSequence
+  TMetaNodeType = (
+    ntNone,
+    ntDatabases,
+    ntDatabase,
+    ntTables,
+    ntTable,
+    ntFields,
+    ntField,
+    ntIndexes,
+    ntIndex,
+    ntConstraints,
+    ntConstraint,
+    ntViews,
+    ntView,
+    ntTriggers,
+    ntTrigger,
+    ntProcedures,
+    ntProcedure,
+    ntSequences,
+    ntSequence
   );
+
+
+
+  TSqlProviderType = (
+    ptNone,
+    ptFirebird,
+    ptSqlite,
+    ptMsSql,
+    ptMySql,
+    ptPostgreSql,
+    ptOracle
+  );
+
+  TSqlProviderTypeArray = array of TSqlProviderType;
+
 
    TSetOfFieldType    = set of TFieldType;
 
@@ -46,29 +61,41 @@ type
    { forward }
    TSqlProvider = class;
    TSqlConnectionInfo = class;
+   TSqlConnectionInfoArray = array of TSqlConnectionInfo;
    TMetaNode = class;
    TMetaNodeArray = array of TMetaNode;
+   TMetaDatabase = class;
    TSqlStore = class;
 
    { TMetaNode }
    TMetaNode = class
-   protected
+   private
      FName: string;
-     FNodeKind: TMetaNodeKind;
+     FNodeType: TMetaNodeType;
+     FDatabase: TMetaDatabase;
+   protected
      FTag: TObject;
      FLoaded: Boolean;
      FLoading: Boolean;
+     FIsContainer: Boolean;
+
      function GetDisplayText: string; virtual;
      function GetNodes: TMetaNodeArray;  virtual;
 
-     procedure ClearObjectList(List: TList); virtual;
-     function  ListToArray(List: TList): TMetaNodeArray; virtual;
-   public
-     procedure Clear(); virtual;
-     procedure Load(); virtual;
-     procedure ReLoad(); virtual;
+     function  ListToArray(List: TSafeObjectList): TMetaNodeArray; virtual;
 
-     property NodeKind: TMetaNodeKind read FNodeKind;
+     procedure DoClear(); virtual;
+     procedure DoLoad(); virtual;
+   public
+     constructor Create(ADatabase: TMetaDatabase; const AName: string; ANodeType: TMetaNodeType);
+     destructor Destroy(); override;
+
+     procedure Clear();
+     procedure Load();
+
+     property Database: TMetaDatabase read FDatabase;
+     property NodeType: TMetaNodeType read FNodeType;
+     property IsContainer: Boolean read FIsContainer;
      property Name: string read FName;
      property DisplayText: string read GetDisplayText;
      property Loading: Boolean read FLoading;
@@ -83,15 +110,21 @@ type
 
    TMetaTable = class(TMetaNode)
    public
-     constructor Create(const AName: string);
+     constructor Create(ADatabase: TMetaDatabase; const AName: string);
      destructor Destroy(); override;
    end;
 
    { TMetaTables }
 
    TMetaTables = class(TMetaNode)
+   private
+     FTableList: TSafeObjectList;
+   protected
+     function GetNodes: TMetaNodeArray;  override;
+     procedure DoClear(); override;
+     procedure DoLoad(); override;
    public
-     constructor Create();
+     constructor Create(ADatabase: TMetaDatabase);
      destructor Destroy(); override;
    end;
 
@@ -99,7 +132,7 @@ type
 
    TMetaView = class(TMetaNode)
    public
-     constructor Create(const AName: string);
+     constructor Create(ADatabase: TMetaDatabase; const AName: string);
      destructor Destroy(); override;
    end;
 
@@ -107,7 +140,7 @@ type
 
    TMetaViews = class(TMetaNode)
    public
-     constructor Create();
+     constructor Create(ADatabase: TMetaDatabase);
      destructor Destroy(); override;
    end;
 
@@ -121,6 +154,8 @@ type
      FSqlStore: TSqlStore;
    protected
      function GetNodes: TMetaNodeArray;  override;
+     procedure DoClear(); virtual;
+     procedure DoLoad(); virtual;
    public
      constructor Create(ConnectionInfo: TSqlConnectionInfo);
      destructor Destroy(); override;
@@ -134,15 +169,18 @@ type
 
    TMetaDatabases = class(TMetaNode)
    private
-     FList: TList;
+     FDatabaseList: TSafeObjectList;
    protected
      function GetNodes: TMetaNodeArray;  override;
+     procedure DoClear(); override;
+     procedure DoLoad(); override;
    public
      constructor Create();
      destructor Destroy(); override;
 
      function  Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
-     procedure Remove(Database: TMetaDatabase);
+     procedure AddRange(ConnectionInfoList: TSqlConnectionInfoArray);
+     procedure Remove(ADatabase: TMetaDatabase);
    end;
 
 
@@ -222,11 +260,21 @@ type
    private class var
      Providers : TList;
    public
-    const SFirebird = 'Firebird';
-    const SMsSql = 'MsSql';
+     const SFirebird = 'Firebird';
+     const SSqlite = 'Sqlite';
+     const SMsSql = 'MsSql';
+     const SMySql = 'MySql';
+     const SPostgreSql = 'PostgreSql';
+     const SOracle = 'Oracle';
+
+     const ProviderNames: TStringArray = (SFirebird, SSqlite, SMsSql, SMySql, SPostgreSql, SOracle);
+     const ProviderTypes: TSqlProviderTypeArray = (ptFirebird, ptSqlite, ptMsSql, ptMySql, ptPostgreSql, ptOracle);
 
      class constructor Create();
      class destructor Destroy();
+
+     class function ProviderTypeToString(ProviderType: TSqlProviderType): string;
+     class function StringToProviderType(ProviderType: string): TSqlProviderType;
 
      class function FindSqlProvider(const ProviderName: string): TSqlProvider;
    end;
@@ -235,11 +283,17 @@ type
    TSqlProvider = class
    protected
      FName: string;
+     FProviderType: TSqlProviderType;
+     FTablesSql : string;
    public
      constructor Create(); virtual;
      destructor Destroy(); override;
 
      property Name: string read FName;
+     property ProviderType: TSqlProviderType read FProviderType;
+
+     // metadata SELECTs
+     property TablesSql: string FTablesSql;
    end;
 
    { TSqlProviderFirebird }
@@ -383,10 +437,27 @@ implementation
 
 { TMetaNode }
 
+constructor TMetaNode.Create(ADatabase: TMetaDatabase; const AName: string; ANodeType: TMetaNodeType);
+begin
+  inherited Create();
+  FDatabase := ADatabase;
+  FName := AName;
+  FNodeType := ANodeType;
+
+  FIsContainer := not (FNodeType in [ntField, ntIndex, ntConstraint, ntTrigger, ntSequence]);
+end;
+
+destructor TMetaNode.Destroy();
+begin
+  inherited Destroy();
+end;
+
 function TMetaNode.GetNodes: TMetaNodeArray;
 begin
   Result := [];
 end;
+
+
 
 function TMetaNode.GetDisplayText: string;
 begin
@@ -395,31 +466,29 @@ end;
 
 procedure TMetaNode.Clear();
 begin
+  FLoading := True;
+  try
+    DoClear();
+    FLoaded := False;
+  finally
+    FLoading := False;
+  end;
 end;
 
 procedure TMetaNode.Load();
 begin
-end;
-
-procedure TMetaNode.ReLoad();
-begin
-  Clear();
-  Load();
-end;
-
-procedure TMetaNode.ClearObjectList(List: TList);
-begin
-  while (List.Count > 0) do
-  begin
-    try
-      TObject(List[List.Count - 1]).Free();
-    except
-    end;
-    List.Delete(List.Count - 1);
+  FLoading := True;
+  try
+    DoClear();
+    DoLoad();
+    FLoaded := True;
+  finally
+    FLoading := False;
   end;
 end;
 
-function TMetaNode.ListToArray(List: TList): TMetaNodeArray;
+
+function TMetaNode.ListToArray(List: TSafeObjectList): TMetaNodeArray;
 var
   i : Integer;
 begin
@@ -432,13 +501,24 @@ begin
   end;
 end;
 
+procedure TMetaNode.DoClear();
+begin
+end;
+
+procedure TMetaNode.DoLoad();
+begin
+end;
+
+
+
+
+
+
 { TMetaTable }
 
-constructor TMetaTable.Create(const AName: string);
+constructor TMetaTable.Create(ADatabase: TMetaDatabase; const AName: string);
 begin
-  inherited Create;
-  FName := AName;
-  FNodeKind := nkTable;
+  inherited Create(ADatabase, AName, ntTable);
 end;
 
 destructor TMetaTable.Destroy();
@@ -448,25 +528,58 @@ end;
 
 { TMetaTables }
 
-constructor TMetaTables.Create();
+constructor TMetaTables.Create(ADatabase: TMetaDatabase);
 begin
-  inherited Create;
-  FName := 'Tables';
-  FNodeKind := nkTables;
+  inherited Create(ADatabase, 'Tables', ntTables);
+  FTableList := TSafeObjectList.Create(True);
 end;
 
 destructor TMetaTables.Destroy();
 begin
+  FTableList.Free();
   inherited Destroy();
 end;
 
+function TMetaTables.GetNodes: TMetaNodeArray;
+begin
+  Result := ListToArray(FTableList);
+end;
+
+procedure TMetaTables.DoClear();
+begin
+  FTableList.Clear();
+end;
+
+procedure TMetaTables.DoLoad();
+var
+  SqlText: string;
+  Table: TMemTable;
+  TableName: string;
+begin
+  SqlText := FDatabase.FSqlStore.Provider.TablesSql;
+
+  Table := FDatabase.FSqlStore.Select(SqlText);
+  try
+    Table.First();
+    while not Table.Eof() do
+    begin
+      TableName := Table.FieldByName('TableName').AsString;
+      // EDW
+      Table.Next();
+    end;
+  finally
+    Table.Free();
+  end;
+
+end;
+
+
+
 { TMetaView }
 
-constructor TMetaView.Create(const AName: string);
+constructor TMetaView.Create(ADatabase: TMetaDatabase; const AName: string);
 begin
-  inherited Create;
-  FName := AName;
-  FNodeKind := nkView;
+  inherited Create(ADatabase, AName, ntView);
 end;
 
 destructor TMetaView.Destroy();
@@ -476,11 +589,9 @@ end;
 
 { TMetaViews }
 
-constructor TMetaViews.Create();
+constructor TMetaViews.Create(ADatabase: TMetaDatabase);
 begin
-  inherited Create;
-  FName := 'Views';
-  FNodeKind := nkViews;
+  inherited Create(ADatabase, 'Views', ntViews);
 end;
 
 destructor TMetaViews.Destroy();
@@ -492,13 +603,11 @@ end;
 
 constructor TMetaDatabase.Create(ConnectionInfo: TSqlConnectionInfo);
 begin
-  inherited Create;
-  FName := ConnectionInfo.Name;
-  FNodeKind := nkDatabase;
+  inherited Create(Self, ConnectionInfo.Name, ntDatabase);
   FConnectionInfo := ConnectionInfo.Clone();
 
-  FTables := TMetaTables.Create();
-  FViews  := TMetaViews.Create();
+  FTables := TMetaTables.Create(Self);
+  FViews  := TMetaViews.Create(Self);
 
   FSqlStore := TSqlStore.Create(ConnectionInfo);
 end;
@@ -520,37 +629,76 @@ begin
   Result[1] := Views;
 end;
 
+procedure TMetaDatabase.DoClear();
+begin
+  FTables.Clear();
+  FViews.Clear();
+end;
+
+procedure TMetaDatabase.DoLoad();
+begin
+end;
+
 { TMetaDatabases }
 
 constructor TMetaDatabases.Create();
 begin
-  inherited Create;
-  FName := 'Databases';
-  FNodeKind := nkDatabases;
-  FList := TList.Create();
+  inherited Create(nil, 'Databases', ntDatabases);
+  FDatabaseList := TSafeObjectList.Create(True);
 end;
 
 destructor TMetaDatabases.Destroy();
 begin
-  ClearObjectList(FList);
-  FList.Free();
+  FDatabaseList.Free(); // this frees the objects too.
   inherited Destroy();
+end;
+
+procedure TMetaDatabases.DoClear();
+begin
+  FDatabaseList.Clear();
+end;
+
+procedure TMetaDatabases.DoLoad();
+var
+  A: TSqlConnectionInfoArray;
+  i : Integer;
+begin
+  A := [];
+  SetLength(A, FDatabaseList.Count);
+  for i := 0 to FDatabaseList.Count - 1 do
+    A[i] := TMetaDatabase(FDatabaseList[i]).ConnectionInfo.Clone();
+
+  FDatabaseList.Clear();
+
+  AddRange(A);
+
+  for i := Low(A) to High(A) do
+     A[i].Free();
 end;
 
 function TMetaDatabases.Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
 begin
   Result := TMetaDatabase.Create(ConnectionInfo);
-  FList.Add(Result);
+  FDatabaseList.Add(Result);
+  Result.Load();
 end;
 
-procedure TMetaDatabases.Remove(Database: TMetaDatabase);
+procedure TMetaDatabases.AddRange(ConnectionInfoList: TSqlConnectionInfoArray);
+var
+  i : Integer;
 begin
-  FList.Remove(Database);
+  for i := Low(ConnectionInfoList) to High(ConnectionInfoList) do
+      Add(ConnectionInfoList[i]);
+end;
+
+procedure TMetaDatabases.Remove(ADatabase: TMetaDatabase);
+begin
+  FDatabaseList.Remove(ADatabase); // this frees the object too.
 end;
 
 function TMetaDatabases.GetNodes: TMetaNodeArray;
 begin
-   Result := ListToArray(FList);
+   Result := ListToArray(FDatabaseList);
 end;
 
 
@@ -856,6 +1004,28 @@ begin
   Providers.Free();
 end;
 
+class function SqlProviders.ProviderTypeToString(ProviderType: TSqlProviderType): string;
+var
+  i: Integer;
+begin
+  for i := Low(ProviderTypes) to High(ProviderTypes) do
+      if ProviderType = ProviderTypes[i] then
+         Exit(ProviderNames[i]);
+
+  Result := '';
+end;
+
+class function SqlProviders.StringToProviderType(ProviderType: string): TSqlProviderType;
+var
+  i: Integer;
+begin
+  for i := Low(ProviderNames) to High(ProviderNames) do
+      if Sys.IsSameText(ProviderType, ProviderNames[i]) then
+         Exit(ProviderTypes[i]);
+
+  Result := ptNone;
+end;
+
 class function SqlProviders.FindSqlProvider(const ProviderName: string): TSqlProvider;
 var
   Item : Pointer;
@@ -883,7 +1053,22 @@ end;
 constructor TSqlProviderFirebird.Create();
 begin
   inherited Create();
+  FProviderType := ptFirebird;
   FName := SqlProviders.SFirebird;
+
+  // https://www.firebirdfaq.org/faq174/
+  FTablesSql :=
+'select                                                ' +
+'  rdb$relation_name as TableName,                     ' +
+'  rdb$owner_name    as OwnerName                      ' +
+'from                                                  ' +
+'  rdb$relations                                       ' +
+'where                                                 ' +
+'  rdb$view_blr is null                                ' +
+'  and (rdb$system_flag is null or rdb$system_flag = 0)' +
+'';
+
+
 end;
 
 destructor TSqlProviderFirebird.Destroy();

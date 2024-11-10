@@ -45,12 +45,12 @@ object MainForm: TMainForm
     FieldDefs = <>
     Params = <>
     Macros = <>
-    Left = 176
+    Left = 224
     Top = 8
   end
   object SQLTransaction1: TSQLTransaction
     Active = False
-    Left = 232
-    Top = 16
+    Left = 352
+    Top = 8
   end
 end
