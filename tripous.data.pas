@@ -141,7 +141,7 @@ type
      constructor Create();
      destructor Destroy(); override;
 
-     function Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
+     function  Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
      procedure Remove(Database: TMetaDatabase);
    end;
 
