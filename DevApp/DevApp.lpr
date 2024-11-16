@@ -9,7 +9,8 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, runtimetypeinfocontrols, f_MainForm, Tripous.Data, Tripous,
-  Tripous.FilterParser, Tripous.MemTable, o_TestBed, Tripous.Crypt;
+  Tripous.FilterParser, Tripous.MemTable, o_TestBed, Tripous.Crypt, 
+Tripous.Data.Constants, Tripous.Generics;
 
 {$R *.res}
 

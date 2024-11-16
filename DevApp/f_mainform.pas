@@ -1,6 +1,6 @@
 unit f_MainForm;
 
-{$mode objfpc}
+{$mode DELPHI}
 {$H+}
 
 
@@ -31,7 +31,7 @@ uses
   ,Rtti
 
 
-
+  ,Tripous.Generics
   ,o_TestBed
   ;
 
@@ -93,7 +93,7 @@ begin
   inherited DoCreate;
 
   //BufTableCreate();
-  btnTest.OnClick := @Self.AnyClick;
+  btnTest.OnClick := Self.AnyClick;
 end;
 
 procedure TMainForm.DoDestroy;
@@ -128,7 +128,7 @@ begin
     tblPsw.Open();
   end;
 
-
+  ShowMessage('asdf');
   //dsGrid.DataSet := tblPsw;
 end;
 
@@ -177,13 +177,104 @@ begin
       Obj := A[i].VObject;
   end;
 end;
+function UnQuote(const S: string): string;
+const
+  A: array of char = ['''', '"', '[', ']', ' ', #9, #10, #11, #12, #13];
+var
+  i : Integer;
+begin
+   ShowMessage(S);
+
+   Result := S.Trim(A);
+   ShowMessage(Result);
+
+   {
+   for i := Low(A) to High(A) do
+   begin
+     if Result.StartsWith(A[i]) then
+        Result := Result.Remove(0, 1);
+     if Result.EndsWith(A[i]) then
+        Result := Result.Remove(Length(S) - 1, 1);
+   end;
+   }
+
+   //Result := Result.Trim();
+
+   ShowMessage(Result);
+end;
+
+type
+
+  { TPerson }
+
+  TPerson = class
+  public
+    Name: string;
+    constructor Create(AName: string);
+    destructor Destroy(); override;
+  end;
+
+{ TPerson }
+
+constructor TPerson.Create(AName: string);
+begin
+  Name := AName;
+end;
+
+destructor TPerson.Destroy();
+begin
+  inherited Destroy();
+end;
+
+function MatchPerson(Item: TPerson): Boolean;
+begin
+  Result := Sys.IsSameText(Item.Name, 'john');
+end;
+
+function ComparePerson(constref A, B: TPerson): Integer;
+begin
+  Result := AnsiCompareText(A.Name, B.Name);
+end;
+
+procedure TestGeneric_0();
+var
+  P1, P2, P3, P, Item : TPerson;
+  PersonList: TGenObjectList<TPerson>;
+  Count: Integer;
+  S : string;
+begin
+  P1 := TPerson.Create('teo');
+  P2 := TPerson.Create('john');
+  P3 := TPerson.Create('mike');
+
+  PersonList := TGenObjectList<TPerson>.Create(True, False);
+  PersonList.Add(P1);
+  PersonList.Add(P2);
+  PersonList.Add(P3);
+
+  Count := PersonList.Count;
+
+  P := PersonList.FirstOrNil(MatchPerson);
+  PersonList.Sort(ComparePerson);
+
+  for Item in PersonList do
+    S := Item.Name;
+
+  PersonList.Free();
+end;
+
+
 
 procedure TMainForm.Test();
 var
-  S: string;
+  S : string;
 begin
-  S := TestSchemaInfo();
-  mmoLog.Text := S;
+  //TestMetastores();
+  //S := ''''' ab         ]';
+  //S := UnQuote(S);
+
+  TestGeneric_0();
+
 end;
 
 

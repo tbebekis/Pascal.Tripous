@@ -64,6 +64,7 @@ procedure DeStreamTest();
 procedure TestSqlConnectionInfo();
 procedure TestJson();
 function TestSchemaInfo(): string;
+procedure TestMetastores();
 
 
 implementation
@@ -309,7 +310,7 @@ begin
     Con.ConnectorType := 'Firebird';
     Con.DatabaseName := 'C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
     Con.Open();
-    Trans.Active:= True;
+    //Trans.Active:= True;
 
     // stTables
     // stSysTables   ??
@@ -322,7 +323,7 @@ begin
 
     Result := List.Text;
   finally
-    Trans.Active:= False;
+    //Trans.Active:= False;
     Con.Close();
 
     SchemaList.Free();
@@ -331,8 +332,22 @@ begin
     List.Free();
   end;
 
+end;
 
+procedure TestMetastores();
+var
+  ConInfo: TSqlConnectionInfo;
+begin
+  ConInfo := TSqlConnectionInfo.Create(nil);
+  try
+    ConInfo.Name := 'Default';
+    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird);
+    ConInfo.ConnectionString := 'User = SYSDBA; Psw = mirodato; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
 
+    DbSys.MetaDatabases.Add(ConInfo);
+  finally
+    ConInfo.Free();
+  end;
 
 
 end;

@@ -81,7 +81,7 @@ const
 
 type
 
-
+ TMatchObjectProc = function (Item: TObject): Boolean;
 
  TArrayOfVariant   = array of Variant;
  TArrayOfVarRec    = array of TVarRec;
@@ -96,6 +96,81 @@ type
    procedure Lock;
    procedure UnLock;
  end;
+
+ { TGenList }
+ generic TGenList<T> = class(TPersistent)
+ private
+   FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
+
+   function GetCount: Integer;
+   function GetItem(Index: SizeInt): T;
+   function GetItemList: specialize TArray<T>;
+   procedure SetItem(Index: SizeInt; Item: T);
+ protected
+   //function AdjustCapacityForItem(): SizeInt;  virtual;
+   //function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
+ public
+   constructor Create(); virtual;
+   destructor Destroy(); override;
+
+   procedure Clear(); virtual;
+
+   function  Add(Item: T): Integer; virtual;
+   procedure Insert(Index: Integer; Item: T); virtual;
+   procedure Remove(Item: T); virtual;
+   procedure RemoveAt(Index: Integer); virtual;
+
+   procedure AddRange(constref Range: array of T); virtual;
+   procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
+
+   function Contains(Item: T): Boolean; virtual;
+   function IndexOf(Item: T): Integer; virtual;
+
+   property Count: Integer read GetCount;
+
+   property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+ end;
+  {
+ generic TSafeGenList<T>  = class(TPersistent)
+ private
+   FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
+   FLock        : SyncObjs.TCriticalSection;
+   FOwnsObjects : Boolean;
+   FCount: SizeInt;
+   function GetCount: Integer;
+   function GetItem(Index: SizeInt): T;
+   function GetItemList: specialize TArray<T>;
+   procedure SetItem(Index: SizeInt; Item: T);
+ protected
+   function AdjustCapacityForItem(): SizeInt;  virtual;
+   function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
+ public
+   constructor Create(); virtual;
+   destructor Destroy(); override;
+
+   procedure Clear(); virtual;
+
+   function  Add(Item: T): Integer; virtual;
+   procedure Insert(Index: Integer; Item: T); virtual;
+   procedure Remove(Item: T); virtual;
+   procedure RemoveAt(Index: Integer); virtual;
+
+   procedure AddRange(constref Range: array of T); virtual;
+   procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
+
+   function Contains(Item: T): Boolean; virtual;
+   function IndexOf(Item: T): Integer; virtual;
+
+   property Count: Integer read GetCount;
+
+   property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+ end;
+ }
+{
+function Default(const T: AnyType):AnyType;
+function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a type
+
+}
 
  { TSafeObjectList }
  TSafeObjectList = class
@@ -124,6 +199,7 @@ type
    function  Pop(): TObject;
 
    procedure Sort(Compare: TListSortCompare);
+   function  FirstOrNil(MatchFunc: TMatchObjectProc): TObject;
 
    property Count: Integer read GetCount;
    property Items[Index: Integer]: TObject read GetItem; default;
@@ -674,41 +750,7 @@ type
   end;
 
 
-  { TGenList }
-  generic TGenList<T> = class(TPersistent)     // generic TGenList<T: TPersistent> = class(TPersistent)
-  private
-    FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
-    FCount: SizeInt;
-    function GetCount: Integer;
-    function GetItem(Index: SizeInt): T;
-    function GetItemList: specialize TArray<T>;
-    procedure SetItem(Index: SizeInt; Item: T);
-  protected
-    function AdjustCapacityForItem(): SizeInt;  virtual;
-    function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
-  public
-    constructor Create(); virtual;
-    destructor Destroy(); override;
 
-    procedure Clear(); virtual;
-
-    function  Add(Item: T): Integer; virtual;
-    procedure Insert(Index: Integer; Item: T); virtual;
-    procedure Remove(Item: T); virtual;
-    procedure RemoveAt(Index: Integer); virtual;
-
-    procedure AddRange(constref Range: array of T); virtual;
-    procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
-
-    function Contains(Item: T): Boolean; virtual;
-    function IndexOf(Item: T): Integer; virtual;
-
-    property Count: Integer read GetCount;
-
-    property Items[Index: SizeInt]: T read GetItem write SetItem; default;
-  //published
-  //  property ItemList: specialize TArray<T> read GetItemList write FItemList;
-  end;
 
 
 implementation
@@ -921,6 +963,25 @@ begin
   Lock();
   try
     FList.Sort(Compare);
+  finally
+    UnLock();
+  end;
+end;
+
+function TSafeObjectList.FirstOrNil(MatchFunc: TMatchObjectProc): TObject;
+var
+  i : Integer;
+  Obj: TObject;
+begin
+  Result := nil;
+  Lock();
+  try
+    for i := 0 to FList.Count - 1 do
+    begin
+      Obj := TObject(FList[i]);
+      if MatchFunc(Obj) then
+         Exit(Obj);
+    end;
   finally
     UnLock();
   end;
@@ -4747,7 +4808,7 @@ procedure TGenList.SetItem(Index: SizeInt; Item: T);
 begin
   FItems[Index] := Item;
 end;
-
+{
 function TGenList.AdjustCapacityForItem(): SizeInt;
 begin
   Result := Length(FItems);
@@ -4786,11 +4847,11 @@ begin
   Result := FCount;
   Inc(FCount, RangeCount);
 end;
+}
 
 constructor TGenList.Create();
 begin
   inherited Create();
-
 end;
 
 destructor TGenList.Destroy();
@@ -4804,17 +4865,27 @@ begin
 end;
 
 function TGenList.Add(Item: T): Integer;
-var
-  pInfo: PTypeInfo;
 begin
-  FItems := Concat(FItems, [Item]);
+  if not Assigned(FItems) then
+  begin
+    SetLength(FItems, 1);
+    FItems[0] := Item;
+  end else begin
+     FItems := System.Concat(FItems, [Item]);
+  end;
+
   Result := Length(FItems);
-  pInfo := TypeInfo(Item);
 end;
 
 procedure TGenList.Insert(Index: Integer; Item: T);
 begin
-  System.Insert([Item], FItems, Index);
+  if not Assigned(FItems) then
+  begin
+    SetLength(FItems, 1);
+    FItems[0] := Item;
+  end else begin
+     System.Insert([Item], FItems, Index);
+  end;
 end;
 
 procedure TGenList.Remove(Item: T);
