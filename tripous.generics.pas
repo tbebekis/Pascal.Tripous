@@ -72,8 +72,8 @@ type
 
     { Sorts the internal list }
     procedure Sort(CompareFunc: TComparisonFunc<T>);
-    { Returns the first element that fulfils a condition, if any, or nil }
-    function  FirstOrNil(ConditionFunc: TConditionFunc<T>): T;
+    { Returns the first element that fulfils a condition, if any, or Default(T) }
+    function  FirstOrDefault(ConditionFunc: TConditionFunc<T>): T;
     { Returns true if any of the elements fulfil a condition }
     function  Any(ConditionFunc: TConditionFunc<T>): Boolean;
     { Returns true if all the elements fulfil a condition }
@@ -383,7 +383,7 @@ begin
   QuickSort(FItems, 0, Pred(Count), Comparer);
 end;
 
-function TGenList<T>.FirstOrNil(ConditionFunc: TConditionFunc<T>): T;
+function TGenList<T>.FirstOrDefault(ConditionFunc: TConditionFunc<T>): T;
 var
   i : Integer;
   Item: T;
