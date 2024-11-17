@@ -5,30 +5,37 @@ unit Tripous.Generics;
 interface
 
 uses
-  Classes
+   Classes
   ,SysUtils
   ,SyncObjs
   ,Generics.Defaults
   ,Generics.Collections
   ;
 
+// TODO: check TGenList, TGenDictionary
+
 type
   TGenArray<T> = array of T;
 
+  TGetItemAtIndexEvent<T> = function(Index: SizeInt): T of object;
   TConditionFunc<T> = function (Item: T): Boolean;
 
   { TGenEnumerator }
-  TGenEnumerator<T> = class(TEnumerator<T>)
-  private
-    FItems : TGenArray<T>;
-    FPosition : Integer;
+  TGenEnumerator<T> = class //(TEnumerator<T>)
   protected
-    function DoGetCurrent: T; override;
-    function DoMoveNext: boolean; override;
-  public
-    constructor Create();
+    FLength: SizeInt;
+    FPosition : SizeInt;
+    FGetItemAtIndex : TGetItemAtIndexEvent<T>;
 
+    function DoGetCurrent: T;
+  public
+    constructor Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<T>);
+
+    function MoveNext: Boolean;
     procedure Reset();
+
+    property Current: T read DoGetCurrent;
+    property Position: SizeInt read FPosition;
   end;
 
   { TGenList }
@@ -104,16 +111,88 @@ type
     property OwnsObjects: Boolean read FOwnsObjects;
   end;
 
+  { TGenKeyValue }
+
+  TGenKeyValue<TKey, TValue> = class
+  private
+    FKey: TKey;
+    FValue: TValue;
+  public
+    constructor Create(AKey: TKey; AValue: TValue);
+    property Key: TKey read FKey;
+    property Value: TValue read FValue;
+  end;
+
+  { TGenDictionaryEnumerator }
+  TGenDictionaryEnumerator<TKey, TValue> = class
+  protected
+    FLength: SizeInt;
+    FPosition : SizeInt;
+    FGetItemAtIndex : TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>;
+    function DoGetCurrent: TGenKeyValue<TKey, TValue>;
+  public
+    constructor Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>);
+    function MoveNext: boolean;
+
+    procedure Reset();
+
+    property Current: TGenKeyValue<TKey, TValue> read DoGetCurrent;
+    property Position: SizeInt read FPosition;
+  end;
+
+
+  { TGenDictionary }
+
+  TGenDictionary<TKey, TValue> = class
+  protected
+    FList : Classes.TList;
+    function GetCount: SizeInt;
+    function  GetValue(const Key: TKey): TValue;
+    procedure SetValue(const Key: TKey; Value: TValue);
+
+    function  GetKeys: TGenArray<TKey>;
+    function  GetValues: TGenArray<TValue>;
+
+    function FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+    function FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+
+    function IndexOfKey(const Key: TKey): SizeInt;
+    function IndexOfValue(const Value: TValue): SizeInt;
+
+    function GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
+  public
+    constructor Create();
+    destructor Destroy(); override;
+
+    procedure Add(Key: TKey; const Value: Variant);
+    function  Remove(Key: TKey): Boolean;
+    procedure Clear();
+
+    function  ContainsKey(const Key: TKey): Boolean;
+    function  ContainsValue(const Value: TValue): Boolean;
+
+    function  GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+
+    property Count: SizeInt read GetCount;
+    property Item[const Key: TKey]: TValue read GetValue write SetValue; default;
+    property Keys: TGenArray<TKey> read GetKeys;
+    property Values: TGenArray<TValue> read GetValues;
+  end;
+
+
+
 
 implementation
 
 
 { TGenEnumerator }
 
-constructor TGenEnumerator<T>.Create();
+constructor TGenEnumerator<T>.Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<T>);
 begin
   inherited Create();
   FPosition := -1;
+  FLength := Length;
+  FGetItemAtIndex := GetItemAtIndex;
 end;
 
 procedure TGenEnumerator<T>.Reset();
@@ -123,14 +202,17 @@ end;
 
 function TGenEnumerator<T>.DoGetCurrent: T;
 begin
-  Result := FItems[FPosition];
+  Result := FGetItemAtIndex(FPosition);
 end;
 
-function TGenEnumerator<T>.DoMoveNext: boolean;
+function TGenEnumerator<T>.MoveNext: boolean;
 begin
   Inc(FPosition);
-  Result := FPosition < Length(FItems);
+  Result := FPosition < FLength;
 end;
+
+
+
 
 
 { TGenList }
@@ -483,8 +565,8 @@ end;
 
 function TGenList<T>.GetEnumerator(): TGenEnumerator<T>;
 begin
-  Result := TGenEnumerator<T>.Create();
-  Result.FItems := FItems;
+  Result := TGenEnumerator<T>.Create(Length(FItems), GetItem);
+  //Result.FItems := FItems;
 end;
 
 function TGenList<T>.GetItem(Index: SizeInt): T;
@@ -542,6 +624,235 @@ begin
 
   inherited DoRemoveAt(Index);
 end;
+
+{ TGenKeyValue }
+
+constructor TGenKeyValue<TKey, TValue>.Create(AKey: TKey; AValue: TValue);
+begin
+  inherited Create();
+  FKey := AKey;
+  FValue := AValue;
+end;
+
+{ TGenDictionaryEnumerator }
+
+constructor TGenDictionaryEnumerator<TKey, TValue>.Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>);
+begin
+  inherited Create();
+  FPosition := -1;
+  FLength := Length;
+  FGetItemAtIndex := GetItemAtIndex;
+end;
+
+function TGenDictionaryEnumerator<TKey, TValue>.DoGetCurrent: TGenKeyValue<TKey, TValue>;
+begin
+  Result := FGetItemAtIndex(FPosition);
+end;
+
+function TGenDictionaryEnumerator<TKey, TValue>.MoveNext: boolean;
+begin
+  Inc(FPosition);
+  Result := FPosition < FLength;
+end;
+
+procedure TGenDictionaryEnumerator<TKey, TValue>.Reset();
+begin
+  FPosition := -1;
+end;
+
+
+{ TGenDictionary }
+
+constructor TGenDictionary<TKey, TValue>.Create();
+begin
+  inherited Create();
+  FList := Classes.TList.Create();
+end;
+
+destructor TGenDictionary<TKey, TValue>.Destroy();
+begin
+  Clear();
+  FList.Free();
+  inherited Destroy;
+end;
+
+function TGenDictionary<TKey, TValue>.GetCount: SizeInt;
+begin
+  Result := FList.Count;
+end;
+
+procedure TGenDictionary<TKey, TValue>.Clear();
+begin
+  while (FList.Count > 0) do
+  begin
+    try
+      TObject(FList[FList.Count - 1]).Free;
+    except
+    end;
+    FList.Delete(FList.Count - 1);
+  end;
+
+  FList.Clear();
+end;
+
+function TGenDictionary<TKey, TValue>.IndexOfKey(const Key: TKey): SizeInt;
+var
+  i : Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Key = Entry.Key then
+       Exit(i);
+  end;
+
+  Exit(-1);
+end;
+
+function TGenDictionary<TKey, TValue>.IndexOfValue(const Value: TValue): SizeInt;
+var
+  i : Integer;
+  Entry: TGenKeyValue<TKey, TValue>;
+begin
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Value = Entry.Value then
+       Exit(i);
+  end;
+
+  Exit(-1);
+end;
+
+
+
+function TGenDictionary<TKey, TValue>.FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+var
+  i : Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Result := nil;
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Key = Entry.Key then
+       Exit(Entry);
+  end;
+end;
+
+function TGenDictionary<TKey, TValue>.FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+var
+  i : Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Result := nil;
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Value = Entry.Value then
+       Exit(Entry);
+  end;
+
+end;
+
+function TGenDictionary<TKey, TValue>.ContainsKey(const Key: TKey): Boolean;
+begin
+  Result := FindByKey(Key) <> nil;
+end;
+
+function TGenDictionary<TKey, TValue>.ContainsValue(const Value: TValue): Boolean;
+begin
+  Result := FindByValue(Value) <> nil;
+end;
+
+function TGenDictionary<TKey, TValue>.GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
+begin
+  Result := TGenKeyValue<TKey, TValue>(FList[Index]);
+end;
+
+function TGenDictionary<TKey, TValue>.GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+begin
+   Result := TGenDictionaryEnumerator<TKey, TValue>.Create(FList.Count, GetItemAtIndex);
+end;
+
+function TGenDictionary<TKey, TValue>.GetValue(const Key: TKey): TValue;
+var
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Entry := FindByKey(Key);
+  if Assigned(Entry) then
+     Exit(Entry.Value);
+
+  raise Exception.Create('Key not found');
+end;
+
+procedure TGenDictionary<TKey, TValue>.SetValue(const Key: TKey; Value: TValue);
+var
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Entry := FindByKey(Key);
+  if not Assigned(Entry) then
+  begin
+    Entry := TGenKeyValue<TKey, TValue>.Create(Key, Value);
+    FList.Add(Entry);
+  end;
+
+  Entry.FValue := Value;
+end;
+
+function TGenDictionary<TKey, TValue>.GetKeys: TGenArray<TKey>;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := TGenKeyValue<TKey, TValue>(FList[i]).Key;
+end;
+
+function TGenDictionary<TKey, TValue>.GetValues: TGenArray<TValue>;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := TGenKeyValue<TKey, TValue>(FList[i]).Value;
+end;
+
+procedure TGenDictionary<TKey, TValue>.Add(Key: TKey; const Value: Variant);
+begin
+  Self.Item[Key] := Value;
+end;
+
+function TGenDictionary<TKey, TValue>.Remove(Key: TKey): Boolean;
+var
+  Index: Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Result := False;
+  Entry := FindByKey(Key);
+  if Assigned(Entry) then
+  begin
+    Index := FList.IndexOf(Entry);
+    Entry.Free();
+    FList.Delete(Index);
+    Result := True;
+  end;
+end;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

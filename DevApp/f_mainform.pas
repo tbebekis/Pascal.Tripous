@@ -105,6 +105,7 @@ end;
 procedure TMainForm.BufTableCreate();
 var
   FilePath: string;
+  L: TList;
 begin
   tblPsw := TBufTable.Create(Self);
 
@@ -254,7 +255,7 @@ begin
 
   Count := PersonList.Count;
 
-  P := PersonList.FirstOrNil(MatchPerson);
+  P := PersonList.FirstOrDefault(MatchPerson);
   PersonList.Sort(ComparePerson);
 
   for Item in PersonList do
