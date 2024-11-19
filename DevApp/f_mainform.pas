@@ -204,65 +204,7 @@ begin
    ShowMessage(Result);
 end;
 
-type
 
-  { TPerson }
-
-  TPerson = class
-  public
-    Name: string;
-    constructor Create(AName: string);
-    destructor Destroy(); override;
-  end;
-
-{ TPerson }
-
-constructor TPerson.Create(AName: string);
-begin
-  Name := AName;
-end;
-
-destructor TPerson.Destroy();
-begin
-  inherited Destroy();
-end;
-
-function MatchPerson(Item: TPerson): Boolean;
-begin
-  Result := Sys.IsSameText(Item.Name, 'john');
-end;
-
-function ComparePerson(constref A, B: TPerson): Integer;
-begin
-  Result := AnsiCompareText(A.Name, B.Name);
-end;
-
-procedure TestGeneric_0();
-var
-  P1, P2, P3, P, Item : TPerson;
-  PersonList: TGenObjectList<TPerson>;
-  Count: Integer;
-  S : string;
-begin
-  P1 := TPerson.Create('teo');
-  P2 := TPerson.Create('john');
-  P3 := TPerson.Create('mike');
-
-  PersonList := TGenObjectList<TPerson>.Create(True, False);
-  PersonList.Add(P1);
-  PersonList.Add(P2);
-  PersonList.Add(P3);
-
-  Count := PersonList.Count;
-
-  P := PersonList.FirstOrDefault(MatchPerson);
-  PersonList.Sort(ComparePerson);
-
-  for Item in PersonList do
-    S := Item.Name;
-
-  PersonList.Free();
-end;
 
 
 
@@ -274,7 +216,7 @@ begin
   //S := ''''' ab         ]';
   //S := UnQuote(S);
 
-  TestGeneric_0();
+  TripousGenericsTest();
 
 end;
 

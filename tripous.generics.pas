@@ -10,6 +10,8 @@ uses
   ,SyncObjs
   ,Generics.Defaults
   ,Generics.Collections
+
+  ,Tripous
   ;
 
 // TODO: check TGenList, TGenDictionary
@@ -21,7 +23,7 @@ type
   TConditionFunc<T> = function (Item: T): Boolean;
 
   { TGenEnumerator }
-  TGenEnumerator<T> = class //(TEnumerator<T>)
+  TGenEnumerator<T> = class
   protected
     FLength: SizeInt;
     FPosition : SizeInt;
@@ -179,10 +181,116 @@ type
     property Values: TGenArray<TValue> read GetValues;
   end;
 
-
+procedure TripousGenericsTest();
 
 
 implementation
+
+
+type
+  { TPerson }
+  TPerson = class
+  public
+    Name: string;
+    constructor Create(AName: string);
+    destructor Destroy(); override;
+  end;
+
+{ TPerson }
+
+constructor TPerson.Create(AName: string);
+begin
+  Name := AName;
+end;
+
+destructor TPerson.Destroy();
+begin
+  inherited Destroy();
+end;
+
+function MatchPerson(Item: TPerson): Boolean;
+begin
+  Result := Sys.IsSameText(Item.Name, 'john');
+end;
+
+function ComparePerson(constref A, B: TPerson): Integer;
+begin
+  Result := AnsiCompareText(A.Name, B.Name);
+end;
+
+type
+  TNames = array of string;
+  TPersons = array of TPerson;
+
+
+function CreatePersonArray(Names: TNames): TPersons;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, Length(Names));
+  for i := Low(Names) to High(Names) do
+    Result[i] := TPerson.Create(Names[i]);
+end;
+
+function GenObjectList_Create(Names: TNames): TGenObjectList<TPerson>;
+var
+  Name: string;
+begin
+  Result := TGenObjectList<TPerson>.Create(True, False);
+  for Name in Names do
+    Result.Add(TPerson.Create(Name));
+end;
+
+procedure GetObjectListTest_FirstOrDefault(PersonList: TGenObjectList<TPerson>);
+var
+  P: TPerson;
+  S: string;
+begin
+  P := PersonList.FirstOrDefault(MatchPerson);
+  S := P.Name;
+end;
+
+procedure GetObjectListTest_Sort(PersonList: TGenObjectList<TPerson>);
+var
+  S: string;
+  Item: TPerson;
+begin
+  PersonList.Sort(ComparePerson);
+
+  for Item in PersonList do
+    S := Item.Name;
+end;
+
+procedure GetObjectListTest_AddRange(Names: TNames; PersonList: TGenObjectList<TPerson>);
+var
+  S: string;
+  Item: TPerson;
+  Persons: TPersons;
+begin
+  Persons := CreatePersonArray(Names);
+  PersonList.AddRange(Persons);
+
+  for Item in PersonList do
+      S := Item.Name;
+end;
+
+procedure TripousGenericsTest();
+var
+  PersonList: TGenObjectList<TPerson>;
+begin
+  PersonList := GenObjectList_Create(['teo', 'john', 'mike']);
+
+  GetObjectListTest_FirstOrDefault(PersonList);
+  GetObjectListTest_Sort(PersonList);
+  GetObjectListTest_AddRange(['bill', 'anny'], PersonList);
+  GetObjectListTest_Sort(PersonList);
+
+  PersonList.Free();
+end;
+
+
+
 
 
 { TGenEnumerator }
@@ -841,6 +949,7 @@ begin
     Result := True;
   end;
 end;
+
 
 
 
