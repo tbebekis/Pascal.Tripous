@@ -9,7 +9,7 @@ uses
   ,SysUtils
   ,SyncObjs
   ,Generics.Defaults
-  ,Generics.Collections
+  //,Generics.Collections
 
   ,Tripous
   ;
@@ -20,7 +20,12 @@ type
   TGenArray<T> = array of T;
 
   TGetItemAtIndexEvent<T> = function(Index: SizeInt): T of object;
+
+  TConditionMethod<T> = function (Item: T): Boolean of object;
   TConditionFunc<T> = function (Item: T): Boolean;
+
+  TCompareMethod<T> = function(constref A, B: T): Integer of object;
+  TCompareFunc<T> = function(constref A, B: T): Integer;
 
   { TGenEnumerator }
   TGenEnumerator<T> = class
@@ -40,9 +45,81 @@ type
     property Position: SizeInt read FPosition;
   end;
 
-  { TGenList }
+  IList<T> = interface
+  ['{38ED2E59-BA1D-4518-88CE-15B46AAF25E6}']
+  { private }
+  function GetCount: SizeInt;
+  function GetIsThreadSafe: Boolean;
+  function GetItem(Index: SizeInt): T;
+  procedure SetItem(Index: SizeInt; Item: T);
+  { public }
+  procedure Clear();
 
-  TGenList<T> = class(TPersistent)
+  procedure Add(Item: T);
+  procedure Insert(Index: Integer; Item: T);
+  procedure Remove(Item: T);
+  procedure RemoveAt(Index: Integer);
+
+  procedure AddRange(constref Range: array of T);
+  procedure InsertRange(Index: SizeInt; constref Range: array of T);
+
+  function Contains(Item: T): Boolean;
+  function IndexOf(Item: T): Integer;
+
+  { (Queue) - Inserts an item as the end of the list }
+  procedure Enqueue(Item: T);
+  { (Queue) - Removes and returns the item at index 0 }
+  function Dequeue(): T;
+  { (Stack) - Inserts an item at the top of the list}
+  procedure Push(Item: T);
+  { (Stack) - Removes and returns the item at the top of the list }
+  function  Pop(): T;
+  { (Queue and Stack)- Returns the item at at index 0 without removing it. }
+  function Peek(): T;
+
+  procedure Reverse();
+
+  { Sorts the internal list }
+  procedure Sort(Comparer: TCompareFunc<T>); overload;
+  { Sorts the internal list }
+  procedure Sort(Comparer: TCompareMethod<T>); overload;
+  { Sorts the internal list }
+  procedure Sort(const Comparer: IComparer<T>); overload;
+
+  { Returns the first element that fulfils a condition, if any, or Default(T) }
+  function  FirstOrDefault(Condition: TConditionFunc<T>): T; overload;
+  { Returns the first element that fulfils a condition, if any, or Default(T) }
+  function  FirstOrDefault(Condition: TConditionMethod<T>): T; overload;
+
+  { Returns true if any of the elements fulfil a condition }
+  function  Any(Condition: TConditionFunc<T>): Boolean; overload;
+  { Returns true if any of the elements fulfil a condition }
+  function  Any(Condition: TConditionMethod<T>): Boolean; overload;
+
+  { Returns true if all the elements fulfil a condition }
+  function  All(Condition: TConditionFunc<T>): Boolean; overload;
+  { Returns true if all the elements fulfil a condition }
+  function  All(Condition: TConditionMethod<T>): Boolean; overload;
+
+  { Returns a list of elements that fulfil a condition }
+  function  Where(Condition: TConditionFunc<T>): IList<T>; overload;
+  { Returns a list of elements that fulfil a condition }
+  function  Where(Condition: TConditionMethod<T>): IList<T>; overload;
+
+  { Returns a list of all elements }
+  function  ToList(): IList<T>;
+  { Returns an array of all elements }
+  function  ToArray(): TGenArray<T>;
+
+  function GetEnumerator(): TGenEnumerator<T>;
+
+  property Count: SizeInt read GetCount;
+  property IsThreadSafe: Boolean read GetIsThreadSafe;
+  property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+  end;
+
+  { TGenList }
+  TGenList<T> = class(TInterfacedObject, IList<T>)
   protected
     // Dynamic Array Extensions: https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
     FItems       : TGenArray<T>;
@@ -77,20 +154,48 @@ type
     function Contains(Item: T): Boolean;
     function IndexOf(Item: T): Integer;
 
+    { (Queue) - Inserts an item as the end of the list }
+    procedure Enqueue(Item: T);
+    { (Queue) - Removes and returns the item at index 0 }
+    function Dequeue(): T;
+    { (Stack) - Inserts an item at the top of the list}
+    procedure Push(Item: T);
+    { (Stack) - Removes and returns the item at the top of the list }
+    function  Pop(): T;
+    { (Queue and Stack)- Returns the item at at index 0 without removing it. }
+    function Peek(): T;
+
     procedure Reverse();
 
     { Sorts the internal list }
-    procedure Sort(CompareFunc: TComparisonFunc<T>);
+    procedure Sort(Comparer: TCompareFunc<T>); overload;
+    { Sorts the internal list }
+    procedure Sort(Comparer: TCompareMethod<T>); overload;
+    { Sorts the internal list }
+    procedure Sort(const Comparer: IComparer<T>); overload;
+
     { Returns the first element that fulfils a condition, if any, or Default(T) }
-    function  FirstOrDefault(ConditionFunc: TConditionFunc<T>): T;
+    function  FirstOrDefault(Condition: TConditionFunc<T>): T; overload;
+    { Returns the first element that fulfils a condition, if any, or Default(T) }
+    function  FirstOrDefault(Condition: TConditionMethod<T>): T; overload;
+
     { Returns true if any of the elements fulfil a condition }
-    function  Any(ConditionFunc: TConditionFunc<T>): Boolean;
+    function  Any(Condition: TConditionFunc<T>): Boolean; overload;
+    { Returns true if any of the elements fulfil a condition }
+    function  Any(Condition: TConditionMethod<T>): Boolean; overload;
+
     { Returns true if all the elements fulfil a condition }
-    function  All(ConditionFunc: TConditionFunc<T>): Boolean;
+    function  All(Condition: TConditionFunc<T>): Boolean; overload;
+    { Returns true if all the elements fulfil a condition }
+    function  All(Condition: TConditionMethod<T>): Boolean; overload;
+
     { Returns a list of elements that fulfil a condition }
-    function  Where(ConditionFunc: TConditionFunc<T>): TList<T>;
+    function  Where(Condition: TConditionFunc<T>): IList<T>; overload;
+    { Returns a list of elements that fulfil a condition }
+    function  Where(Condition: TConditionMethod<T>): IList<T>; overload;
+
     { Returns a list of all elements }
-    function  ToList(): TList<T>;
+    function  ToList(): IList<T>;
     { Returns an array of all elements }
     function  ToArray(): TGenArray<T>;
 
@@ -114,7 +219,6 @@ type
   end;
 
   { TGenKeyValue }
-
   TGenKeyValue<TKey, TValue> = class
   private
     FKey: TKey;
@@ -144,7 +248,6 @@ type
 
 
   { TGenDictionary }
-
   TGenDictionary<TKey, TValue> = class
   protected
     FList : Classes.TList;
@@ -181,116 +284,22 @@ type
     property Values: TGenArray<TValue> read GetValues;
   end;
 
-procedure TripousGenericsTest();
+
 
 
 implementation
 
-
-type
-  { TPerson }
-  TPerson = class
-  public
-    Name: string;
-    constructor Create(AName: string);
-    destructor Destroy(); override;
-  end;
-
-{ TPerson }
-
-constructor TPerson.Create(AName: string);
+{
+constructor TNestedFuncComparer<T>.Create();
 begin
-  Name := AName;
+  //FComparison := AComparison;
 end;
 
-destructor TPerson.Destroy();
+function TNestedFuncComparer<T>.Compare(constref A, B: T): Integer;
 begin
-  inherited Destroy();
+  Result := FComparison(A, B);
 end;
-
-function MatchPerson(Item: TPerson): Boolean;
-begin
-  Result := Sys.IsSameText(Item.Name, 'john');
-end;
-
-function ComparePerson(constref A, B: TPerson): Integer;
-begin
-  Result := AnsiCompareText(A.Name, B.Name);
-end;
-
-type
-  TNames = array of string;
-  TPersons = array of TPerson;
-
-
-function CreatePersonArray(Names: TNames): TPersons;
-var
-  i : Integer;
-begin
-  Result := [];
-  SetLength(Result, Length(Names));
-  for i := Low(Names) to High(Names) do
-    Result[i] := TPerson.Create(Names[i]);
-end;
-
-function GenObjectList_Create(Names: TNames): TGenObjectList<TPerson>;
-var
-  Name: string;
-begin
-  Result := TGenObjectList<TPerson>.Create(True, False);
-  for Name in Names do
-    Result.Add(TPerson.Create(Name));
-end;
-
-procedure GetObjectListTest_FirstOrDefault(PersonList: TGenObjectList<TPerson>);
-var
-  P: TPerson;
-  S: string;
-begin
-  P := PersonList.FirstOrDefault(MatchPerson);
-  S := P.Name;
-end;
-
-procedure GetObjectListTest_Sort(PersonList: TGenObjectList<TPerson>);
-var
-  S: string;
-  Item: TPerson;
-begin
-  PersonList.Sort(ComparePerson);
-
-  for Item in PersonList do
-    S := Item.Name;
-end;
-
-procedure GetObjectListTest_AddRange(Names: TNames; PersonList: TGenObjectList<TPerson>);
-var
-  S: string;
-  Item: TPerson;
-  Persons: TPersons;
-begin
-  Persons := CreatePersonArray(Names);
-  PersonList.AddRange(Persons);
-
-  for Item in PersonList do
-      S := Item.Name;
-end;
-
-procedure TripousGenericsTest();
-var
-  PersonList: TGenObjectList<TPerson>;
-begin
-  PersonList := GenObjectList_Create(['teo', 'john', 'mike']);
-
-  GetObjectListTest_FirstOrDefault(PersonList);
-  GetObjectListTest_Sort(PersonList);
-  GetObjectListTest_AddRange(['bill', 'anny'], PersonList);
-  GetObjectListTest_Sort(PersonList);
-
-  PersonList.Free();
-end;
-
-
-
+}
 
 
 { TGenEnumerator }
@@ -313,7 +322,7 @@ begin
   Result := FGetItemAtIndex(FPosition);
 end;
 
-function TGenEnumerator<T>.MoveNext: boolean;
+function TGenEnumerator<T>.MoveNext: Boolean;
 begin
   Inc(FPosition);
   Result := FPosition < FLength;
@@ -498,6 +507,62 @@ begin
   end;
 end;
 
+procedure TGenList<T>.Enqueue(Item: T);
+begin
+  // (Queue) - Inserts an item as the end of the list
+  Add(Item);
+end;
+
+function TGenList<T>.Dequeue(): T;
+begin
+  // (Queue) - Removes and returns the item at index 0
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Queue is empty');
+
+    Result := FItems[0];
+    System.Delete(FItems, 0, 1);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.Push(Item: T);
+begin
+  // (Stack) - Inserts an item at the top of the list
+  Insert(0, Item);
+end;
+
+function TGenList<T>.Pop(): T;
+begin
+  //(Stack) - Removes and returns the item at the top of the list }
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Stack is empty');
+
+    Result := FItems[0];
+    System.Delete(FItems, 0, 1);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Peek(): T;
+begin
+  // (Queue and Stack)- Returns the item at at index 0 without removing it.
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Queue or Stack is empty');
+
+    Result := FItems[0];
+  finally
+    UnLock();
+  end;
+end;
+
 procedure TGenList<T>.Reverse();
 var
   A, B: SizeInt;
@@ -562,18 +627,31 @@ begin
 
 end;
 
-procedure TGenList<T>.Sort(CompareFunc: TComparisonFunc<T>);
+procedure TGenList<T>.Sort(Comparer: TCompareFunc<T>);
 var
-  Comparer: IComparer<T>;
+  C: IComparer<T>;
+begin
+  C := TComparer<T>.Construct(Comparer);
+  Sort(C);
+end;
+
+procedure TGenList<T>.Sort(Comparer: TCompareMethod<T>);
+var
+  C: IComparer<T>;
+begin
+  C := TComparer<T>.Construct(Comparer);
+  Sort(C);
+end;
+
+procedure TGenList<T>.Sort(const Comparer: IComparer<T>);
 begin
   if not Assigned(FItems) or (Count < 2) then
      Exit; // <=
 
-  Comparer := TComparer<T>.Construct(CompareFunc);
   QuickSort(FItems, 0, Pred(Count), Comparer);
 end;
 
-function TGenList<T>.FirstOrDefault(ConditionFunc: TConditionFunc<T>): T;
+function TGenList<T>.FirstOrDefault(Condition: TConditionFunc<T>): T;
 var
   i : Integer;
   Item: T;
@@ -583,7 +661,7 @@ begin
     for i := Low(FItems) to High(FItems) do
     begin
       Item := FItems[i];
-      if ConditionFunc(Item) then
+      if Condition(Item) then
         Exit(Item);
     end;
     Exit(Default(T));
@@ -592,7 +670,7 @@ begin
   end;
 end;
 
-function TGenList<T>.Any(ConditionFunc: TConditionFunc<T>): Boolean;
+function TGenList<T>.FirstOrDefault(Condition: TConditionMethod<T>): T;
 var
   i : Integer;
   Item: T;
@@ -602,7 +680,26 @@ begin
     for i := Low(FItems) to High(FItems) do
     begin
       Item := FItems[i];
-      if ConditionFunc(Item) then
+      if Condition(Item) then
+        Exit(Item);
+    end;
+    Exit(Default(T));
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Any(Condition: TConditionFunc<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
         Exit(True);
     end;
     Exit(False);
@@ -611,7 +708,7 @@ begin
   end;
 end;
 
-function TGenList<T>.All(ConditionFunc: TConditionFunc<T>): Boolean;
+function TGenList<T>.Any(Condition: TConditionMethod<T>): Boolean;
 var
   i : Integer;
   Item: T;
@@ -621,29 +718,67 @@ begin
     for i := Low(FItems) to High(FItems) do
     begin
       Item := FItems[i];
-      if not ConditionFunc(Item) then
-        Exit(False);
+      if Condition(Item) then
+        Exit(True);
     end;
-    Exit(True);
+    Exit(False);
   finally
     UnLock();
   end;
 
 end;
 
-function TGenList<T>.Where(ConditionFunc: TConditionFunc<T>): TList<T>;
+function TGenList<T>.All(Condition: TConditionFunc<T>): Boolean;
 var
-  List: TList<T>;
   i : Integer;
   Item: T;
 begin
   Lock();
   try
-    List := TList<T>.Create();
     for i := Low(FItems) to High(FItems) do
     begin
       Item := FItems[i];
-      if ConditionFunc(Item) then
+      if not Condition(Item) then
+        Exit(False);
+    end;
+    Exit(True);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.All(Condition: TConditionMethod<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if not Condition(Item) then
+        Exit(False);
+    end;
+    Exit(True);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Where(Condition: TConditionFunc<T>): IList<T>;
+var
+  List: TGenList<T>;
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    List := TGenList<T>.Create(False);
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
         List.Add(Item);
     end;
     Result := List;
@@ -652,13 +787,34 @@ begin
   end;
 end;
 
-function TGenList<T>.ToList(): TList<T>;
+function TGenList<T>.Where(Condition: TConditionMethod<T>): IList<T>;
 var
-  List: TList<T>;
+  List: TGenList<T>;
+  i : Integer;
+  Item: T;
 begin
   Lock();
   try
-    List := TList<T>.Create();
+    List := TGenList<T>.Create(False);
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        List.Add(Item);
+    end;
+    Result := List;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.ToList(): IList<T>;
+var
+  List: TGenList<T>;
+begin
+  Lock();
+  try
+    List := TGenList<T>.Create(False);
     List.AddRange(FItems);
     Result := List;
   finally
@@ -949,6 +1105,8 @@ begin
     Result := True;
   end;
 end;
+
+
 
 
 

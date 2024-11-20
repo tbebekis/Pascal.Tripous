@@ -18,14 +18,13 @@
         <Filename Value="frm_mainform.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="83"/>
-        <CursorPos X="38" Y="101"/>
+        <CursorPos X="34" Y="17"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
-        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\tripous.filterparser.pas"/>
@@ -40,49 +39,44 @@
       <Unit>
         <Filename Value="..\..\tripous.data.pas"/>
         <UnitName Value="Tripous.Data"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
         <CursorPos Y="22"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\bufdataset.pas"/>
         <UnitName Value="BufDataset"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="602"/>
         <CursorPos X="72" Y="616"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\db.pas"/>
         <UnitName Value="DB"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="1361"/>
         <CursorPos X="37" Y="1379"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\MemTable\o_app.pas"/>
         <UnitName Value="o_App"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="7"/>
         <CursorPos Y="30"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\objpas\classes\classesh.inc"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="685"/>
         <CursorPos X="21" Y="716"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
+    <JumpHistory HistoryIndex="27">
       <Position>
         <Filename Value="frm_mainform.pas"/>
         <Caret Line="34" Column="32"/>
@@ -90,10 +84,6 @@
       <Position>
         <Filename Value="frm_mainform.pas"/>
         <Caret Line="33" Column="12" TopLine="21"/>
-      </Position>
-      <Position>
-        <Filename Value="frm_mainform.pas"/>
-        <Caret Line="4" Column="77" TopLine="70"/>
       </Position>
       <Position>
         <Filename Value="frm_mainform.pas"/>
@@ -158,10 +148,6 @@
       <Position>
         <Filename Value="frm_mainform.pas"/>
         <Caret Line="45" Column="33" TopLine="26"/>
-      </Position>
-      <Position>
-        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\fcl-db\src\base\bufdataset.pas"/>
-        <Caret Line="662" Column="65" TopLine="652"/>
       </Position>
       <Position>
         <Filename Value="frm_mainform.pas"/>
