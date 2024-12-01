@@ -246,9 +246,52 @@ type
     property Position: SizeInt read FPosition;
   end;
 
+  IDictionary<TKey, TValue> = interface
+  ['{1AA6B645-961A-4460-AC3E-FD11819FF1C2}']
+  {protected}
+    function GetCount: SizeInt;
+    function  GetValue(const Key: TKey): TValue;
+    procedure SetValue(const Key: TKey; Value: TValue);
+
+    function  GetKeys: TGenArray<TKey>;
+    function  GetValues: TGenArray<TValue>;
+
+    function FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+    function FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+
+    function IndexOfKey(const Key: TKey): SizeInt;
+    function IndexOfValue(const Value: TValue): SizeInt;
+
+    function GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
+  {public}
+    { Adds an entry. If the Key already exists, its Value is updated }
+    procedure Add(Key: TKey; const Value: TValue);
+    { Removes an entry, under a Key }
+    function  Remove(Key: TKey): Boolean;
+    { Removes all entries }
+    procedure Clear();
+
+    { Returns true if an entry exists under a specified Key }
+    function  ContainsKey(const Key: TKey): Boolean;
+    { Returns true if a specified Value exists, under any Key }
+    function  ContainsValue(const Value: TValue): Boolean;
+
+    { Returns the enumerator }
+    function  GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+
+    { Returns the entry count }
+    property Count: SizeInt read GetCount;
+    { Gets or sets a Value. An entry is added if the Key does not exist. }
+    property Item[const Key: TKey]: TValue read GetValue write SetValue; default;
+    { Returns an array with all Keys. }
+    property Keys: TGenArray<TKey> read GetKeys;
+    { Returns an array with all Values. }
+    property Values: TGenArray<TValue> read GetValues;
+  end;
+
 
   { TGenDictionary }
-  TGenDictionary<TKey, TValue> = class
+  TGenDictionary<TKey, TValue> = class(TInterfacedObject, IDictionary<TKey, TValue>)
   protected
     FList : Classes.TList;
     function GetCount: SizeInt;
@@ -269,18 +312,28 @@ type
     constructor Create();
     destructor Destroy(); override;
 
-    procedure Add(Key: TKey; const Value: Variant);
+    { Adds an entry. If the Key already exists, its Value is updated }
+    procedure Add(Key: TKey; const Value: TValue);
+    { Removes an entry, under a Key }
     function  Remove(Key: TKey): Boolean;
+    { Removes all entries }
     procedure Clear();
 
+    { Returns true if an entry exists under a specified Key }
     function  ContainsKey(const Key: TKey): Boolean;
+    { Returns true if a specified Value exists, under any Key }
     function  ContainsValue(const Value: TValue): Boolean;
 
+    { Returns the enumerator }
     function  GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
 
+    { Returns the entry count }
     property Count: SizeInt read GetCount;
+    { Gets or sets a Value. An entry is added if the Key does not exist. }
     property Item[const Key: TKey]: TValue read GetValue write SetValue; default;
+    { Returns an array with all Keys. }
     property Keys: TGenArray<TKey> read GetKeys;
+    { Returns an array with all Values. }
     property Values: TGenArray<TValue> read GetValues;
   end;
 
@@ -1085,7 +1138,7 @@ begin
       Result[i] := TGenKeyValue<TKey, TValue>(FList[i]).Value;
 end;
 
-procedure TGenDictionary<TKey, TValue>.Add(Key: TKey; const Value: Variant);
+procedure TGenDictionary<TKey, TValue>.Add(Key: TKey; const Value: TValue);
 begin
   Self.Item[Key] := Value;
 end;

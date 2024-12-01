@@ -1,7 +1,6 @@
 unit o_Test;
 
 {$MODE DELPHI}{$H+}
-//{$modeswitch duplicatelocals}
 
 interface
 
@@ -36,6 +35,11 @@ procedure GenListTest_AddGiantRange(HowMany: Integer);
 procedure GenListTest_FirstOrDefault(StartingWith: string);
 procedure GenListTest_Where(Containing: string);
 
+procedure DicTest_Clear();
+procedure DicTest_Show();
+procedure DicTest_AddEntry(Key: string; Value: string);
+procedure DicTest_AddEntries(HowMany: Integer);
+
 implementation
 
 
@@ -64,7 +68,8 @@ type
   TPersonArray = array of TPerson;
 
 var
-  PersonList: TGenObjectList<TPerson>;
+  PersonList: IList<TPerson>;    // TGenObjectList<TPerson>;
+  Dic: IDictionary<string, string>;
 
 function CreatePersonArray(Names: TStringDynArray): TPersonArray;
 var
@@ -85,15 +90,18 @@ begin
     Result[i] := Trim(Result[i]);
 end;
 
-procedure LogPersons();
+procedure LogList();
 var
   Item: TPerson;
+  SB: IStringBuilder;
 begin
   mmoLog.Clear();
   if PersonList.Count > 0 then
   begin
+    SB := Sys.CreateStringBuilder();
     for Item in PersonList do
-      mmoLog.Append(Item.Name);
+      SB.AppendLine(Item.Name);
+    mmoLog.Text := SB.ToString();
   end else
     mmoLog.Append('List is empty');
 end;
@@ -106,13 +114,13 @@ end;
 
 procedure GenListTest_Show();
 begin
-  LogPersons();
+  LogList();
 end;
 
 procedure GenListTest_Reverse();
 begin
   PersonList.Reverse();
-  LogPersons();
+  LogList();
 end;
 
 function ComparePerson(constref A, B: TPerson): Integer;
@@ -123,7 +131,7 @@ end;
 procedure GenListTest_Sort();
 begin
   PersonList.Sort(ComparePerson);
-  LogPersons();
+  LogList();
 end;
 
 procedure GenListTest_AddRange(sNames: string);
@@ -138,7 +146,7 @@ begin
     PersonArray := CreatePersonArray(A);
 
     PersonList.AddRange(PersonArray);
-    LogPersons();
+    LogList();
   end;
 end;
 
@@ -157,7 +165,7 @@ begin
 
   PersonList.AddRange(PersonArray);
   ShowMessage('Done. Now logging...');
-  LogPersons();
+  LogList();
 end;
 
 var
@@ -206,11 +214,55 @@ begin
     mmoLog.Append('Nothing found');
 end;
 
+procedure LogDic();
+var
+  Entry: TGenKeyValue<string, string>;
+  SB: IStringBuilder;
+begin
+  mmoLog.Clear();
+  if Dic.Count > 0 then
+  begin
+    SB := Sys.CreateStringBuilder();
+    for Entry in Dic do
+      SB.AppendLine(Format('%s = %s', [Entry.Key, Entry.Value]));
+    mmoLog.Text := SB.ToString();
+  end else
+    mmoLog.Append('Dictionary is empty');
+end;
+
+procedure DicTest_Clear();
+begin
+  Dic.Clear();
+  LogDic();
+end;
+
+procedure DicTest_Show();
+begin
+  LogDic();
+end;
+
+procedure DicTest_AddEntry(Key: string; Value: string);
+begin
+  if not (Sys.IsEmpty(Key) or Sys.IsEmpty(Value)) then
+     Dic[Key] := Value;
+  LogDic();
+end;
+
+procedure DicTest_AddEntries(HowMany: Integer);
+var
+  i : Integer;
+begin
+  for i := 0 to HowMany - 1 do
+      Dic['Key_' + IntToStr(i)] := 'Value_' + IntToStr(i);
+  LogDic();
+end;
+
 initialization
   PersonList := TGenObjectList<TPerson>.Create(True);
+  Dic := TGenDictionary<string, string>.Create();
 
 finalization
-  PersonList.Free();
+  //PersonList.Free();
 
 end.
 

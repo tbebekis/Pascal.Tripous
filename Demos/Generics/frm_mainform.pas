@@ -30,10 +30,19 @@ type
     btnListSort: TButton;
     btnListFirstOrDefault: TButton;
     btnListWhere: TButton;
-    edtGiantRange: TEdit;
+    btnDicClear: TButton;
+    btnDicShow: TButton;
+    btnDicAdd: TButton;
+    btnDicAddEntries: TButton;
+    edtDicKey: TEdit;
+    edtDicValue: TEdit;
+    edtListGiantRange: TEdit;
+    edtDicAddEntries: TEdit;
     edtListWhere: TEdit;
     edtListNames: TEdit;
     edtListFirstOrDefault: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
     mmoLog: TMemo;
     Pager: TPageControl;
     Panel1: TPanel;
@@ -74,6 +83,15 @@ begin
 
   btnListFirstOrDefault.OnClick := AnyClick;
   btnListWhere.OnClick := AnyClick;
+
+  btnDicClear.OnClick := AnyClick;
+  btnDicShow.OnClick := AnyClick;
+  btnDicAdd.OnClick := AnyClick;
+  btnDicAddEntries.OnClick := AnyClick;
+
+  Pager.ActivePage := tabList;
+
+  GenListTest_Show();
 end;
 
 procedure TMainForm.AnyClick(Sender: TObject);
@@ -81,7 +99,7 @@ begin
   if btnListAddRange = Sender then
     GenListTest_AddRange(edtListNames.Text)
   else if btnListAddGiantRange = Sender then
-    GenListTest_AddGiantRange(StrToInt(edtGiantRange.Text))
+    GenListTest_AddGiantRange(StrToInt(edtListGiantRange.Text))
   else if btnListClear = Sender then
     GenListTest_Clear()
   else if btnListShow = Sender then
@@ -94,7 +112,16 @@ begin
     GenListTest_FirstOrDefault(edtListFirstOrDefault.Text)
   else if btnListWhere = Sender then
     GenListTest_Where(edtListWhere.Text)
-    ;
+
+  else if btnDicClear  = Sender then
+    DicTest_Clear()
+  else if btnDicShow  = Sender then
+    DicTest_Show()
+  else if btnDicAdd  = Sender then
+    DicTest_AddEntry(edtDicKey.Text, edtDicValue.Text)
+  else if btnDicAddEntries  = Sender then
+    DicTest_AddEntries(StrToInt(edtDicAddEntries.Text))
+   ;
 end;
 
 

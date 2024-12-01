@@ -10,8 +10,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, frm_MainForm, Tripous.Generics, Tripous, o_Test
-  { you can add units after this };
+  Forms, frm_MainForm, Tripous.Generics, Tripous, o_Test;
 
 {$R *.res}
 

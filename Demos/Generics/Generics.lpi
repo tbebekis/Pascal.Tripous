@@ -38,6 +38,7 @@
         <Filename Value="frm_mainform.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="MainForm"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
       </Unit>
