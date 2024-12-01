@@ -1,4 +1,6 @@
 unit frm_MainForm;
+
+{$MODE DELPHI}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
@@ -64,11 +66,11 @@ begin
   mmoLog.Clear();
   KeyPreview := True;
 
-  btnLogInfo.OnClick  := Addr(AnyClick);
-  btnLogError.OnClick := Addr(AnyClick);
-  btnLogSource.OnClick := Addr(AnyClick);
-  btnLogSourceAndScope.OnClick := Addr(AnyClick);
-  btnLogSourceAndScope2.OnClick := Addr(AnyClick);
+  btnLogInfo.OnClick  := AnyClick;
+  btnLogError.OnClick := AnyClick;
+  btnLogSource.OnClick := AnyClick;
+  btnLogSourceAndScope.OnClick := AnyClick;
+  btnLogSourceAndScope2.OnClick := AnyClick;
 
   Logger.MinLevel := TLogLevel.loDebug;
 
@@ -81,7 +83,7 @@ begin
     4. The TSqlDbLogListener saves log information in a database.
        Using the CreateSQLite() it makes it to use a SQLite database,
        so the property sqlite3.dll should be in the project folder. }
-  FLogListener     := TLogTextListener.Create(Addr(LogProc));
+  FLogListener     := TLogTextListener.Create(LogProc);
   FFileLogListener := TFileLogListener.Create();
   FFormLogListener := TFormLogListener.Create();
   FDbLogListener   := TSqlDbLogListener.CreateSQLite();
@@ -157,14 +159,14 @@ end;
 procedure TMainForm.LogSourceTest();
 var
   LogSource: ILogSource;
-  Params: IVariantDictionary;
+  Params: IDictionary<string, Variant>;
 begin
   // simple
   LogSource := Logger.CreateLogSource(Self.ClassName);
   LogSource.Info(GetLogText());
 
   // with params
-  Params := TVariantDictionary.Create();
+  Params := TGenDictionary<string, Variant>.Create();
   Params['CustomerId'] := 'BigCo';
   Params['OrderId']    := 123;
 

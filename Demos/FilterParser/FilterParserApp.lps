@@ -21,20 +21,21 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="frm_MainForm"/>
-        <IsVisibleTab Value="True"/>
-        <CursorPos X="34" Y="17"/>
+        <CursorPos X="38" Y="22"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\tripous.filterparser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.FilterParser"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="223"/>
+        <CursorPos X="40" Y="13"/>
         <UsageCount Value="20"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="..\..\tripous.data.pas"/>

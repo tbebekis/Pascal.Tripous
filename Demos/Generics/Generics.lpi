@@ -43,11 +43,6 @@
         <UnitName Value="frm_MainForm"/>
       </Unit>
       <Unit>
-        <Filename Value="..\..\tripous.generics.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="Tripous.Generics"/>
-      </Unit>
-      <Unit>
         <Filename Value="..\..\tripous.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>

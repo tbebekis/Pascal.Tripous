@@ -1,6 +1,6 @@
 unit Tripous.Data;
 
-{$mode objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 {$WARN 5024 off : Parameter "$1" not used}
 interface
 
@@ -83,7 +83,7 @@ type
 
     procedure DoClear(); virtual;
 
-    function  ListToArray(List: TSafeObjectList): TMetaNodeArray; virtual;
+    function  ListToArray(List: TGenObjectList<TMetaNode>): TMetaNodeArray; virtual;
     function  UnQuote(const S: string): string;
   public
     constructor Create(ADatabase: TMetaDatabase; const AName: string; ANodeType: TMetaNodeType);
@@ -114,7 +114,7 @@ type
 
   TMetaTables = class(TMetaNode)
   private
-    FTableList: TSafeObjectList;
+    FTableList: TGenObjectList<TMetaNode>;
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
@@ -190,7 +190,7 @@ type
 
   TMetaDatabases = class(TMetaNode)
   private
-    FDatabaseList: TSafeObjectList;
+    FDatabaseList: TGenObjectList<TMetaNode>;
   protected
     function GetNodes: TMetaNodeArray;  override;
   public
@@ -288,8 +288,8 @@ type
     const SPostgreSql = 'PostgreSql';
     const SOracle = 'Oracle';
 
-    const ProviderNames: TStringArray = (SFirebird, SSqlite, SMsSql, SMySql, SPostgreSql, SOracle);
-    const ProviderTypes: TSqlProviderTypeArray = (ptFirebird, ptSqlite, ptMsSql, ptMySql, ptPostgreSql, ptOracle);
+    const ProviderNames: TStringArray = [SFirebird, SSqlite, SMsSql, SMySql, SPostgreSql, SOracle];
+    const ProviderTypes: TSqlProviderTypeArray = [ptFirebird, ptSqlite, ptMsSql, ptMySql, ptPostgreSql, ptOracle];
 
     class constructor Create();
     class destructor Destroy();
@@ -528,7 +528,7 @@ begin
   Result := FName;
 end;
 
-function TMetaNode.ListToArray(List: TSafeObjectList): TMetaNodeArray;
+function TMetaNode.ListToArray(List: TGenObjectList<TMetaNode>): TMetaNodeArray;
 var
   i : Integer;
 begin
@@ -543,7 +543,7 @@ end;
 
 function TMetaNode.UnQuote(const S: string): string;
 const
-  A: array of char = ('''', '"', '[', ']', ' ', #9, #10, #11, #12, #13 );
+  A: array of char = ['''', '"', '[', ']', ' ', #9, #10, #11, #12, #13 ];
 begin
    Result := S.Trim(A);
 end;
@@ -577,7 +577,7 @@ end;
 constructor TMetaTables.Create(ADatabase: TMetaDatabase);
 begin
   inherited Create(ADatabase, 'Tables', ntTables);
-  FTableList := TSafeObjectList.Create(True);
+  FTableList := TGenObjectList<TMetaNode>.Create(True, True);
 end;
 
 destructor TMetaTables.Destroy();
@@ -699,10 +699,10 @@ function TMetaDatabase.FindTable(const TableName: string): TMetaTable;
    begin
      Result := (Item is TMetaTable) and (Sys.IsSameText(TableName, TMetaTable(Item).Name));
    end;
-var
-  Obj: TObject;
+
 begin
-  // EDW
+  // TODO: EDW
+  Result := nil;
 end;
 
 procedure TMetaDatabase.LoadFirebird();
@@ -713,8 +713,8 @@ procedure TMetaDatabase.LoadFirebird();
     SqlText : string;
     Table: TMemTable;
     TableName: string;
-    MetaTable: TMetaTable;
-    i : Integer;
+    //MetaTable: TMetaTable;
+    //i : Integer;
   begin
     SqlText := SFirebirdTablesAndFieldsSql;
 
@@ -786,7 +786,7 @@ end;
 constructor TMetaDatabases.Create();
 begin
   inherited Create(nil, 'Databases', ntDatabases);
-  FDatabaseList := TSafeObjectList.Create(True);
+  FDatabaseList := TGenObjectList<TMetaNode>.Create(True, True);
 end;
 
 destructor TMetaDatabases.Destroy();
@@ -2208,7 +2208,7 @@ end;
 class procedure DbSys.AssignParams(Params: TParams; A: array of const);
 var
   i : Integer;
-  Stream : TStream;
+  //Stream : TStream;
 begin
   if (Params.Count > 0) and (Length(A) > 0) then
   begin

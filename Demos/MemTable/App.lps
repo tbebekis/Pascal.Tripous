@@ -8,10 +8,9 @@
       <Unit>
         <Filename Value="App.lpr"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="-1"/>
         <CursorPos X="41" Y="14"/>
         <UsageCount Value="215"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frm_mainform.pas"/>
@@ -152,9 +151,9 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="1"/>
         <TopLine Value="726"/>
-        <CursorPos X="40" Y="736"/>
+        <CursorPos X="94" Y="741"/>
         <UsageCount Value="215"/>
         <Loaded Value="True"/>
       </Unit>
@@ -310,14 +309,13 @@
       <Unit>
         <Filename Value="..\..\tripous.data.pas"/>
         <UnitName Value="Tripous.Data"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="298"/>
         <CursorPos X="33" Y="311"/>
         <UsageCount Value="45"/>
-        <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="9">
+    <JumpHistory HistoryIndex="7">
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>
         <Caret Line="1570" Column="37" TopLine="1547"/>
@@ -333,14 +331,6 @@
       <Position>
         <Filename Value="..\..\tripous.pas"/>
         <Caret Line="99" Column="22" TopLine="91"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.data.pas"/>
-        <Caret Line="73" Column="29" TopLine="54"/>
-      </Position>
-      <Position>
-        <Filename Value="..\..\tripous.data.pas"/>
-        <Caret Line="48" Column="32" TopLine="38"/>
       </Position>
       <Position>
         <Filename Value="..\..\tripous.memtable.pas"/>

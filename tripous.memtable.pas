@@ -516,7 +516,7 @@ var
   FieldClass : TFieldClass;
 begin
 
-  { NOTE: No way to set CodePage to UTF8 when creating a TField }
+  { No way to set CodePage to UTF8 when creating a TField }
   if (FieldType = ftString) and (CodePage = CP_UTF8) then
      FieldClass := TWideStringField
   else
@@ -530,7 +530,7 @@ begin
   Field.Required        := Required;
   Field.ReadOnly        := ReadOnly;
 
-  { NOTE: No way to set CodePage to UTF8 when creating a TField }
+  { No way to set CodePage to UTF8 when creating a TField }
   {
   if (Field is TStringField) then
     TStringField(Field).CodePage := CodePage
@@ -959,7 +959,7 @@ var
   Nodes     : TDOMNodeList;
   i         : Integer;
   j         : Integer;
-  FieldDef  : TFieldDef;
+  //FieldDef  : TFieldDef;
   Field     : TField;
 
 
@@ -1022,7 +1022,7 @@ begin
         CodePage := CP_UTF16;
     end;
 
-    FieldDef := Table.FieldDefs.Add(FieldName, FieldType, FieldSize, Precision, Required, ReadOnly, FieldNo, CodePage);
+    Table.FieldDefs.Add(FieldName, FieldType, FieldSize, Precision, Required, ReadOnly, FieldNo, CodePage);
   end;
 
   //CreateDatasetProc();

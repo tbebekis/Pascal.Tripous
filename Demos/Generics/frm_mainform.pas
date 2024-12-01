@@ -14,7 +14,6 @@ uses
   ,ExtCtrls
   ,StdCtrls, ComCtrls
   ,Tripous
-  ,Tripous.Generics
   ;
 
 type

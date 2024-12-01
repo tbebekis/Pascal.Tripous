@@ -2,7 +2,7 @@ unit f_MainForm;
 
 {$mode DELPHI}
 {$H+}
-
+{$WARN 5079 off : Unit "$1" is experimental}
 
 interface
 
@@ -19,22 +19,25 @@ uses
   , DBGrids
   , TypInfo
   , Variants
-  //, syncobjs
+  , FileUtil
+
+  , LazFileUtils
+  , DB
+  , SQLDB
+  , IBConnection
+
+  ,Laz2_DOM
+  , RTTIGrids
+  //,laz2_XMLWrite
+  //,Rtti
   , Tripous
   , Tripous.Data
-  , LazFileUtils
-  , DB, SQLDB, IBConnection
-  , Generics.Collections
-  //, csvdataset
-  ,Laz2_DOM, RTTIGrids
-  //,laz2_XMLWrite
-  ,Rtti
-
-
-  ,Tripous.Generics
-  ,o_TestBed
+  //,o_TestBed
   ;
-
+{
+Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, EditBtn,
+  StdCtrls, ExtCtrls;
+}
 type
 
   { TMainForm }
@@ -47,10 +50,10 @@ type
     SQLTransaction1: TSQLTransaction;
   private
     tblPsw: TBufTable;
+    XXX: TDirectoryEdit;
 
     procedure BufTableCreate();
     procedure BufTableDestroy();
-
 
     procedure AnyClick(Sender: TObject);
     procedure Test();
@@ -72,9 +75,6 @@ implementation
 uses
     fpjson
     ,jsonscanner
-
-    //,jsonparser
-    ,fpjsonrtti
     ;
 
 const
@@ -91,21 +91,17 @@ const
 procedure TMainForm.DoCreate;
 begin
   inherited DoCreate;
-
-  //BufTableCreate();
   btnTest.OnClick := Self.AnyClick;
 end;
 
 procedure TMainForm.DoDestroy;
 begin
-  //BufTableDestroy();
   inherited DoDestroy;
 end;
 
 procedure TMainForm.BufTableCreate();
 var
   FilePath: string;
-  L: TList;
 begin
   tblPsw := TBufTable.Create(Self);
 
@@ -146,78 +142,23 @@ begin
   end;
 end;
 
-
 procedure TMainForm.AnyClick(Sender: TObject);
 begin
   if Sender = btnTest then
      Test();
 end;
 
-
-
 procedure TestConnInfo();
 var
   ConInfo: TSqlConnectionInfo;
-  S : string;
 begin
   ConInfo := TSqlConnectionInfo.Create();
   ConInfo.ConnectionString := 'Type=MsSql; Host=localhost; Database=AxCon5; User=teo; Psw=1234';
-
-  S := ConInfo.Provider;
 end;
-
-procedure TestArrayOfConst(V: string; A: array of const);
-var
-  i : Integer;
-  S : string;
-  Obj: TObject;
-begin
-  for i := 0 to High(A) do
-  begin
-    if A[i].VType = vtObject then
-      Obj := A[i].VObject;
-  end;
-end;
-function UnQuote(const S: string): string;
-const
-  A: array of char = ['''', '"', '[', ']', ' ', #9, #10, #11, #12, #13];
-var
-  i : Integer;
-begin
-   ShowMessage(S);
-
-   Result := S.Trim(A);
-   ShowMessage(Result);
-
-   {
-   for i := Low(A) to High(A) do
-   begin
-     if Result.StartsWith(A[i]) then
-        Result := Result.Remove(0, 1);
-     if Result.EndsWith(A[i]) then
-        Result := Result.Remove(Length(S) - 1, 1);
-   end;
-   }
-
-   //Result := Result.Trim();
-
-   ShowMessage(Result);
-end;
-
-
-
-
 
 procedure TMainForm.Test();
-var
-  S : string;
 begin
   //TestMetastores();
-  //S := ''''' ab         ]';
-  //S := UnQuote(S);
-
-  TripousGenericsTest();
-
 end;
 
 

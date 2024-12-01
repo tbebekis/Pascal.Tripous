@@ -7,7 +7,7 @@ object MainForm: TMainForm
   ClientHeight = 476
   ClientWidth = 873
   Position = poScreenCenter
-  LCLVersion = '3.2.0.0'
+  LCLVersion = '3.4.0.0'
   object Panel1: TPanel
     Left = 0
     Height = 136

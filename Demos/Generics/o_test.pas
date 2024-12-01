@@ -17,9 +17,9 @@ uses
   ,StrUtils
 
   ,Generics.Defaults
-  ,Generics.Collections
+  //,Generics.Collections
   ,Tripous
-  ,Tripous.Generics
+
   ;
 
 
@@ -164,7 +164,6 @@ begin
   PersonArray := CreatePersonArray(A);
 
   PersonList.AddRange(PersonArray);
-  ShowMessage('Done. Now logging...');
   LogList();
 end;
 

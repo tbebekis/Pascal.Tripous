@@ -1,6 +1,6 @@
 unit Tripous;
 
-{$mode objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 {$WARN 5024 off : Parameter "$1" not used}
 {$WARN 4104 off : Implicit string type conversion from "$1" to "$2"}
@@ -22,6 +22,7 @@ uses
   ,Variants
   ,TypInfo
   ,DB
+  ,Generics.Defaults
   ,bufdataset
   ,laz2_DOM
   ,fpjsonrtti
@@ -91,9 +92,32 @@ type
  SBString = UnicodeString;
  TSBCharArray = array of SBChar;
 
+ TGenArray<T> = array of T;
+
+ TGetItemAtIndexEvent<T> = function(Index: SizeInt): T of object;
+
+ TConditionMethod<T> = function (Item: T): Boolean of object;
+ TConditionFunc<T> = function (Item: T): Boolean;
+
+ TCompareMethod<T> = function(constref A, B: T): Integer of object;
+ TCompareFunc<T> = function(constref A, B: T): Integer;
+
+
  ISyncObject = interface(IInterface)
    ['{B2411903-F6D1-4FF3-9DA6-E7FDCFE3A702}']
  { public }
+   procedure Lock;
+   procedure UnLock;
+ end;
+
+ { TSyncObject }
+ TSyncObject = class(TInterfacedObject, ISyncObject)
+ private
+   FLock   : SyncObjs.TCriticalSection;
+ public
+   constructor Create;
+   destructor Destroy; override;
+
    procedure Lock;
    procedure UnLock;
  end;
@@ -109,56 +133,56 @@ type
    function  GetLength: Integer; inline;
    procedure SetLength(AValue: Integer);
  {public}
-   procedure Append(const AValue: Boolean);
-   procedure Append(const AValue: Byte);
-   procedure Append(const AValue: SBChar);
-   procedure Append(const AValue: Currency);
-   procedure Append(const AValue: Double);
-   procedure Append(const AValue: Smallint);
-   procedure Append(const AValue: LongInt);
-   procedure Append(const AValue: Int64);
-   procedure Append(const AValue: TObject);
-   procedure Append(const AValue: Shortint);
-   procedure Append(const AValue: Single);
-   procedure Append(const AValue: UInt64);
-   procedure Append(const AValue: Word);
-   procedure Append(const AValue: SBString);
-   procedure Append(const AValue: SBChar; RepeatCount: Integer);
-   procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer);
+   procedure Append(const AValue: Boolean); overload;
+   procedure Append(const AValue: Byte); overload;
+   procedure Append(const AValue: SBChar); overload;
+   procedure Append(const AValue: Currency); overload;
+   procedure Append(const AValue: Double); overload;
+   procedure Append(const AValue: Smallint); overload;
+   procedure Append(const AValue: LongInt); overload;
+   procedure Append(const AValue: Int64); overload;
+   procedure Append(const AValue: TObject); overload;
+   procedure Append(const AValue: Shortint); overload;
+   procedure Append(const AValue: Single); overload;
+   procedure Append(const AValue: UInt64); overload;
+   procedure Append(const AValue: Word); overload;
+   procedure Append(const AValue: SBString); overload;
+   procedure Append(const AValue: SBChar; RepeatCount: Integer); overload;
+   procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
 
-   procedure Append(const Fmt: SBString; const Args: array of const);
+   procedure Append(const Fmt: SBString; const Args: array of const); overload;
    procedure AppendFormat(const Fmt: SBString; const Args: array of const);
 
-   procedure AppendLine(const Value: SBString);
-   procedure AppendLine();
+   procedure AppendLine(const Value: SBString); overload;
+   procedure AppendLine(); overload;
 
    procedure Clear();
    procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
    function EnsureCapacity(aCapacity: Integer): Integer;
 
-   procedure Insert(Index: Integer; const AValue: Boolean);
-   procedure Insert(Index: Integer; const AValue: Byte);
-   procedure Insert(Index: Integer; const AValue: SBChar);
-   procedure Insert(Index: Integer; const AValue: Currency);
-   procedure Insert(Index: Integer; const AValue: Double);
-   procedure Insert(Index: Integer; const AValue: Smallint);
-   procedure Insert(Index: Integer; const AValue: LongInt);
-   procedure Insert(Index: Integer; const AValue: Int64);
-   procedure Insert(Index: Integer; const AValue: TObject);
-   procedure Insert(Index: Integer; const AValue: Shortint);
-   procedure Insert(Index: Integer; const AValue: Single);
-   procedure Insert(Index: Integer; const AValue: SBString);
-   procedure Insert(Index: Integer; const AValue: Word);
-   procedure Insert(Index: Integer; const AValue: Cardinal);
-   procedure Insert(Index: Integer; const AValue: UInt64);
-   procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer);
+   procedure Insert(Index: Integer; const AValue: Boolean); overload;
+   procedure Insert(Index: Integer; const AValue: Byte); overload;
+   procedure Insert(Index: Integer; const AValue: SBChar); overload;
+   procedure Insert(Index: Integer; const AValue: Currency); overload;
+   procedure Insert(Index: Integer; const AValue: Double); overload;
+   procedure Insert(Index: Integer; const AValue: Smallint); overload;
+   procedure Insert(Index: Integer; const AValue: LongInt); overload;
+   procedure Insert(Index: Integer; const AValue: Int64); overload;
+   procedure Insert(Index: Integer; const AValue: TObject); overload;
+   procedure Insert(Index: Integer; const AValue: Shortint); overload;
+   procedure Insert(Index: Integer; const AValue: Single); overload;
+   procedure Insert(Index: Integer; const AValue: SBString); overload;
+   procedure Insert(Index: Integer; const AValue: Word); overload;
+   procedure Insert(Index: Integer; const AValue: Cardinal); overload;
+   procedure Insert(Index: Integer; const AValue: UInt64); overload;
+   procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
 
    procedure Remove(StartIndex: Integer; RemLength: Integer);
-   procedure Replace(const OldChar, NewChar: SBChar);
-   procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer);
+   procedure Replace(const OldChar, NewChar: SBChar); overload;
+   procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
 
-   function ToString(): SBString; reintroduce;
-   function ToString(aStartIndex: Integer; aLength: Integer): SBString; reintroduce;
+   function ToString(): SBString;  overload;  reintroduce;
+   function ToString(aStartIndex: Integer; aLength: Integer): SBString;  overload;   reintroduce;
 
    property Chars[index: Integer]: SBChar read GetC write SetC; default;
    property Length: Integer read GetLength write SetLength;
@@ -166,201 +190,405 @@ type
    property MaxCapacity: Integer read GetMaxCapacity;
  end;
 
-
- { TGenList }
- generic TGenList<T> = class(TPersistent)
+ { TStrBuilder }
+ TStrBuilder = class(TInterfacedObject, IStringBuilder)
  private
-   FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
-
-   function GetCount(): Integer;
-   function GetItem(Index: SizeInt): T;
-   function GetItemList: specialize TArray<T>;
-   procedure SetItem(Index: SizeInt; Item: T);
+   const
+     DefaultCapacity = 64;
+ private
+   function  GetCapacity(): Integer;
+   function  GetMaxCapacity(): Integer;
+   procedure SetCapacity(AValue: Integer);
+   function  GetC(Index: Integer): SBChar;
+   procedure SetC(Index: Integer; AValue: SBChar);
+   function  GetLength(): Integer; inline;
+   procedure SetLength(AValue: Integer);
  protected
-   //function AdjustCapacityForItem(): SizeInt;  virtual;
-   //function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
+   FData: TSBCharArray;
+   FLength: Integer;
+   FMaxCapacity: Integer;
+   // raise error on range check.
+   procedure CheckRange(Idx,Count,MaxLen : Integer);
+   procedure CheckNegative(Const AValue : Integer; const AName: SBString);
+   // All appends/inserts pass through here.
+   procedure DoAppend(const S : SBString); virtual;
+   procedure DoInsert(Index: Integer; const AValue: SBString); virtual;
+   procedure DoReplace(Index: Integer; const Old, New: SBString); virtual;
+   procedure Grow();
+   procedure Shrink();
  public
-   constructor Create(); virtual;
-   destructor Destroy(); override;
+   constructor Create(); overload;
+   constructor Create(aCapacity: Integer); overload;
+   constructor Create(const AValue: SBString); overload;
+   constructor Create(const AValue: SBString; aCapacity: Integer); overload;
 
-   procedure Clear(); virtual;
+   procedure Append(const AValue: Boolean); overload;
+   procedure Append(const AValue: Byte); overload;
+   procedure Append(const AValue: SBChar); overload;
+   procedure Append(const AValue: Currency); overload;
+   procedure Append(const AValue: Double); overload;
+   procedure Append(const AValue: Smallint); overload;
+   procedure Append(const AValue: LongInt);  overload;
+   procedure Append(const AValue: Int64); overload;
+   procedure Append(const AValue: TObject);  overload;
+   procedure Append(const AValue: Shortint); overload;
+   procedure Append(const AValue: Single); overload;
+   procedure Append(const AValue: UInt64); overload;
+   procedure Append(const AValue: Word); overload;
+   procedure Append(const AValue: SBString); overload;
+   procedure Append(const AValue: SBChar; RepeatCount: Integer);  overload;
+   procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
 
-   function  Add(Item: T): Integer; virtual;
-   procedure Insert(Index: Integer; Item: T); virtual;
-   procedure Remove(Item: T); virtual;
-   procedure RemoveAt(Index: Integer); virtual;
+   procedure Append(const Fmt: SBString; const Args: array of const); overload;
+   procedure AppendFormat(const Fmt: SBString; const Args: array of const);
 
-   procedure AddRange(constref Range: array of T); virtual;
-   procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
+   procedure AppendLine(const Value: SBString); overload;
+   procedure AppendLine(); overload;
 
-   function Contains(Item: T): Boolean; virtual;
-   function IndexOf(Item: T): Integer; virtual;
-
-   property Count: Integer read GetCount;
-
-   property Items[Index: SizeInt]: T read GetItem write SetItem; default;
- end;
-  {
- generic TSafeGenList<T>  = class(TPersistent)
- private
-   FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
-   FLock        : SyncObjs.TCriticalSection;
-   FOwnsObjects : Boolean;
-   FCount: SizeInt;
-   function GetCount: Integer;
-   function GetItem(Index: SizeInt): T;
-   function GetItemList: specialize TArray<T>;
-   procedure SetItem(Index: SizeInt; Item: T);
- protected
-   function AdjustCapacityForItem(): SizeInt;  virtual;
-   function AdjustCapacityForRange(RangeCount: SizeInt): SizeInt; virtual;
- public
-   constructor Create(); virtual;
-   destructor Destroy(); override;
-
-   procedure Clear(); virtual;
-
-   function  Add(Item: T): Integer; virtual;
-   procedure Insert(Index: Integer; Item: T); virtual;
-   procedure Remove(Item: T); virtual;
-   procedure RemoveAt(Index: Integer); virtual;
-
-   procedure AddRange(constref Range: array of T); virtual;
-   procedure InsertRange(Index: SizeInt; constref Range: array of T); virtual;
-
-   function Contains(Item: T): Boolean; virtual;
-   function IndexOf(Item: T): Integer; virtual;
-
-   property Count: Integer read GetCount;
-
-   property Items[Index: SizeInt]: T read GetItem write SetItem; default;
- end;
- }
-{
-function Default(const T: AnyType):AnyType;
-function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a type
-
-}
-
- { TSafeObjectList }
- TSafeObjectList = class
- private
-   FList        : TList;
-   FLock        : SyncObjs.TCriticalSection;
-   FOwnsObjects : Boolean;
-
-   function  GetCount(): Integer;
-   function  GetIsEmpty(): Boolean;
-   function GetItem(Index: Integer): TObject;
-   procedure Lock();
-   procedure UnLock();
- public
-   constructor Create(OwnsObjects: Boolean);
-   destructor Destroy(); override;
-
-   procedure Add(Instance: TObject);
-   procedure Insert(Index: Integer; Instance: TObject);
-   procedure Remove(Instance: TObject);
-   procedure RemoveAt(Index: Integer);
-   function  Contains(Instance: TObject): Boolean;
    procedure Clear();
+   procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
+   Function EnsureCapacity(aCapacity: Integer): Integer;
+   Function Equals(StringBuilder: TStrBuilder): Boolean; reintroduce;
 
-   procedure Push(Instance: TObject);
-   function  Pop(): TObject;
+   procedure Insert(Index: Integer; const AValue: Boolean); overload;
+   procedure Insert(Index: Integer; const AValue: Byte); overload;
+   procedure Insert(Index: Integer; const AValue: SBChar); overload;
+   procedure Insert(Index: Integer; const AValue: Currency); overload;
+   procedure Insert(Index: Integer; const AValue: Double); overload;
+   procedure Insert(Index: Integer; const AValue: Smallint); overload;
+   procedure Insert(Index: Integer; const AValue: LongInt); overload;
+   procedure Insert(Index: Integer; const AValue: Int64); overload;
+   procedure Insert(Index: Integer; const AValue: TObject); overload;
+   procedure Insert(Index: Integer; const AValue: Shortint); overload;
+   procedure Insert(Index: Integer; const AValue: Single); overload;
+   procedure Insert(Index: Integer; const AValue: SBString); overload;
+   procedure Insert(Index: Integer; const AValue: Word); overload;
+   procedure Insert(Index: Integer; const AValue: Cardinal); overload;
+   procedure Insert(Index: Integer; const AValue: UInt64); overload;
+   procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
 
-   procedure Sort(Compare: TListSortCompare);
-   function  FirstOrNil(MatchFunc: TMatchObjectProc): TObject;
+   procedure Remove(StartIndex: Integer; RemLength: Integer);
+   procedure Replace(const OldChar, NewChar: SBChar); overload;
+   procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
 
-   property Count: Integer read GetCount;
-   property Items[Index: Integer]: TObject read GetItem; default;
-   property IsEmpty: Boolean read GetIsEmpty;
+   function ToString(): SBString; overload; reintroduce;
+   function ToString(aStartIndex: Integer; aLength: Integer): SBString; overload; reintroduce;
+
+   property Chars[index: Integer]: SBChar read GetC write SetC; default;
+   property Length: Integer read GetLength write SetLength;
+   property Capacity: Integer read GetCapacity write SetCapacity;
+   property MaxCapacity: Integer read GetMaxCapacity;
  end;
 
-   { TKeyValue }
-   TKeyValue = class
-   public
-     Key : string;
-     Value : Variant;
-     constructor Create(AKey: string; AValue: Variant);
-   end;
+  { TGenEnumerator }
+  TGenEnumerator<T> = class
+  protected
+    FLength: SizeInt;
+    FPosition : SizeInt;
+    FGetItemAtIndex : TGetItemAtIndexEvent<T>;
 
-   TVariantDictionary = class;
+    function DoGetCurrent: T;
+  public
+    constructor Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<T>);
 
-   { TVariantDictionaryEnumerator }
-   TVariantDictionaryEnumerator = class
-   private
-     FDictionary: TVariantDictionary;
-     FPosition : Integer;
-   public
-     constructor Create();
+    function MoveNext: Boolean;
+    procedure Reset();
 
-     function GetCurrent(): TKeyValue;
-     procedure Reset();
+    property Current: T read DoGetCurrent;
+    property Position: SizeInt read FPosition;
+  end;
 
-     function MoveNext: boolean;
-     property Current: TKeyValue read GetCurrent;
-   end;
+  IList<T> = interface
+  ['{38ED2E59-BA1D-4518-88CE-15B46AAF25E6}']
+  { private }
+  function GetCount: SizeInt;
+  function GetIsThreadSafe: Boolean;
+  function GetItem(Index: SizeInt): T;
+  procedure SetItem(Index: SizeInt; Item: T);
+  { public }
+  procedure Clear();
 
-   IVariantDictionary = interface
-   ['{0ECC7A7B-5105-40C1-805F-C5EBD4C1D8FA}']
-     function GetCount(): Integer;
-     function  GetValue(const Key: string): Variant;
-     procedure SetValue(const Key: string; Value: Variant);
+  procedure Add(Item: T);
+  procedure Insert(Index: Integer; Item: T);
+  procedure Remove(Item: T);
+  procedure RemoveAt(Index: Integer);
 
-     procedure Add(const Key: string; const Value: Variant);
-     function  Remove(const Key: string): Boolean;
-     procedure Clear();
+  procedure AddRange(constref Range: array of T);
+  procedure InsertRange(Index: SizeInt; constref Range: array of T);
 
-     function  ContainsKey(const Key: string): Boolean;
-     function  ContainsValue(const Value: Variant): Boolean;
+  function Contains(Item: T): Boolean;
+  function IndexOf(Item: T): Integer;
 
-     function  GetKeys(): TArrayOfString;
-     function  GetValues(): TArrayOfVariant;
+  { (Queue) - Inserts an item as the end of the list }
+  procedure Enqueue(Item: T);
+  { (Queue) - Removes and returns the item at index 0 }
+  function Dequeue(): T;
+  { (Stack) - Inserts an item at the top of the list}
+  procedure Push(Item: T);
+  { (Stack) - Removes and returns the item at the top of the list }
+  function  Pop(): T;
+  { (Queue and Stack)- Returns the item at at index 0 without removing it. }
+  function Peek(): T;
 
-     function IndexOfKey(const Key: string): Integer;
-     function ItemByKey(const Key: string): TKeyValue;
-     function IndexOfValue(const Value: Variant): Integer;
+  procedure Reverse();
 
-     function GetEnumerator(): TVariantDictionaryEnumerator;
+  { Sorts the internal list }
+  procedure Sort(Comparer: TCompareFunc<T>); overload;
+  { Sorts the internal list }
+  procedure Sort(Comparer: TCompareMethod<T>); overload;
+  { Sorts the internal list }
+  procedure Sort(const Comparer: IComparer<T>); overload;
 
-     property Count: Integer read GetCount;
-     property Item[const Key: string]: Variant read GetValue write SetValue; default;
-     property Keys: TArrayOfString read GetKeys;
-     property Values: TArrayOfVariant read GetValues;
-   end;
+  { Returns the first element that fulfils a condition, if any, or Default(T) }
+  function  FirstOrDefault(Condition: TConditionFunc<T>): T; overload;
+  { Returns the first element that fulfils a condition, if any, or Default(T) }
+  function  FirstOrDefault(Condition: TConditionMethod<T>): T; overload;
 
-   { TVariantDictionary }
-   TVariantDictionary = class(TInterfacedObject, IVariantDictionary)
-   private
-     FList : TList;
-     function GetCount(): Integer;
-     function  GetValue(const Key: string): Variant;
-     procedure SetValue(const Key: string; Value: Variant);
-   public
-     constructor Create();
-     destructor Destroy(); override;
+  { Returns true if any of the elements fulfil a condition }
+  function  Any(Condition: TConditionFunc<T>): Boolean; overload;
+  { Returns true if any of the elements fulfil a condition }
+  function  Any(Condition: TConditionMethod<T>): Boolean; overload;
 
-     procedure Add(const Key: string; const Value: Variant);
-     function  Remove(const Key: string): Boolean;
-     procedure Clear();
+  { Returns true if all the elements fulfil a condition }
+  function  All(Condition: TConditionFunc<T>): Boolean; overload;
+  { Returns true if all the elements fulfil a condition }
+  function  All(Condition: TConditionMethod<T>): Boolean; overload;
 
-     function  ContainsKey(const Key: string): Boolean;
-     function  ContainsValue(const Value: Variant): Boolean;
+  { Returns a list of elements that fulfil a condition }
+  function  Where(Condition: TConditionFunc<T>): IList<T>; overload;
+  { Returns a list of elements that fulfil a condition }
+  function  Where(Condition: TConditionMethod<T>): IList<T>; overload;
 
-     function  GetKeys(): TArrayOfString;
-     function  GetValues(): TArrayOfVariant;
+  { Returns a list of all elements }
+  function  ToList(): IList<T>;
+  { Returns an array of all elements }
+  function  ToArray(): TGenArray<T>;
 
-     function IndexOfKey(const Key: string): Integer;
-     function ItemByKey(const Key: string): TKeyValue;
-     function IndexOfValue(const Value: Variant): Integer;
+  function GetEnumerator(): TGenEnumerator<T>;
 
-     function GetEnumerator(): TVariantDictionaryEnumerator;
+  property Count: SizeInt read GetCount;
+  property IsThreadSafe: Boolean read GetIsThreadSafe;
+  property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+  end;
 
-     property Count: Integer read GetCount;
-     property Item[const Key: string]: Variant read GetValue write SetValue; default;
-     property Keys: TArrayOfString read GetKeys;
-     property Values: TArrayOfVariant read GetValues;
-   end;
+  { TGenList }
+  TGenList<T> = class(TInterfacedObject, IList<T>)
+  protected
+    // Dynamic Array Extensions: https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
+    FItems       : TGenArray<T>;
+    FLock        : SyncObjs.TCriticalSection;
+
+    function GetCount: SizeInt;
+    function GetIsThreadSafe: Boolean;
+    function GetItem(Index: SizeInt): T;
+    procedure SetItem(Index: SizeInt; Item: T);
+
+    procedure Lock();
+    procedure UnLock();
+
+    procedure DoClear(); virtual;
+    procedure DoRemoveAt(Index: Integer); virtual;
+
+    procedure QuickSort(var AValues: array of T; ALeft, ARight: SizeInt; const AComparer: IComparer<T>);
+  public
+    constructor Create(ThreadSafe: Boolean = False);
+    destructor Destroy(); override;
+
+    procedure Clear();
+
+    procedure Add(Item: T);
+    procedure Insert(Index: Integer; Item: T);
+    procedure Remove(Item: T);
+    procedure RemoveAt(Index: Integer);
+
+    procedure AddRange(constref Range: array of T);
+    procedure InsertRange(Index: SizeInt; constref Range: array of T);
+
+    function Contains(Item: T): Boolean;
+    function IndexOf(Item: T): Integer;
+
+    { (Queue) - Inserts an item as the end of the list }
+    procedure Enqueue(Item: T);
+    { (Queue) - Removes and returns the item at index 0 }
+    function Dequeue(): T;
+    { (Stack) - Inserts an item at the top of the list}
+    procedure Push(Item: T);
+    { (Stack) - Removes and returns the item at the top of the list }
+    function  Pop(): T;
+    { (Queue and Stack)- Returns the item at at index 0 without removing it. }
+    function Peek(): T;
+
+    procedure Reverse();
+
+    { Sorts the internal list }
+    procedure Sort(Comparer: TCompareFunc<T>); overload;
+    { Sorts the internal list }
+    procedure Sort(Comparer: TCompareMethod<T>); overload;
+    { Sorts the internal list }
+    procedure Sort(const Comparer: IComparer<T>); overload;
+
+    { Returns the first element that fulfils a condition, if any, or Default(T) }
+    function  FirstOrDefault(Condition: TConditionFunc<T>): T; overload;
+    { Returns the first element that fulfils a condition, if any, or Default(T) }
+    function  FirstOrDefault(Condition: TConditionMethod<T>): T; overload;
+
+    { Returns true if any of the elements fulfil a condition }
+    function  Any(Condition: TConditionFunc<T>): Boolean; overload;
+    { Returns true if any of the elements fulfil a condition }
+    function  Any(Condition: TConditionMethod<T>): Boolean; overload;
+
+    { Returns true if all the elements fulfil a condition }
+    function  All(Condition: TConditionFunc<T>): Boolean; overload;
+    { Returns true if all the elements fulfil a condition }
+    function  All(Condition: TConditionMethod<T>): Boolean; overload;
+
+    { Returns a list of elements that fulfil a condition }
+    function  Where(Condition: TConditionFunc<T>): IList<T>; overload;
+    { Returns a list of elements that fulfil a condition }
+    function  Where(Condition: TConditionMethod<T>): IList<T>; overload;
+
+    { Returns a list of all elements }
+    function  ToList(): IList<T>;
+    { Returns an array of all elements }
+    function  ToArray(): TGenArray<T>;
+
+    function GetEnumerator(): TGenEnumerator<T>;
+
+    property Count: SizeInt read GetCount;
+    property IsThreadSafe: Boolean read GetIsThreadSafe;
+    property Items[Index: SizeInt]: T read GetItem write SetItem; default;
+  end;
+
+  { TGenObjectList }
+
+  TGenObjectList<T: class> = class(TGenList<T>)
+  protected
+    FOwnsObjects : Boolean;
+    procedure DoClear(); override;
+    procedure DoRemoveAt(Index: Integer); override;
+  public
+    constructor Create(AOwnsObjects: Boolean; ThreadSafe: Boolean = False);
+    property OwnsObjects: Boolean read FOwnsObjects;
+  end;
+
+  { TGenKeyValue }
+  TGenKeyValue<TKey, TValue> = class
+  private
+    FKey: TKey;
+    FValue: TValue;
+  public
+    constructor Create(AKey: TKey; AValue: TValue);
+    property Key: TKey read FKey;
+    property Value: TValue read FValue;
+  end;
+
+  { TGenDictionaryEnumerator }
+  TGenDictionaryEnumerator<TKey, TValue> = class
+  protected
+    FLength: SizeInt;
+    FPosition : SizeInt;
+    FGetItemAtIndex : TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>;
+    function DoGetCurrent: TGenKeyValue<TKey, TValue>;
+  public
+    constructor Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>);
+    function MoveNext: boolean;
+
+    procedure Reset();
+
+    property Current: TGenKeyValue<TKey, TValue> read DoGetCurrent;
+    property Position: SizeInt read FPosition;
+  end;
+
+  IDictionary<TKey, TValue> = interface
+  ['{1AA6B645-961A-4460-AC3E-FD11819FF1C2}']
+  {protected}
+    function GetCount: SizeInt;
+    function  GetValue(const Key: TKey): TValue;
+    procedure SetValue(const Key: TKey; Value: TValue);
+
+    function  GetKeys: TGenArray<TKey>;
+    function  GetValues: TGenArray<TValue>;
+
+    function FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+    function FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+
+    function IndexOfKey(const Key: TKey): SizeInt;
+    function IndexOfValue(const Value: TValue): SizeInt;
+
+    function GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
+  {public}
+    { Adds an entry. If the Key already exists, its Value is updated }
+    procedure Add(Key: TKey; const Value: TValue);
+    { Removes an entry, under a Key }
+    function  Remove(Key: TKey): Boolean;
+    { Removes all entries }
+    procedure Clear();
+
+    { Returns true if an entry exists under a specified Key }
+    function  ContainsKey(const Key: TKey): Boolean;
+    { Returns true if a specified Value exists, under any Key }
+    function  ContainsValue(const Value: TValue): Boolean;
+
+    { Returns the enumerator }
+    function  GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+
+    { Returns the entry count }
+    property Count: SizeInt read GetCount;
+    { Gets or sets a Value. An entry is added if the Key does not exist. }
+    property Item[const Key: TKey]: TValue read GetValue write SetValue; default;
+    { Returns an array with all Keys. }
+    property Keys: TGenArray<TKey> read GetKeys;
+    { Returns an array with all Values. }
+    property Values: TGenArray<TValue> read GetValues;
+  end;
+
+
+  { TGenDictionary }
+  TGenDictionary<TKey, TValue> = class(TInterfacedObject, IDictionary<TKey, TValue>)
+  protected
+    FList : Classes.TList;
+    function GetCount: SizeInt;
+    function  GetValue(const Key: TKey): TValue;
+    procedure SetValue(const Key: TKey; Value: TValue);
+
+    function  GetKeys: TGenArray<TKey>;
+    function  GetValues: TGenArray<TValue>;
+
+    function FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+    function FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+
+    function IndexOfKey(const Key: TKey): SizeInt;
+    function IndexOfValue(const Value: TValue): SizeInt;
+
+    function GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
+  public
+    constructor Create();
+    destructor Destroy(); override;
+
+    { Adds an entry. If the Key already exists, its Value is updated }
+    procedure Add(Key: TKey; const Value: TValue);
+    { Removes an entry, under a Key }
+    function  Remove(Key: TKey): Boolean;
+    { Removes all entries }
+    procedure Clear();
+
+    { Returns true if an entry exists under a specified Key }
+    function  ContainsKey(const Key: TKey): Boolean;
+    { Returns true if a specified Value exists, under any Key }
+    function  ContainsValue(const Value: TValue): Boolean;
+
+    { Returns the enumerator }
+    function  GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+
+    { Returns the entry count }
+    property Count: SizeInt read GetCount;
+    { Gets or sets a Value. An entry is added if the Key does not exist. }
+    property Item[const Key: TKey]: TValue read GetValue write SetValue; default;
+    { Returns an array with all Keys. }
+    property Keys: TGenArray<TKey> read GetKeys;
+    { Returns an array with all Values. }
+    property Values: TGenArray<TValue> read GetValues;
+  end;
 
    { TWriteLineFile }
    TWriteLineFile = class
@@ -604,7 +832,7 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
     class procedure BinToHex(Bitmap: TBitmap; List: TStrings; LineLength: Integer; Quoted: Boolean); overload;
 
     { Returns the number of bytes written to the stream }
-    class function  HexToBin(Text: string; Stream: TStream): Integer; overload;
+    class procedure  HexToBin(Text: string; Stream: TStream); overload;
     class function  HexToBin(Text: string; Field: TBlobField): Integer; overload;
     class function  HexToBin(Text: string; var Graphic: TGraphic): Boolean; overload;
     class function  HexToBin(Text: string; var Bitmap: TBitmap): Boolean; overload;
@@ -836,156 +1064,93 @@ uses
 
 
 
-type
-  { TTripousStringBuilder }
-  TTripousStringBuilder = class(TInterfacedObject, IStringBuilder)
-  private
-    const
-      DefaultCapacity = 64;
-  private
-    function  GetCapacity(): Integer;
-    function  GetMaxCapacity(): Integer;
-    procedure SetCapacity(AValue: Integer);
-    function  GetC(Index: Integer): SBChar;
-    procedure SetC(Index: Integer; AValue: SBChar);
-    function  GetLength(): Integer; inline;
-    procedure SetLength(AValue: Integer);
-  protected
-    FData: TSBCharArray;
-    FLength: Integer;
-    FMaxCapacity: Integer;
-    // raise error on range check.
-    procedure CheckRange(Idx,Count,MaxLen : Integer);
-    procedure CheckNegative(Const AValue : Integer; const AName: SBString);
-    // All appends/inserts pass through here.
-    procedure DoAppend(const S : SBString); virtual;
-    procedure DoInsert(Index: Integer; const AValue: SBString); virtual;
-    procedure DoReplace(Index: Integer; const Old, New: SBString); virtual;
-    procedure Grow();
-    procedure Shrink();
-  public
-    constructor Create(); overload;
-    constructor Create(aCapacity: Integer);  overload;
-    constructor Create(const AValue: SBString); overload;
-    constructor Create(const AValue: SBString; aCapacity: Integer); overload;
+{ TSyncObject }
 
-    procedure Append(const AValue: Boolean); overload;
-    procedure Append(const AValue: Byte); overload;
-    procedure Append(const AValue: SBChar); overload;
-    procedure Append(const AValue: Currency); overload;
-    procedure Append(const AValue: Double); overload;
-    procedure Append(const AValue: Smallint); overload;
-    procedure Append(const AValue: LongInt);  overload;
-    procedure Append(const AValue: Int64); overload;
-    procedure Append(const AValue: TObject);  overload;
-    procedure Append(const AValue: Shortint); overload;
-    procedure Append(const AValue: Single); overload;
-    procedure Append(const AValue: UInt64); overload;
-    procedure Append(const AValue: Word); overload;
-    procedure Append(const AValue: SBString); overload;
-    procedure Append(const AValue: SBChar; RepeatCount: Integer);  overload;
-    procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
+constructor TSyncObject.Create;
+begin
+  FLock := SyncObjs.TCriticalSection.Create();
+end;
 
-    procedure Append(const Fmt: SBString; const Args: array of const); overload;
-    procedure AppendFormat(const Fmt: SBString; const Args: array of const);
+destructor TSyncObject.Destroy;
+begin
+  FLock.Free();
+  inherited Destroy;
+end;
 
-    procedure AppendLine(const Value: SBString); overload;
-    procedure AppendLine(); overload;
+procedure TSyncObject.Lock;
+begin
+  FLock.Enter();
+end;
 
-    procedure Clear();
-    procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
-    Function EnsureCapacity(aCapacity: Integer): Integer;
-    Function Equals(StringBuilder: TTripousStringBuilder): Boolean; reintroduce;
-
-    procedure Insert(Index: Integer; const AValue: Boolean); overload;
-    procedure Insert(Index: Integer; const AValue: Byte); overload;
-    procedure Insert(Index: Integer; const AValue: SBChar); overload;
-    procedure Insert(Index: Integer; const AValue: Currency); overload;
-    procedure Insert(Index: Integer; const AValue: Double); overload;
-    procedure Insert(Index: Integer; const AValue: Smallint); overload;
-    procedure Insert(Index: Integer; const AValue: LongInt); overload;
-    procedure Insert(Index: Integer; const AValue: Int64); overload;
-    procedure Insert(Index: Integer; const AValue: TObject); overload;
-    procedure Insert(Index: Integer; const AValue: Shortint); overload;
-    procedure Insert(Index: Integer; const AValue: Single); overload;
-    procedure Insert(Index: Integer; const AValue: SBString); overload;
-    procedure Insert(Index: Integer; const AValue: Word); overload;
-    procedure Insert(Index: Integer; const AValue: Cardinal); overload;
-    procedure Insert(Index: Integer; const AValue: UInt64); overload;
-    procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
-
-    procedure Remove(StartIndex: Integer; RemLength: Integer);
-    procedure Replace(const OldChar, NewChar: SBChar); overload;
-    procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
-
-    function ToString(): SBString; reintroduce;
-    function ToString(aStartIndex: Integer; aLength: Integer): SBString; reintroduce;
-
-    property Chars[index: Integer]: SBChar read GetC write SetC; default;
-    property Length: Integer read GetLength write SetLength;
-    property Capacity: Integer read GetCapacity write SetCapacity;
-    property MaxCapacity: Integer read GetMaxCapacity;
-  end;
+procedure TSyncObject.UnLock;
+begin
+  FLock.Leave();
+end;
 
 
 
-{ TTripousStringBuilder }
-constructor TTripousStringBuilder.Create;
+
+
+
+
+
+{ TStrBuilder }
+constructor TStrBuilder.Create;
 begin
   Create(DefaultCapacity);
 end;
 
-constructor TTripousStringBuilder.Create(const AValue: SBString; aCapacity: Integer);
+constructor TStrBuilder.Create(const AValue: SBString; aCapacity: Integer);
 begin
   Create(aCapacity);
   if (system.Length(AValue)>0) then
     Append(AValue);
 end;
 
-constructor TTripousStringBuilder.Create(aCapacity: Integer);
+constructor TStrBuilder.Create(aCapacity: Integer);
 begin
   FMaxCapacity:=Maxint;
   Capacity:=aCapacity;
   FLength:=0;
 end;
 
-constructor TTripousStringBuilder.Create(const AValue: SBString);
+constructor TStrBuilder.Create(const AValue: SBString);
 begin
   Create(aValue,DefaultCapacity);
 end;
 
 { Property getter/setter }
 
-function TTripousStringBuilder.GetLength: Integer;
+function TStrBuilder.GetLength: Integer;
 begin
   Result := FLength;
 end;
 
-function TTripousStringBuilder.GetCapacity: Integer;
+function TStrBuilder.GetCapacity: Integer;
 begin
   Result := System.Length(FData);
 end;
 
-function TTripousStringBuilder.GetMaxCapacity: Integer;
+function TStrBuilder.GetMaxCapacity: Integer;
 begin
   Result := FMaxCapacity;
 end;
 
-function TTripousStringBuilder.GetC(Index: Integer): SBChar;
+function TStrBuilder.GetC(Index: Integer): SBChar;
 begin
   CheckNegative(Index,'Index');
   CheckRange(Index,0,Length);
   Result := FData[Index];
 end;
 
-procedure TTripousStringBuilder.SetC(Index: Integer; AValue: SBChar);
+procedure TStrBuilder.SetC(Index: Integer; AValue: SBChar);
 begin
   CheckNegative(Index,'Index');
   CheckRange(Index,0,Length-1);
   FData[Index]:=AValue;
 end;
 
-procedure TTripousStringBuilder.SetLength(AValue: Integer);
+procedure TStrBuilder.SetLength(AValue: Integer);
 begin
   CheckNegative(AValue,'AValue');
   CheckRange(AValue,0,MaxCapacity);
@@ -995,20 +1160,20 @@ begin
 end;
 
 { Check functions }
-procedure TTripousStringBuilder.CheckRange(Idx, Count, MaxLen: Integer);
+procedure TStrBuilder.CheckRange(Idx, Count, MaxLen: Integer);
 begin
   if (Idx<0) or (Idx+Count>MaxLen) then
     raise ERangeError.CreateFmt(SListIndexError,[Idx]);
 end;
 
-procedure TTripousStringBuilder.CheckNegative(const AValue: Integer; const AName: SBString);
+procedure TStrBuilder.CheckNegative(const AValue: Integer; const AName: SBString);
 begin
   if (AValue<0) then
     raise ERangeError.CreateFmt(SParamIsNegative,[AName])
 end;
 
 {  These do the actual Appending/Inserting }
-procedure TTripousStringBuilder.DoAppend(const S: SBString);
+procedure TStrBuilder.DoAppend(const S: SBString);
 var
   L,SL : Integer;
 begin
@@ -1021,7 +1186,7 @@ begin
   end;
 end;
 
-procedure TTripousStringBuilder.DoInsert(Index: Integer; const AValue: SBString);
+procedure TStrBuilder.DoInsert(Index: Integer; const AValue: SBString);
 var
   ShiftLen,LV : Integer;
 begin
@@ -1034,114 +1199,114 @@ begin
 end;
 
 { Public routines for appending }
-procedure TTripousStringBuilder.Append(const AValue: UInt64);
+procedure TStrBuilder.Append(const AValue: UInt64);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Single);
+procedure TStrBuilder.Append(const AValue: Single);
 begin
   DoAppend(FloatToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Word);
+procedure TStrBuilder.Append(const AValue: Word);
 begin
   Append(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: SBChar; RepeatCount: Integer);
+procedure TStrBuilder.Append(const AValue: SBChar; RepeatCount: Integer);
 begin
   DoAppend(StringOfChar(AValue,RepeatCount));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Shortint);
+procedure TStrBuilder.Append(const AValue: Shortint);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: SBChar);
+procedure TStrBuilder.Append(const AValue: SBChar);
 begin
   DoAppend(AValue);
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Currency);
+procedure TStrBuilder.Append(const AValue: Currency);
 begin
   DoAppend(CurrToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Boolean);
+procedure TStrBuilder.Append(const AValue: Boolean);
 begin
   DoAppend(BoolToStr(AValue, True));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Byte);
+procedure TStrBuilder.Append(const AValue: Byte);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Double);
+procedure TStrBuilder.Append(const AValue: Double);
 begin
   DoAppend(FloatToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Int64);
+procedure TStrBuilder.Append(const AValue: Int64);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: TObject);
+procedure TStrBuilder.Append(const AValue: TObject);
 begin
   DoAppend(AValue.ToString);
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: Smallint);
+procedure TStrBuilder.Append(const AValue: Smallint);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: LongInt);
+procedure TStrBuilder.Append(const AValue: LongInt);
 begin
   DoAppend(IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: SBString; StartIndex: Integer; Count: Integer);
+procedure TStrBuilder.Append(const AValue: SBString; StartIndex: Integer; Count: Integer);
 begin
   CheckRange(StartIndex,Count,System.Length(AValue));
   DoAppend(Copy(AValue,StartIndex+1,Count));
 end;
 
-procedure TTripousStringBuilder.Append(const AValue: SBString);
+procedure TStrBuilder.Append(const AValue: SBString);
 begin
   DoAppend(AValue);
 end;
 
-procedure TTripousStringBuilder.AppendFormat(const Fmt: SBString; const Args: array of const);
+procedure TStrBuilder.AppendFormat(const Fmt: SBString; const Args: array of const);
 begin
   DoAppend(Format(Fmt,Args));
 end;
 
-procedure TTripousStringBuilder.AppendLine(const Value: SBString);
+procedure TStrBuilder.AppendLine(const Value: SBString);
 begin
   DoAppend(Value + sLineBreak);
 end;
 
-procedure TTripousStringBuilder.Append(const Fmt: SBString; const Args: array of const);
+procedure TStrBuilder.Append(const Fmt: SBString; const Args: array of const);
 begin
   DoAppend(Format(Fmt,Args));
 end;
 
-procedure TTripousStringBuilder.AppendLine;
+procedure TStrBuilder.AppendLine;
 begin
   DoAppend(sLineBreak);
 end;
 
-procedure TTripousStringBuilder.Clear;
+procedure TStrBuilder.Clear;
 begin
   Length:=0;
   Capacity:=DefaultCapacity;
 end;
 
-procedure TTripousStringBuilder.CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
+procedure TStrBuilder.CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
 begin
   CheckNegative(Count,'Count');
   CheckNegative(DestinationIndex,'DestinationIndex');
@@ -1153,7 +1318,7 @@ begin
   end;
 end;
 
-function TTripousStringBuilder.EnsureCapacity(aCapacity: Integer): Integer;
+function TStrBuilder.EnsureCapacity(aCapacity: Integer): Integer;
 begin
   CheckRange(aCapacity,0,MaxCapacity);
   if Capacity<aCapacity then
@@ -1161,7 +1326,7 @@ begin
   Result:=Capacity;
 end;
 
-function TTripousStringBuilder.Equals(StringBuilder: TTripousStringBuilder): Boolean;
+function TStrBuilder.Equals(StringBuilder: TStrBuilder): Boolean;
 begin
   Result:=(StringBuilder<>nil);
   if Result then
@@ -1170,7 +1335,7 @@ begin
              and CompareMem(@FData[0],@StringBuilder.FData[0],Length*SizeOf(SBChar));
 end;
 
-procedure TTripousStringBuilder.Grow;
+procedure TStrBuilder.Grow;
 var
   NewCapacity: SizeInt;
 begin
@@ -1180,72 +1345,72 @@ begin
   Capacity:=NewCapacity;
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: TObject);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: TObject);
 begin
   DoInsert(Index,AValue.ToString());
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Int64);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Int64);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Single);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Single);
 begin
   DoInsert(Index,FloatToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: SBString);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: SBString);
 begin
   DoInsert(Index,AValue);
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Word);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Word);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Shortint);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Shortint);
 begin
   DoInsert(Index, IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Currency);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Currency);
 begin
   DoInsert(Index,CurrToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: SBChar);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: SBChar);
 begin
   DoInsert(Index,AValue);
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Byte);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Byte);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Double);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Double);
 begin
   DoInsert(Index,FloatToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: LongInt);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: LongInt);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Smallint);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Smallint);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Boolean);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Boolean);
 begin
   DoInsert(Index,BoolToStr(AValue,True));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: SBString;  const aRepeatCount: Integer);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: SBString;  const aRepeatCount: Integer);
 var
   I: Integer;
 begin
@@ -1253,23 +1418,23 @@ begin
     DoInsert(Index,AValue);
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: Cardinal);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: Cardinal);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Insert(Index: Integer; const AValue: UInt64);
+procedure TStrBuilder.Insert(Index: Integer; const AValue: UInt64);
 begin
   DoInsert(Index,IntToStr(AValue));
 end;
 
-procedure TTripousStringBuilder.Shrink;
+procedure TStrBuilder.Shrink;
 begin
   if (Capacity div 4)>=Length then
     Capacity:=Capacity div 2;
 end;
 
-procedure TTripousStringBuilder.Remove(StartIndex: Integer; RemLength: Integer);
+procedure TStrBuilder.Remove(StartIndex: Integer; RemLength: Integer);
 var
   MoveIndex : Integer;
 begin
@@ -1285,7 +1450,7 @@ begin
   Shrink;
 end;
 
-procedure TTripousStringBuilder.Replace(const OldChar, NewChar: SBChar;
+procedure TStrBuilder.Replace(const OldChar, NewChar: SBChar;
   StartIndex: Integer; Count: Integer);
 var
   I : Integer;
@@ -1305,12 +1470,12 @@ begin
   end;
 end;
 
-procedure TTripousStringBuilder.Replace(const OldChar, NewChar: SBChar);
+procedure TStrBuilder.Replace(const OldChar, NewChar: SBChar);
 begin
   Replace(OldChar,NewChar,0,Length);
 end;
 
-procedure TTripousStringBuilder.SetCapacity(AValue: Integer);
+procedure TStrBuilder.SetCapacity(AValue: Integer);
 begin
   if (AValue>FMaxCapacity) then
     raise ERangeError.CreateFmt(SListCapacityError,[AValue]);
@@ -1319,12 +1484,12 @@ begin
   System.SetLength(FData,AValue);
 end;
 
-function TTripousStringBuilder.ToString: SBString;
+function TStrBuilder.ToString: SBString;
 begin
   Result:=ToString(0,Length);
 end;
 
-function TTripousStringBuilder.ToString(aStartIndex: Integer; aLength: Integer): SBString;
+function TStrBuilder.ToString(aStartIndex: Integer; aLength: Integer): SBString;
 begin
   if (aLength=0) then
     Result:=''
@@ -1337,7 +1502,7 @@ begin
   end;
 end;
 
-procedure TTripousStringBuilder.DoReplace(Index: Integer; const Old, New: SBString);
+procedure TStrBuilder.DoReplace(Index: Integer; const Old, New: SBString);
 var
   NVLen,OVLen,OLen,Delta,TailStart: Integer;
 begin
@@ -1360,281 +1525,650 @@ end;
 
 
 
+{ TGenEnumerator }
 
-
-
-
-
-
-type
-
-{ _TSyncObject }
-
-_TSyncObject = class(TInterfacedObject, ISyncObject)
-private
-  FLock   : SyncObjs.TCriticalSection;
-public
-  constructor Create;
-  destructor Destroy; override;
-
-  procedure Lock;
-  procedure UnLock;
-end;
-
-{ _TSyncObject }
-
-constructor _TSyncObject.Create;
+constructor TGenEnumerator<T>.Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<T>);
 begin
-  FLock := SyncObjs.TCriticalSection.Create();
+  inherited Create();
+  FPosition := -1;
+  FLength := Length;
+  FGetItemAtIndex := GetItemAtIndex;
 end;
 
-destructor _TSyncObject.Destroy;
+procedure TGenEnumerator<T>.Reset();
 begin
-  FLock.Free();
-  inherited Destroy;
+  FPosition := -1;
 end;
 
-procedure _TSyncObject.Lock;
+function TGenEnumerator<T>.DoGetCurrent: T;
 begin
-  FLock.Enter();
+  Result := FGetItemAtIndex(FPosition);
 end;
 
-procedure _TSyncObject.UnLock;
+function TGenEnumerator<T>.MoveNext: Boolean;
 begin
-  FLock.Leave();
+  Inc(FPosition);
+  Result := FPosition < FLength;
 end;
 
 
 
-{ TSafeObjectList }
 
-constructor TSafeObjectList.Create(OwnsObjects: Boolean);
+
+{ TGenList }
+
+constructor TGenList<T>.Create(ThreadSafe: Boolean);
 begin
-  inherited Create;
-  FOwnsObjects := OwnsObjects;
+  inherited Create();
 
-  FLock := SyncObjs.TCriticalSection.Create();
-  FList := TList.Create();
+  if ThreadSafe then
+     FLock := SyncObjs.TCriticalSection.Create();
 end;
 
-destructor TSafeObjectList.Destroy;
+destructor TGenList<T>.Destroy();
 begin
   Clear();
-  FList.Free();
-  FLock.Free;
-  inherited Destroy;
+  if Assigned(FLock) then
+     FLock.Free();
+  inherited Destroy();
 end;
 
-procedure TSafeObjectList.Lock;
+function TGenList<T>.GetIsThreadSafe: Boolean;
 begin
-  FLock.Enter();
+  Result := Assigned(FLock);
 end;
 
-procedure TSafeObjectList.UnLock;
+procedure TGenList<T>.Lock;
 begin
-   FLock.Leave();
+  if Assigned(FLock) then
+     FLock.Enter();
 end;
 
-function TSafeObjectList.GetIsEmpty: Boolean;
+procedure TGenList<T>.UnLock;
 begin
-  Lock();
-  try
-    Result := FList.Count = 0;
-  finally
-    UnLock();
-  end;
+  if Assigned(FLock) then
+     FLock.Leave();
 end;
 
-function TSafeObjectList.GetItem(Index: Integer): TObject;
+function TGenList<T>.GetCount: SizeInt;
 begin
   Lock();
   try
-    Result := TObject(FList[Index]);
-  finally
-    UnLock();
-  end;
-end;
-
-function TSafeObjectList.GetCount: Integer;
-begin
-  Lock();
-  try
-    Result := FList.Count;
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.Add(Instance: TObject);
-begin
-  Lock();
-  try
-    FList.Add(Instance);
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.Insert(Index: Integer; Instance: TObject);
-begin
-  Lock();
-  try
-    FList.Insert(Index, Instance);
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.Remove(Instance: TObject);
-begin
-  Lock();
-  try
-    FList.Remove(Instance);
-    if FOwnsObjects then
-       Instance.Free();
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.RemoveAt(Index: Integer);
-var
-  Instance: TObject;
-begin
-  Lock();
-  try
-    Instance := TObject(FList[Index]);
-    Remove(Instance);
-  finally
-    UnLock();
-  end;
-end;
-
-function TSafeObjectList.Contains(Instance: TObject): Boolean;
-begin
-  Lock();
-  try
-    Result := FList.IndexOf(Instance) <> -1;
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.Clear();
-begin
-  Lock();
-  try
-    if FOwnsObjects then
-      Sys.ClearObjectList(FList);
-    FList.Clear();
-  finally
-    UnLock();
-  end;
-end;
-
-procedure TSafeObjectList.Push(Instance: TObject);
-begin
-  Lock();
-  try
-    FList.Add(Instance);
-  finally
-    UnLock();
-  end;
-end;
-
-function TSafeObjectList.Pop(): TObject;
-begin
-  Lock();
-  try
-    if FList.Count > 0 then
-    begin
-      Result := TObject(FList.First);
-      FList.Delete(0);
-    end
+    if Assigned(FItems) then
+      Result := Length(FItems)
     else
-      Result := nil;
+      Result := 0;
   finally
     UnLock();
   end;
 end;
 
-procedure TSafeObjectList.Sort(Compare: TListSortCompare);
+procedure TGenList<T>.DoClear();
+begin
+  FItems := nil;
+end;
+
+procedure TGenList<T>.Clear();
 begin
   Lock();
   try
-    FList.Sort(Compare);
+    DoClear();
   finally
     UnLock();
   end;
 end;
 
-function TSafeObjectList.FirstOrNil(MatchFunc: TMatchObjectProc): TObject;
-var
-  i : Integer;
-  Obj: TObject;
+procedure TGenList<T>.Add(Item: T);
 begin
-  Result := nil;
+  Insert(Count, Item);
+end;
+
+procedure TGenList<T>.Insert(Index: Integer; Item: T);
+begin
   Lock();
   try
-    for i := 0 to FList.Count - 1 do
+    if (Index < 0) or (Index > Count) then
+      raise Exception.CreateFmt('Cannot insert at Index: %d. Index out of bounds', [Index]);
+
+    if Index = Count then
     begin
-      Obj := TObject(FList[i]);
-      if MatchFunc(Obj) then
-         Exit(Obj);
+      if not Assigned(FItems) then
+      begin
+        SetLength(FItems, 1);
+        FItems[0] := Item;
+      end else begin
+         FItems := System.Concat(FItems, [Item]);
+      end;
+    end else begin
+      System.Insert([Item], FItems, Index);
     end;
   finally
     UnLock();
   end;
 end;
 
-
-
-
-{ TKeyValue }
-
-constructor TKeyValue.Create(AKey: string; AValue: Variant);
+procedure TGenList<T>.Remove(Item: T);
 begin
-  Self.Key := AKey;
-  Self.Value := AValue;
+  RemoveAt(IndexOf(Item));
 end;
 
-{ TVariantDictionary }
+procedure TGenList<T>.DoRemoveAt(Index: Integer);
+begin
+  System.Delete(FItems, Index, 1);
+end;
 
-constructor TVariantDictionary.Create();
+procedure TGenList<T>.RemoveAt(Index: Integer);
+begin
+  Lock();
+  try
+    if (Index < 0) or (Index >= Count) then
+      raise Exception.CreateFmt('Cannot remove at Index: %d. Index out of bounds', [Index]);
+
+    DoRemoveAt(Index);
+
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.AddRange(constref Range: array of T);
+var
+  Item: T;
+begin
+  Lock();
+  try
+    for Item in Range do
+      Add(Item);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.InsertRange(Index: SizeInt; constref Range: array of T);
+var
+  Item: T;
+  i: SizeInt;
+begin
+  Lock();
+  try
+    i := 0;
+    for Item in Range do
+    begin
+      Insert(Index + i, Item);
+      Inc(i);
+    end;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Contains(Item: T): Boolean;
+begin
+  Lock();
+  try
+    Result := IndexOf(Item) <> -1;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.IndexOf(Item: T): Integer;
+var
+  i : Integer;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      if FItems[i] = Item then
+        Exit(i);
+    end;
+
+    Exit(-1);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.Enqueue(Item: T);
+begin
+  // (Queue) - Inserts an item as the end of the list
+  Add(Item);
+end;
+
+function TGenList<T>.Dequeue(): T;
+begin
+  // (Queue) - Removes and returns the item at index 0
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Queue is empty');
+
+    Result := FItems[0];
+    System.Delete(FItems, 0, 1);
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.Push(Item: T);
+begin
+  // (Stack) - Inserts an item at the top of the list
+  Insert(0, Item);
+end;
+
+function TGenList<T>.Pop(): T;
+begin
+  //(Stack) - Removes and returns the item at the top of the list }
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Stack is empty');
+
+    Result := FItems[0];
+    System.Delete(FItems, 0, 1);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Peek(): T;
+begin
+  // (Queue and Stack)- Returns the item at at index 0 without removing it.
+  Lock();
+  try
+    if Count = 0 then
+      raise Exception.Create('Queue or Stack is empty');
+
+    Result := FItems[0];
+  finally
+    UnLock();
+  end;
+end;
+
+procedure TGenList<T>.Reverse();
+var
+  A, B: SizeInt;
+  Temp: T;
+begin
+  A := 0;
+  B := Count - 1;
+  while A < B do
+  begin
+    Temp := FItems[A];
+    FItems[A] := FItems[B];
+    FItems[B] := Temp;
+    Inc(A);
+    Dec(B);
+  end;
+end;
+
+procedure TGenList<T>.QuickSort(var AValues: array of T; ALeft, ARight: SizeInt; const AComparer: IComparer<T>);
+var
+  I, J: SizeInt;
+  P, Q: T;
+begin
+  if ((ARight - ALeft) <= 0) or (Length(AValues) = 0) then
+    Exit;
+  repeat
+    I := ALeft;
+    J := ARight;
+    P := AValues[ALeft + (ARight - ALeft) shr 1];
+    repeat
+        while AComparer.Compare(AValues[I], P) < 0 do
+          Inc(I);
+        while AComparer.Compare(AValues[J], P) > 0 do
+          Dec(J);
+      if I <= J then
+      begin
+        if I <> J then
+        begin
+          Q := AValues[I];
+          AValues[I] := AValues[J];
+          AValues[J] := Q;
+        end;
+        Inc(I);
+        Dec(J);
+      end;
+    until I > J;
+    // sort the smaller range recursively
+    // sort the bigger range via the loop
+    // Reasons: memory usage is O(log(n)) instead of O(n) and loop is faster than recursion
+    if J - ALeft < ARight - I then
+    begin
+      if ALeft < J then
+        QuickSort(AValues, ALeft, J, AComparer);
+      ALeft := I;
+    end
+    else
+    begin
+      if I < ARight then
+        QuickSort(AValues, I, ARight, AComparer);
+      ARight := J;
+    end;
+   until ALeft >= ARight;
+
+end;
+
+procedure TGenList<T>.Sort(Comparer: TCompareFunc<T>);
+var
+  C: IComparer<T>;
+begin
+  C := TComparer<T>.Construct(Comparer);
+  Sort(C);
+end;
+
+procedure TGenList<T>.Sort(Comparer: TCompareMethod<T>);
+var
+  C: IComparer<T>;
+begin
+  C := TComparer<T>.Construct(Comparer);
+  Sort(C);
+end;
+
+procedure TGenList<T>.Sort(const Comparer: IComparer<T>);
+begin
+  if not Assigned(FItems) or (Count < 2) then
+     Exit; // <=
+
+  QuickSort(FItems, 0, Pred(Count), Comparer);
+end;
+
+function TGenList<T>.FirstOrDefault(Condition: TConditionFunc<T>): T;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        Exit(Item);
+    end;
+    Exit(Default(T));
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.FirstOrDefault(Condition: TConditionMethod<T>): T;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        Exit(Item);
+    end;
+    Exit(Default(T));
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Any(Condition: TConditionFunc<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        Exit(True);
+    end;
+    Exit(False);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Any(Condition: TConditionMethod<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        Exit(True);
+    end;
+    Exit(False);
+  finally
+    UnLock();
+  end;
+
+end;
+
+function TGenList<T>.All(Condition: TConditionFunc<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if not Condition(Item) then
+        Exit(False);
+    end;
+    Exit(True);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.All(Condition: TConditionMethod<T>): Boolean;
+var
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if not Condition(Item) then
+        Exit(False);
+    end;
+    Exit(True);
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Where(Condition: TConditionFunc<T>): IList<T>;
+var
+  List: TGenList<T>;
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    List := TGenList<T>.Create(False);
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        List.Add(Item);
+    end;
+    Result := List;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.Where(Condition: TConditionMethod<T>): IList<T>;
+var
+  List: TGenList<T>;
+  i : Integer;
+  Item: T;
+begin
+  Lock();
+  try
+    List := TGenList<T>.Create(False);
+    for i := Low(FItems) to High(FItems) do
+    begin
+      Item := FItems[i];
+      if Condition(Item) then
+        List.Add(Item);
+    end;
+    Result := List;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.ToList(): IList<T>;
+var
+  List: TGenList<T>;
+begin
+  Lock();
+  try
+    List := TGenList<T>.Create(False);
+    List.AddRange(FItems);
+    Result := List;
+  finally
+    UnLock();
+  end;
+end;
+
+function TGenList<T>.ToArray(): TGenArray<T>;
+begin
+   Result := System.Copy(FItems, 0);
+end;
+
+function TGenList<T>.GetEnumerator(): TGenEnumerator<T>;
+begin
+  Result := TGenEnumerator<T>.Create(Length(FItems), GetItem);
+  //Result.FItems := FItems;
+end;
+
+function TGenList<T>.GetItem(Index: SizeInt): T;
+begin
+  Lock();
+  try
+    Result := FItems[Index];
+  finally
+    UnLock();
+  end;
+
+end;
+
+procedure TGenList<T>.SetItem(Index: SizeInt; Item: T);
+begin
+  Lock();
+  try
+    FItems[Index] := Item;
+  finally
+    UnLock();
+  end;
+end;
+
+
+
+{ TGenObjectList }
+
+constructor TGenObjectList<T>.Create(AOwnsObjects: Boolean; ThreadSafe: Boolean);
+begin
+  inherited Create(ThreadSafe);
+  FOwnsObjects := AOwnsObjects;
+end;
+
+procedure TGenObjectList<T>.DoClear();
+var
+  Item: T;
+begin
+  if OwnsObjects then
+  try
+    for Item in FItems do
+        Item.Free();
+  except
+  end;
+
+  inherited DoClear();
+end;
+
+procedure TGenObjectList<T>.DoRemoveAt(Index: Integer);
+begin
+  if OwnsObjects then
+  try
+    FItems[Index].Free();
+  except
+  end;
+
+  inherited DoRemoveAt(Index);
+end;
+
+{ TGenKeyValue }
+
+constructor TGenKeyValue<TKey, TValue>.Create(AKey: TKey; AValue: TValue);
 begin
   inherited Create();
-  FList := TList.Create();
+  FKey := AKey;
+  FValue := AValue;
 end;
 
-destructor TVariantDictionary.Destroy;
+{ TGenDictionaryEnumerator }
+
+constructor TGenDictionaryEnumerator<TKey, TValue>.Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>);
+begin
+  inherited Create();
+  FPosition := -1;
+  FLength := Length;
+  FGetItemAtIndex := GetItemAtIndex;
+end;
+
+function TGenDictionaryEnumerator<TKey, TValue>.DoGetCurrent: TGenKeyValue<TKey, TValue>;
+begin
+  Result := FGetItemAtIndex(FPosition);
+end;
+
+function TGenDictionaryEnumerator<TKey, TValue>.MoveNext: boolean;
+begin
+  Inc(FPosition);
+  Result := FPosition < FLength;
+end;
+
+procedure TGenDictionaryEnumerator<TKey, TValue>.Reset();
+begin
+  FPosition := -1;
+end;
+
+
+{ TGenDictionary }
+
+constructor TGenDictionary<TKey, TValue>.Create();
+begin
+  inherited Create();
+  FList := Classes.TList.Create();
+end;
+
+destructor TGenDictionary<TKey, TValue>.Destroy();
 begin
   Clear();
   FList.Free();
   inherited Destroy;
 end;
 
-procedure TVariantDictionary.Add(const Key: string; const Value: Variant);
+function TGenDictionary<TKey, TValue>.GetCount: SizeInt;
 begin
-  Self.Item[Key] := Value;
+  Result := FList.Count;
 end;
 
-function TVariantDictionary.Remove(const Key: string): Boolean;
-var
-  Index: Integer;
-  Pair : TKeyValue;
-begin
-  Result := False;
-  Index := IndexOfKey(Key);
-  if Index <> -1 then
-  begin
-    Pair := TKeyValue(FList[Index]);
-    Pair.Free();
-    FList.Delete(Index);
-    Result := True;
-  end;
-end;
-
-procedure TVariantDictionary.Clear();
+procedure TGenDictionary<TKey, TValue>.Clear();
 begin
   while (FList.Count > 0) do
   begin
@@ -1648,152 +2182,163 @@ begin
   FList.Clear();
 end;
 
-function TVariantDictionary.GetValue(const Key: string): Variant;
-var
-  i   : Integer;
-  Pair: TKeyValue;
-begin
-  Pair := ItemByKey(Key);
-  if Assigned(Pair) then
-     Exit(Pair.Value);
-
-  Result := Null;
-end;
-
-function TVariantDictionary.GetKeys: TArrayOfString;
-var
-  i   : Integer;
-  Pair: TKeyValue;
-begin
-  SetLength(Result, FList.Count);
-
-  for i := 0 to FList.Count do
-  begin
-    Pair := TKeyValue(FList[i]);
-    Result[i] := Pair.Key;
-  end;
-end;
-
-function TVariantDictionary.GetValues: TArrayOfVariant;
-var
-  i   : Integer;
-  Pair: TKeyValue;
-begin
-  SetLength(Result, FList.Count);
-
-  for i := 0 to FList.Count do
-  begin
-    Pair := TKeyValue(FList[i]);
-    Result[i] := Pair.Value;
-  end;
-end;
-
-function TVariantDictionary.GetCount: Integer;
-begin
-  Result := FList.Count;
-end;
-
-
-
-procedure TVariantDictionary.SetValue(const Key: string; Value: Variant);
-var
-  Pair: TKeyValue;
-begin
-  Pair := ItemByKey(Key);
-  if not Assigned(Pair) then
-  begin
-    Pair := TKeyValue.Create(Key, Value);
-    FList.Add(Pair);
-  end;
-
-  Pair.Value:= Value;
-end;
-
-function TVariantDictionary.ContainsValue(const Value: Variant): Boolean;
-begin
-  Result := IndexOfValue(Value) <> -1;
-end;
-
-function TVariantDictionary.IndexOfValue(const Value: Variant): Integer;
+function TGenDictionary<TKey, TValue>.IndexOfKey(const Key: TKey): SizeInt;
 var
   i : Integer;
-  Pair: TKeyValue;
+  Entry : TGenKeyValue<TKey, TValue>;
 begin
   for i := 0 to FList.Count - 1 do
   begin
-    Pair := TKeyValue(FList[i]);
-    if VarSameValue(Value, Pair.Value) then
-       Exit(i);
-  end;
-
-  Exit(-1);
-
-end;
-
-function TVariantDictionary.GetEnumerator(): TVariantDictionaryEnumerator;
-begin
-  Result := TVariantDictionaryEnumerator.Create();
-  Result.FDictionary := Self;
-end;
-
-function TVariantDictionary.IndexOfKey(const Key: string): Integer;
-var
-  i : Integer;
-  Pair: TKeyValue;
-begin
-  for i := 0 to FList.Count - 1 do
-  begin
-    Pair := TKeyValue(FList[i]);
-    if AnsiCompareText(Key, Pair.Key) = 0 then
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Key = Entry.Key then
        Exit(i);
   end;
 
   Exit(-1);
 end;
 
-function TVariantDictionary.ItemByKey(const Key: string): TKeyValue;
+function TGenDictionary<TKey, TValue>.IndexOfValue(const Value: TValue): SizeInt;
 var
   i : Integer;
-  Pair: TKeyValue;
+  Entry: TGenKeyValue<TKey, TValue>;
 begin
   for i := 0 to FList.Count - 1 do
   begin
-    Pair := TKeyValue(FList[i]);
-    if AnsiCompareText(Key, Pair.Key) = 0 then
-       Exit(Pair);
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Value = Entry.Value then
+       Exit(i);
   end;
 
-  Exit(nil);
+  Exit(-1);
 end;
 
-function TVariantDictionary.ContainsKey(const Key: string): Boolean;
+
+
+function TGenDictionary<TKey, TValue>.FindByKey(const Key: TKey): TGenKeyValue<TKey, TValue>;
+var
+  i : Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
 begin
-  Result := IndexOfKey(Key) <> -1;
+  Result := nil;
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Key = Entry.Key then
+       Exit(Entry);
+  end;
 end;
 
-
-{ TVariantDictionaryEnumerator }
-constructor TVariantDictionaryEnumerator.Create();
+function TGenDictionary<TKey, TValue>.FindByValue(const Value: TValue): TGenKeyValue<TKey, TValue>;
+var
+  i : Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
 begin
-  inherited Create();
-  FPosition := -1;
+  Result := nil;
+  for i := 0 to FList.Count - 1 do
+  begin
+    Entry := TGenKeyValue<TKey, TValue>(FList[i]);
+    if Value = Entry.Value then
+       Exit(Entry);
+  end;
+
 end;
 
-function TVariantDictionaryEnumerator.GetCurrent: TKeyValue;
+function TGenDictionary<TKey, TValue>.ContainsKey(const Key: TKey): Boolean;
 begin
-   Result := TKeyValue(FDictionary.FList[FPosition]);
+  Result := FindByKey(Key) <> nil;
 end;
 
-procedure TVariantDictionaryEnumerator.Reset;
+function TGenDictionary<TKey, TValue>.ContainsValue(const Value: TValue): Boolean;
 begin
-  FPosition := -1;
+  Result := FindByValue(Value) <> nil;
 end;
 
-function TVariantDictionaryEnumerator.MoveNext: boolean;
+function TGenDictionary<TKey, TValue>.GetItemAtIndex(Index: SizeInt): TGenKeyValue<TKey, TValue>;
 begin
-  Inc(FPosition);
-  Result := FPosition < FDictionary.FList.Count;
+  Result := TGenKeyValue<TKey, TValue>(FList[Index]);
 end;
+
+function TGenDictionary<TKey, TValue>.GetEnumerator(): TGenDictionaryEnumerator<TKey, TValue>;
+begin
+   Result := TGenDictionaryEnumerator<TKey, TValue>.Create(FList.Count, GetItemAtIndex);
+end;
+
+function TGenDictionary<TKey, TValue>.GetValue(const Key: TKey): TValue;
+var
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Entry := FindByKey(Key);
+  if Assigned(Entry) then
+     Exit(Entry.Value);
+
+  raise Exception.Create('Key not found');
+end;
+
+procedure TGenDictionary<TKey, TValue>.SetValue(const Key: TKey; Value: TValue);
+var
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Entry := FindByKey(Key);
+  if not Assigned(Entry) then
+  begin
+    Entry := TGenKeyValue<TKey, TValue>.Create(Key, Value);
+    FList.Add(Entry);
+  end;
+
+  Entry.FValue := Value;
+end;
+
+function TGenDictionary<TKey, TValue>.GetKeys: TGenArray<TKey>;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := TGenKeyValue<TKey, TValue>(FList[i]).Key;
+end;
+
+function TGenDictionary<TKey, TValue>.GetValues: TGenArray<TValue>;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := TGenKeyValue<TKey, TValue>(FList[i]).Value;
+end;
+
+procedure TGenDictionary<TKey, TValue>.Add(Key: TKey; const Value: TValue);
+begin
+  Self.Item[Key] := Value;
+end;
+
+function TGenDictionary<TKey, TValue>.Remove(Key: TKey): Boolean;
+var
+  Index: Integer;
+  Entry : TGenKeyValue<TKey, TValue>;
+begin
+  Result := False;
+  Entry := FindByKey(Key);
+  if Assigned(Entry) then
+  begin
+    Index := FList.IndexOf(Entry);
+    Entry.Free();
+    FList.Delete(Index);
+    Result := True;
+  end;
+end;
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2692,8 +3237,8 @@ begin
   Helper := TJsonHelper.Create();
   try
     DeStreamer.Options := Options;
-    DeStreamer.OnPropertyError   := @Helper.propertyError;
-    DeStreamer.OnRestoreProperty := @Helper.restoreProperty;
+    DeStreamer.OnPropertyError   := Helper.propertyError;
+    DeStreamer.OnRestoreProperty := Helper.restoreProperty;
     DeStreamer.JSONToObject(JsonText, Instance);
   finally
     FreeAndNil(Helper);
@@ -3589,13 +4134,14 @@ begin
   Result := gtNone;          // DBCtrls
   if Assigned(Stream) and (Stream.Size > SizeOf(Buf)) then
   begin
+    Buf := 0;
     Stream.Position := 0;
     Stream.Read(Buf, SizeOf(Buf));
     case Buf of
       $0000 : Result  := gtICO;
       $0001 : Result  := gtBMP;
       $4D42 : Result  := gtBMP;
-      //$CDD7 : Result  := gtWMF;
+      { $CDD7 : Result  := gtWMF;}
       $D8FF : Result  := gtJPG;
     end;
   end;
@@ -3787,6 +4333,8 @@ end;
 
 class function HexConverter.BinToHex(Buffer: Pointer; Size: UInt32): string;
 begin
+  Result := '';
+
   SetLength(Result, Size * 2);
 
   Classes.BinToHex(PChar(Buffer), PChar(Result), Size);
@@ -3796,7 +4344,7 @@ class function HexConverter.BinToHex(Stream: TStream): string;
 var
   MS : TMemoryStream;
 begin
-
+  Result := '';
   SetLength(Result, (Stream.Size - Stream.Position) * 2);
 
   if Length(Result) > 0 then
@@ -3877,36 +4425,23 @@ begin
   end;
 end;
 (*----------------------------------------------------------------------------*)
-class function HexConverter.HexToBin(Text: string; Stream: TStream): Integer;
+class procedure HexConverter.HexToBin(Text: string; Stream: TStream);
 var
-  MS  : TMemoryStream;
-  Pos : Integer;
+  Buffer : array of Byte;
+  BufferLength : Integer;
 begin
   Text := NormalizeHexText(Text);
 
   if Text <> '' then
   begin
-    if Stream is TMemoryStream then
-      MS := TMemoryStream(Stream)
-    else
-      MS := TMemoryStream.Create;
+    BufferLength := Length(Text) div 2;
+    Buffer := [];
+    SetLength(Buffer, BufferLength);
+    BufferLength := Classes.HexToBin(PChar(Text), PChar(Buffer), BufferLength);
 
-    try
-      Pos := MS.Position;
-      MS.SetSize(MS.Size + Length(Text) div 2);
-      Classes.HexToBin(PChar(Text), PChar(Integer(MS.Memory) + MS.Position), Length(Text) div 2);
-      MS.Position := Pos;
-      if Stream <> MS then
-        Stream.CopyFrom(MS, Length(Text) div 2);
-      Result := MS.Size - Pos;
-    finally
-      if Stream <> MS then
-        MS.Free;
-    end;
-  end
-  else
-    Result := 0;
-
+    Stream.Size := Stream.Size + BufferLength;
+    Stream.Write(Buffer, BufferLength);
+  end;
 end;
 (*----------------------------------------------------------------------------*)
 class function  HexConverter.HexToBin(Text: string; Field: TBlobField): Integer;
@@ -3949,6 +4484,7 @@ var
   Graphic: TGraphic;
 begin
   Bitmap  := nil;
+  Graphic := nil;
   Result  := HexToBin(Text, Graphic);
 
   if Result then
@@ -3967,6 +4503,7 @@ class function HexConverter.HexToBin(Text: string; Picture: TPicture): Boolean;
 var
   Graphic: TGraphic;
 begin
+  Graphic := nil;
   Result := HexToBin(Text, Graphic);
   Picture.Assign(Graphic);
   if (Result and (Graphic <> nil))  then
@@ -3977,6 +4514,7 @@ class function HexConverter.StrToHex(const Text: string): string;
 var
   Size : Integer;
 begin
+  Result := '';
   Size := Length(Text);
   SetLength(Result, Size * 2);
   Classes.BinToHex(PChar(Text), PChar(Result), Size);
@@ -3986,6 +4524,7 @@ class function HexConverter.HexToStr(const Text: string): string;
 var
   Size : Integer;
 begin
+  Result := '';
   Size := Length(Text) div 2;
   SetLength(Result, Size);
   Classes.HexToBin(PChar(Text), PChar(Result), Size);
@@ -4211,7 +4750,7 @@ end;
 
 class function Sys.CreateStringBuilder: IStringBuilder;
 begin
-  Result := TTripousStringBuilder.Create();
+  Result := TStrBuilder.Create();
 end;
 
 class function Sys.IsSameText(A: string; B: string): Boolean;
@@ -4509,28 +5048,26 @@ class function Sys.DoubleToStrSQL(Value: Extended; Digits: integer): string;
 var
   DecSep : Char;
 begin
-  // TODO: DoubleToStrSQL
-  DecSep := DecimalSeparator;
+  DecSep := DefaultFormatSettings.DecimalSeparator;
   try
-    DecimalSeparator := '.';
+    DefaultFormatSettings.DecimalSeparator := '.';
     Result := FloatToStrF(Value, ffFixed, 15, Digits);
   finally
-    DecimalSeparator := DecSep;
+    DefaultFormatSettings.DecimalSeparator := DecSep;
   end;
 end;
 (*----------------------------------------------------------------------------*)
-class function Sys.FormatMoney(Value: Extended;  bCurrencyString: Boolean): string;
+class function Sys.FormatMoney(Value: Extended; bCurrencyString: Boolean): string;
 var
   i : integer;
 begin
-  // TODO: FormatMoney
   Result := Format('%m', [Value]);
 
   if Frac(Value) = 0 then begin
-    i := Pos(DecimalSeparator, Result);
+    i := Pos(DefaultFormatSettings.DecimalSeparator, Result);
     SetLength(Result, i - 1);
     if bCurrencyString then
-      Result := Result + ' ' + CurrencyString;
+      Result := Result + ' ' + DefaultFormatSettings.CurrencyString;
   end else begin
     if not bCurrencyString then
     begin
@@ -4545,12 +5082,13 @@ var
   iIndex : integer;
   C      : char;
 begin
-  // TODO: NormalDecSep
   Result := S;
-  if DecimalSeparator = '.' then C := ',' else C := '.';
+  if DefaultFormatSettings.DecimalSeparator = '.' then
+     C := ','
+  else C := '.';
 
   iIndex := Pos(C, S);
-  if iIndex <> 0 then Result[iIndex] := DecimalSeparator;
+  if iIndex <> 0 then Result[iIndex] := DefaultFormatSettings.DecimalSeparator;
   if iIndex = 1 then Result := '0' + Result;
 end;
 (*----------------------------------------------------------------------------*)
@@ -4930,15 +5468,18 @@ end;
 (*----------------------------------------------------------------------------*)
 class function Sys.FolderDelete(Folder: string): Boolean;
 begin
-   Result := False;
-   // TODO: FolderDelete
-
+  Result := DeleteDirectory(Folder, True) and RemoveDir(Folder);
 end;
 (*----------------------------------------------------------------------------*)
 class function Sys.FolderCopy(Source, Dest: string; Overwrite: Boolean): Boolean;
+var
+  Flags : TCopyFileFlags;
 begin
-  Result := False;
-  // TODO: FolderCopy
+  Flags := [cffCreateDestDirectory, cffPreserveTime] ;
+  if Overwrite then
+     Include(Flags, cffOverwriteFile);
+
+  Result := CopyDirTree(Source, Dest, Flags);
 end;
 (*----------------------------------------------------------------------------*)
 class function Sys.FolderMove(Source, Dest: string; Overwrite: Boolean): Boolean;
@@ -4982,7 +5523,6 @@ var
   SR       : TSearchRec;
   iCode    : Integer;
 begin
-  // TODO: FindFiles
   StartFolder := NormalizePath(StartFolder);
   FindFilesInFolder(StartFolder);
 
@@ -5014,8 +5554,6 @@ end;
 {----------------------------------------------------------------------------------
  Description :  returns a DOS date-time stamp for the specified file
 -----------------------------------------------------------------------------------}
-
-
 class function Sys.GetFileDate(const FileName: string): TDateTime;
 var
   Handle: Int64;
@@ -5082,32 +5620,32 @@ end;
 (*--------------------------------------------------------------------------------*)
 class function  Sys.GetFolderSize(const Path: string): Int64;
 var
-  SR        : TSearchRec;
+  SearchRec        : TSearchRec;
   sPath     : string;
-  iCode     : integer;
+  Flag      : LongInt;
 begin
-  // TODO: GetFolderSize
   Result := 0;
 
   sPath := NormalizePath(Path);
-  iCode := SysUtils.FindFirst(sPath + '*.*', faAnyFile, SR);
+  Flag  := SysUtils.FindFirst(sPath + '*.*', faAnyFile, SearchRec);
 
   try
-    while iCode = 0 do
+    while Flag = 0 do
     begin
-      if (SR.Name[1] <> '.') and (SR.Attr <> faVolumeID) then
+      if (SearchRec.Name[1] <> '.') and (SearchRec.Attr and faDirectory = faDirectory) then
       begin
-        if (SR.Attr and faDirectory = faDirectory) then
-          Result := Result + GetFolderSize(sPath + SR.Name)
-        else if (SR.Attr and faVolumeID <> faVolumeID) then
+        if (SearchRec.Attr and faDirectory = faDirectory) then
         begin
-          Result := Result + SR.Size;
+          Result := Result + GetFolderSize(sPath + SearchRec.Name)
+        end else begin
+          if SearchRec.Size > 0 then
+             Result := Result + SearchRec.Size;
         end;
       end;
-      iCode := SysUtils.FindNext(SR);
+      Flag := SysUtils.FindNext(SearchRec);
     end;
   finally
-    SysUtils.FindClose(SR);
+    SysUtils.FindClose(SearchRec);
   end;
 
 end;
@@ -5353,7 +5891,7 @@ end;
 
 class function Sys.CreateSyncObject: ISyncObject;
 begin
-  Result := _TSyncObject.Create() as ISyncObject;
+  Result := TSyncObject.Create() as ISyncObject;
 end;
 
 {
@@ -5392,155 +5930,6 @@ begin
   end;
 end;
 
-{ TGenList }
-
-function TGenList.GetCount: Integer;
-begin
-  Result := Length(FItems);
-end;
-
-function TGenList.GetItem(Index: SizeInt): T;
-begin
-  Result := FItems[Index];
-end;
-
-function TGenList.GetItemList: specialize TArray<T>;
-begin
-  Result := FItems;
-end;
-
-procedure TGenList.SetItem(Index: SizeInt; Item: T);
-begin
-  FItems[Index] := Item;
-end;
-{
-function TGenList.AdjustCapacityForItem(): SizeInt;
-begin
-  Result := Length(FItems);
-
-  if (FCount < 4) and (Result < 4) then
-    SetLength(FItems, 4)
-  else if FCount = High(FCount) then
-    OutOfMemoryError()
-  else if FCount = Result then
-    SetLength(FItems, Result * 2);
-
-  Result := FCount;
-  Inc(FCount);
-end;
-
-function TGenList.AdjustCapacityForRange(RangeCount: SizeInt): SizeInt;
-begin
-  if RangeCount < 0 then
-    raise EArgumentOutOfRangeException.Create('Argument out of range');
-
-  if RangeCount = 0 then
-    Exit(FCount - 1);
-
-  if (FCount = 0) and (Length(FItems) = 0) then
-    SetLength(FItems, 4)
-  else if FCount = High(FCount) then
-    OutOfMemoryError();
-
-  Result := Length(FItems);
-  while Pred(FCount + RangeCount) >= Result do
-  begin
-    SetLength(FItems, Result * 2);
-    Result := Length(FItems);
-  end;
-
-  Result := FCount;
-  Inc(FCount, RangeCount);
-end;
-}
-
-constructor TGenList.Create();
-begin
-  inherited Create();
-end;
-
-destructor TGenList.Destroy();
-begin
-  inherited Destroy();
-end;
-
-procedure TGenList.Clear();
-begin
-
-end;
-
-function TGenList.Add(Item: T): Integer;
-begin
-  if not Assigned(FItems) then
-  begin
-    SetLength(FItems, 1);
-    FItems[0] := Item;
-  end else begin
-     FItems := System.Concat(FItems, [Item]);
-  end;
-
-  Result := Length(FItems);
-end;
-
-procedure TGenList.Insert(Index: Integer; Item: T);
-begin
-  if not Assigned(FItems) then
-  begin
-    SetLength(FItems, 1);
-    FItems[0] := Item;
-  end else begin
-     System.Insert([Item], FItems, Index);
-  end;
-end;
-
-procedure TGenList.Remove(Item: T);
-begin
-  RemoveAt(IndexOf(Item));
-end;
-
-procedure TGenList.RemoveAt(Index: Integer);
-begin
-  System.Delete(FItems, Index, 1);
-end;
-
-procedure TGenList.AddRange(constref Range: array of T);
-var
-  Item: T;
-begin
-  for Item in Range do
-    Add(Item);
-end;
-
-procedure TGenList.InsertRange(Index: SizeInt; constref Range: array of T);
-var
-  Item: T;
-  i: SizeInt;
-begin
-  i := 0;
-  for Item in Range do
-  begin
-    Insert(Index + i, Item);
-    Inc(i);
-  end;
-end;
-
-function TGenList.Contains(Item: T): Boolean;
-begin
-  Result := IndexOf(Item) <> -1;
-end;
-
-function TGenList.IndexOf(Item: T): Integer;
-var
-  i : Integer;
-begin
-  for i := Low(FItems) to High(FItems) do
-  begin
-    if FItems[i] = Item then
-      Exit(i);
-  end;
-
-  Exit(-1);
-end;
 
 
 

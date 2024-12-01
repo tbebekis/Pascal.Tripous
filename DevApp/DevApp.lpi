@@ -45,7 +45,7 @@
         <PackageName Value="LCL"/>
       </Item5>
     </RequiredPackages>
-    <Units Count="10">
+    <Units Count="9">
       <Unit0>
         <Filename Value="DevApp.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -93,11 +93,6 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Data.Constants"/>
       </Unit8>
-      <Unit9>
-        <Filename Value="..\tripous.generics.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="Tripous.Generics"/>
-      </Unit9>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
