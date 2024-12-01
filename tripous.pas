@@ -811,7 +811,6 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
     class property AppExeName                 : string read FAppExeName;
 
     class property ProcessMessagesMethod      : TProcedureMethod read FProcessMessagesMethod write FProcessMessagesMethod;
-
   end;
 
 
