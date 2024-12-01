@@ -101,8 +101,8 @@ type
  IStringBuilder = interface
  ['{A7B65A46-98FB-4A7F-ADCA-A1266084AA95}']
  {private}
-   function  GetCapacity: Integer;
-   function  GetMaxCapacity: Integer;
+   function  GetCapacity(): Integer;
+   function  GetMaxCapacity(): Integer;
    procedure SetCapacity(AValue: Integer);
    function  GetC(Index: Integer): SBChar;
    procedure SetC(Index: Integer; AValue: SBChar);
@@ -122,7 +122,6 @@ type
    procedure Append(const AValue: Single);
    procedure Append(const AValue: UInt64);
    procedure Append(const AValue: Word);
-   //procedure Append(const AValue: Cardinal);
    procedure Append(const AValue: SBString);
    procedure Append(const AValue: SBChar; RepeatCount: Integer);
    procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer);
@@ -131,9 +130,9 @@ type
    procedure AppendFormat(const Fmt: SBString; const Args: array of const);
 
    procedure AppendLine(const Value: SBString);
-   procedure AppendLine;
+   procedure AppendLine();
 
-   procedure Clear;
+   procedure Clear();
    procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
    function EnsureCapacity(aCapacity: Integer): Integer;
 
@@ -158,7 +157,7 @@ type
    procedure Replace(const OldChar, NewChar: SBChar);
    procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer);
 
-   function ToString: SBString; reintroduce;
+   function ToString(): SBString; reintroduce;
    function ToString(aStartIndex: Integer; aLength: Integer): SBString; reintroduce;
 
    property Chars[index: Integer]: SBChar read GetC write SetC; default;
@@ -173,7 +172,7 @@ type
  private
    FItems: array of T;   // https://lists.freepascal.org/pipermail/fpc-pascal/2018-May/053892.html
 
-   function GetCount: Integer;
+   function GetCount(): Integer;
    function GetItem(Index: SizeInt): T;
    function GetItemList: specialize TArray<T>;
    procedure SetItem(Index: SizeInt; Item: T);
@@ -250,14 +249,14 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
    FLock        : SyncObjs.TCriticalSection;
    FOwnsObjects : Boolean;
 
-   function  GetCount: Integer;
-   function  GetIsEmpty: Boolean;
+   function  GetCount(): Integer;
+   function  GetIsEmpty(): Boolean;
    function GetItem(Index: Integer): TObject;
-   procedure Lock;
-   procedure UnLock;
+   procedure Lock();
+   procedure UnLock();
  public
    constructor Create(OwnsObjects: Boolean);
-   destructor Destroy; override;
+   destructor Destroy(); override;
 
    procedure Add(Instance: TObject);
    procedure Insert(Index: Integer; Instance: TObject);
@@ -295,8 +294,8 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
    public
      constructor Create();
 
-     function GetCurrent: TKeyValue;
-     procedure Reset;
+     function GetCurrent(): TKeyValue;
+     procedure Reset();
 
      function MoveNext: boolean;
      property Current: TKeyValue read GetCurrent;
@@ -304,7 +303,7 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
 
    IVariantDictionary = interface
    ['{0ECC7A7B-5105-40C1-805F-C5EBD4C1D8FA}']
-     function GetCount: Integer;
+     function GetCount(): Integer;
      function  GetValue(const Key: string): Variant;
      procedure SetValue(const Key: string; Value: Variant);
 
@@ -315,8 +314,8 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
      function  ContainsKey(const Key: string): Boolean;
      function  ContainsValue(const Value: Variant): Boolean;
 
-     function  GetKeys: TArrayOfString;
-     function  GetValues: TArrayOfVariant;
+     function  GetKeys(): TArrayOfString;
+     function  GetValues(): TArrayOfVariant;
 
      function IndexOfKey(const Key: string): Integer;
      function ItemByKey(const Key: string): TKeyValue;
@@ -334,7 +333,7 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
    TVariantDictionary = class(TInterfacedObject, IVariantDictionary)
    private
      FList : TList;
-     function GetCount: Integer;
+     function GetCount(): Integer;
      function  GetValue(const Key: string): Variant;
      procedure SetValue(const Key: string; Value: Variant);
    public
@@ -348,8 +347,8 @@ function GetTypeKind(const T: AnyType):TTypeKind;   // Return type kind for a ty
      function  ContainsKey(const Key: string): Boolean;
      function  ContainsValue(const Value: Variant): Boolean;
 
-     function  GetKeys: TArrayOfString;
-     function  GetValues: TArrayOfVariant;
+     function  GetKeys(): TArrayOfString;
+     function  GetValues(): TArrayOfVariant;
 
      function IndexOfKey(const Key: string): Integer;
      function ItemByKey(const Key: string): TKeyValue;
@@ -844,12 +843,12 @@ type
     const
       DefaultCapacity = 64;
   private
-    function  GetCapacity: Integer;
-    function  GetMaxCapacity: Integer;
+    function  GetCapacity(): Integer;
+    function  GetMaxCapacity(): Integer;
     procedure SetCapacity(AValue: Integer);
     function  GetC(Index: Integer): SBChar;
     procedure SetC(Index: Integer; AValue: SBChar);
-    function  GetLength: Integer; inline;
+    function  GetLength(): Integer; inline;
     procedure SetLength(AValue: Integer);
   protected
     FData: TSBCharArray;
@@ -857,17 +856,15 @@ type
     FMaxCapacity: Integer;
     // raise error on range check.
     procedure CheckRange(Idx,Count,MaxLen : Integer);
-    procedure CheckNegative(Const AValue : Integer; Const AName: SBString);
+    procedure CheckNegative(Const AValue : Integer; const AName: SBString);
     // All appends/inserts pass through here.
-    procedure DoAppend(Const S : SBString);virtual;
-    procedure DoAppend(const AValue: TSBCharArray; Idx, aCount: Integer); virtual;
+    procedure DoAppend(const S : SBString); virtual;
     procedure DoInsert(Index: Integer; const AValue: SBString); virtual;
-    procedure DoInsert(Index: Integer; const AValue: TSBCharArray; StartIndex, SBCharCount: Integer); virtual;
     procedure DoReplace(Index: Integer; const Old, New: SBString); virtual;
-    procedure Grow;
-    procedure Shrink;
+    procedure Grow();
+    procedure Shrink();
   public
-    constructor Create; overload;
+    constructor Create(); overload;
     constructor Create(aCapacity: Integer);  overload;
     constructor Create(const AValue: SBString); overload;
     constructor Create(const AValue: SBString; aCapacity: Integer); overload;
@@ -885,7 +882,6 @@ type
     procedure Append(const AValue: Single); overload;
     procedure Append(const AValue: UInt64); overload;
     procedure Append(const AValue: Word); overload;
-    //procedure Append(const AValue: Cardinal);
     procedure Append(const AValue: SBString); overload;
     procedure Append(const AValue: SBChar; RepeatCount: Integer);  overload;
     procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
@@ -894,9 +890,9 @@ type
     procedure AppendFormat(const Fmt: SBString; const Args: array of const);
 
     procedure AppendLine(const Value: SBString); overload;
-    procedure AppendLine; overload;
+    procedure AppendLine(); overload;
 
-    procedure Clear;
+    procedure Clear();
     procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
     Function EnsureCapacity(aCapacity: Integer): Integer;
     Function Equals(StringBuilder: TTripousStringBuilder): Boolean; reintroduce;
@@ -922,7 +918,7 @@ type
     procedure Replace(const OldChar, NewChar: SBChar); overload;
     procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
 
-    function ToString: SBString; reintroduce;
+    function ToString(): SBString; reintroduce;
     function ToString(aStartIndex: Integer; aLength: Integer): SBString; reintroduce;
 
     property Chars[index: Integer]: SBChar read GetC write SetC; default;
@@ -993,7 +989,7 @@ procedure TTripousStringBuilder.SetLength(AValue: Integer);
 begin
   CheckNegative(AValue,'AValue');
   CheckRange(AValue,0,MaxCapacity);
-  While AValue>Capacity do
+  while AValue>Capacity do
     Grow;
   Flength:=AValue;
 end;
@@ -1018,21 +1014,11 @@ var
 begin
   SL:=System.Length(S);
   if SL>0 then
-    begin
+  begin
     L:=Length;
     Length:=L+SL;
     Move(S[1], FData[L],SL*SizeOf(SBChar));
-    end;
-end;
-
-procedure TTripousStringBuilder.DoAppend(const AValue: TSBCharArray; Idx, aCount: Integer);
-var
-  L : integer;
-begin
-  L:=Length;
-  CheckRange(Idx,aCount,System.Length(AValue));
-  Length:=L+aCount;
-  Move(AValue[Idx],FData[L],aCount*SizeOf(SBChar));
+  end;
 end;
 
 procedure TTripousStringBuilder.DoInsert(Index: Integer; const AValue: SBString);
@@ -1045,21 +1031,6 @@ begin
   Length:=Length+LV;
   Move(FData[Index],FData[Index+LV],ShiftLen*SizeOf(SBChar));
   Move(AValue[1],FData[Index],LV*SizeOf(SBChar));
-end;
-
-procedure TTripousStringBuilder.DoInsert(Index: Integer; const AValue: TSBCharArray; StartIndex, SBCharCount: Integer);
-var
-  ShiftLen : Integer;
-begin
-  CheckRange(Index,0,Length-1);
-  CheckNegative(StartIndex,'StartIndex');
-  CheckNegative(SBCharCount,'SBCharCount');
-  CheckRange(StartIndex,SBCharCount,System.Length(AValue));
-  Length:=Length+SBCharCount;
-  ShiftLen:=Length-Index;
-  if ShiftLen> 0 then
-    Move(FData[Index], FData[Index+SBCharCount],ShiftLen*SizeOf(SBChar));
-  Move(AValue[StartIndex],FData[Index],SBCharCount*SizeOf(SBChar));
 end;
 
 { Public routines for appending }
@@ -1077,13 +1048,6 @@ procedure TTripousStringBuilder.Append(const AValue: Word);
 begin
   Append(IntToStr(AValue));
 end;
-
-{
-function TTripousStringBuilder.Append(const AValue: Cardinal);
-begin
-  DoAppend(IntToStr(AValue));
-end;
-}
 
 procedure TTripousStringBuilder.Append(const AValue: SBChar; RepeatCount: Integer);
 begin
@@ -1140,8 +1104,7 @@ begin
   DoAppend(IntToStr(AValue));
 end;
 
-      procedure TTripousStringBuilder.Append(const AValue: SBString;
-  StartIndex: Integer; Count: Integer);
+procedure TTripousStringBuilder.Append(const AValue: SBString; StartIndex: Integer; Count: Integer);
 begin
   CheckRange(StartIndex,Count,System.Length(AValue));
   DoAppend(Copy(AValue,StartIndex+1,Count));
@@ -1183,11 +1146,11 @@ begin
   CheckNegative(Count,'Count');
   CheckNegative(DestinationIndex,'DestinationIndex');
   CheckRange(DestinationIndex,Count,System.Length(Destination));
-  if Count>0 then
-    begin
+  if Count > 0 then
+  begin
     CheckRange(SourceIndex,Count,Length);
     Move(FData[SourceIndex],Destination[DestinationIndex],Count * SizeOf(SBChar));
-    end;
+  end;
 end;
 
 function TTripousStringBuilder.EnsureCapacity(aCapacity: Integer): Integer;
@@ -1333,13 +1296,13 @@ begin
   CheckNegative(StartIndex,'StartIndex');
   CheckNegative(Count,'Count');
   CheckRange(StartIndex,Count-1,Length);
-  Cur:=@FData[StartIndex];
-  For I:=1 to Count do
-    begin
-    if Cur^=OldChar then
-      Cur^:=NewChar;
+  Cur := @FData[StartIndex];
+  for I := 1 to Count do
+  begin
+    if Cur^ = OldChar then
+      Cur^ := NewChar;
     Inc(Cur);
-    end;
+  end;
 end;
 
 procedure TTripousStringBuilder.Replace(const OldChar, NewChar: SBChar);
@@ -1365,14 +1328,13 @@ function TTripousStringBuilder.ToString(aStartIndex: Integer; aLength: Integer):
 begin
   if (aLength=0) then
     Result:=''
-  else
-    begin
+  else begin
     CheckNegative(aStartIndex,'aStartIndex');
     CheckNegative(aLength,'aLength');
     CheckRange(aStartIndex,aLength,Length);
     System.SetLength(Result,aLength);
     Move(FData[aStartIndex],Result[1],aLength*SizeOf(SBChar));
-    end;
+  end;
 end;
 
 procedure TTripousStringBuilder.DoReplace(Index: Integer; const Old, New: SBString);
@@ -1383,7 +1345,7 @@ begin
   OVLen:=System.Length(Old);
   Delta:=NVLen-OVLen;
   if (Delta<>0) then
-    begin
+  begin
     OLen:=Length;
     if (Delta>0) then
       Length:=OLen+Delta;
@@ -1391,7 +1353,7 @@ begin
     Move(FData[TailStart],FData[Index+NVLen],(OLen-TailStart)*SizeOf(SBChar));
     if (Delta<0) then
       Length:=OLen+Delta;
-    end;
+  end;
   Move(New[1],FData[Index],NVLen*SizeOf(SBChar));
 end;
 
