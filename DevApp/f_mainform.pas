@@ -19,7 +19,7 @@ uses
   , DBGrids
   , TypInfo
   , Variants
-  , FileUtil
+
 
   , LazFileUtils
   , DB
@@ -50,7 +50,7 @@ type
     SQLTransaction1: TSQLTransaction;
   private
     tblPsw: TBufTable;
-    XXX: TDirectoryEdit;
+    O: TObject;
 
     procedure BufTableCreate();
     procedure BufTableDestroy();
@@ -75,6 +75,7 @@ implementation
 uses
     fpjson
     ,jsonscanner
+    ,o_TestBed
     ;
 
 const
@@ -158,7 +159,8 @@ end;
 
 procedure TMainForm.Test();
 begin
-  //TestMetastores();
+  TestMetastores();
+  //TestDynArray();
 end;
 
 

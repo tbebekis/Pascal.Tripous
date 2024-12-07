@@ -1624,13 +1624,16 @@ begin
 end;
 
 procedure TGenList<T>.Insert(Index: Integer; Item: T);
+var
+  lCount: SizeInt;
 begin
   Lock();
   try
-    if (Index < 0) or (Index > Count) then
+    lCount := Count;
+    if (Index < 0) or (Index > lCount) then
       raise Exception.CreateFmt('Cannot insert at Index: %d. Index out of bounds', [Index]);
 
-    if Index = Count then
+    if Index = lCount then
     begin
       if not Assigned(FItems) then
       begin
@@ -2089,16 +2092,23 @@ end;
 
 procedure TGenObjectList<T>.DoClear();
 var
-  Item: T;
+  i : Integer;
 begin
-  if OwnsObjects then
-  try
-    for Item in FItems do
-        Item.Free();
-  except
+  if Assigned(FItems) then
+  begin
+    if OwnsObjects then
+    try
+      for i := Low(FItems) to High(FItems) do
+      begin
+        FItems[i].Free();
+        FItems[i] := nil;
+      end;
+    except
+    end;
+
+    inherited DoClear();
   end;
 
-  inherited DoClear();
 end;
 
 procedure TGenObjectList<T>.DoRemoveAt(Index: Integer);

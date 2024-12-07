@@ -1,6 +1,6 @@
 unit Tripous.Data.Constants;
 
-{$mode ObjFPC}{$H+}
+{$mode DELPHI}{$H+}
 
 interface
 
@@ -45,23 +45,23 @@ const
     '    when 37 then ''VARCHAR''                                                             ' +
     '    when 40 then ''CSTRING''                                                             ' +
     '    when 261 then ''BLOB''                                                               ' +
-    '    else ''                                                                            ' +
+    '    else ''''                                                                            ' +
     '  end                                             as DataType,                         ' +
     '  case                                                                                 ' +
     '    when (f.RDB$FIELD_TYPE = 261) and (f.RDB$FIELD_SUB_TYPE = 1)  then ''TEXT''          ' +
     '    when (f.RDB$FIELD_TYPE = 261) and (f.RDB$FIELD_SUB_TYPE = 0)  then ''BINARY''        ' +
-    '    else ''                                                                            ' +
+    '    else ''''                                                                            ' +
     '  end                                             AS DataSubType,                      ' +
     '  coalesce(tf.RDB$NULL_FLAG, f.RDB$NULL_FLAG, 0)  as IsNullable,                       ' +
     '  coalesce(f.RDB$CHARACTER_LENGTH, 0)             as SizeInChars,                      ' +
     '  f.RDB$FIELD_LENGTH                              as SizeInBytes,                      ' +
     '  coalesce(f.RDB$FIELD_PRECISION, 0)              as DecimalPrecision,                 ' +
     '  coalesce(f.RDB$FIELD_SCALE, 0)                  as DecimalScale,                     ' +
-    '  coalesce(tf.RDB$DEFAULT_SOURCE, '')             as DefaultValue,                     ' +
-    '  coalesce(f.RDB$COMPUTED_SOURCE, '')             as Calculation,                      ' +
-    '  coalesce(tf.RDB$DESCRIPTION, '')                as FieldDescription,                 ' +
+    '  coalesce(tf.RDB$DEFAULT_SOURCE, '''')             as DefaultValue,                     ' +
+    '  coalesce(f.RDB$COMPUTED_SOURCE, '''')             as Calculation,                      ' +
+    '  coalesce(tf.RDB$DESCRIPTION, '''')                as FieldDescription,                 ' +
     '  tf.RDB$FIELD_POSITION                           as OrdinalPosition,                  ' +
-    '  coalesce(tf.RDB$GENERATOR_NAME, '')             as SequenceName                      ' +
+    '  coalesce(tf.RDB$GENERATOR_NAME, '''')             as SequenceName                      ' +
     'from                                                                                   ' +
     '  RDB$RELATION_FIELDS tf                                                               ' +
     '    left join RDB$RELATIONS t ON tf.RDB$RELATION_NAME = t.RDB$RELATION_NAME            ' +
@@ -72,8 +72,7 @@ const
     '  and t.RDB$VIEW_BLR is null                                                           ' +
     'order by                                                                               ' +
     '  tf.RDB$RELATION_NAME,                                                                ' +
-    '  tf.RDB$FIELD_NAME                                                                    ' +
-    ''
+    '  tf.RDB$FIELD_NAME                                                                    '
     ;
 
 implementation

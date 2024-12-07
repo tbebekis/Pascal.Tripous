@@ -75,6 +75,7 @@ type
     FName: string;
     FNodeType: TMetaNodeType;
     FDatabase: TMetaDatabase;
+    FParentNode: TMetaNode;
   protected
     FTag: TObject;
     FIsContainer: Boolean;
@@ -86,7 +87,7 @@ type
     function  ListToArray(List: TGenObjectList<TMetaNode>): TMetaNodeArray; virtual;
     function  UnQuote(const S: string): string;
   public
-    constructor Create(ADatabase: TMetaDatabase; const AName: string; ANodeType: TMetaNodeType);
+    constructor Create(AParentNode: TMetaNode; const AName: string; ANodeType: TMetaNodeType);
     destructor Destroy(); override;
 
     property Database: TMetaDatabase read FDatabase;
@@ -97,51 +98,124 @@ type
 
     property Nodes: TMetaNodeArray read GetNodes;
 
+    property ParentNode: TMetaNode read FParentNode;
     property Tag: TObject read FTag write FTag;
+  end;
+
+  { TMetaField }
+
+  TMetaField = class(TMetaNode)
+  private
+    FDataSubType: string;
+    FDataType: string;
+    FDefaultValue: string;
+    FDescription: string;
+    FExpression: string;
+    FIsNullable: Boolean;
+    FOrdinalPosition: Integer;
+    FPrecision: Integer;
+    FScale: Integer;
+    FSequenceName: string;
+    FSizeInBytes: Integer;
+    FSizeInChars: Integer;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string);
+    destructor Destroy(); override;
+
+    property DataType: string read FDataType;
+    property DataSubType: string read FDataSubType;
+    property IsNullable: Boolean read FIsNullable;
+    property SizeInChars: Integer read FSizeInChars;
+    property SizeInBytes: Integer read FSizeInBytes;
+    property Precision: Integer read FPrecision;
+    property Scale: Integer read FScale;
+    property DefaultValue: string read FDefaultValue;
+    property Expression: string read FExpression;    // when is a calculated field
+    property OrdinalPosition: Integer read FOrdinalPosition;
+    property Description: string read FDescription;
+    property SequenceName: string read FSequenceName;
+  end;
+
+  { TMetaFields }
+
+  TMetaFields = class(TMetaNode)
+  private
+    FList: TGenObjectList<TMetaField>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+
+    function Add(FieldName: string): TMetaField;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function FindField(const FieldName: string): TMetaField;
+
+    property List: TGenObjectList<TMetaField> read FList;
   end;
 
   { TMetaTable }
 
   TMetaTable = class(TMetaNode)
+  private
+    FFields: TMetaFields;
   protected
     procedure DoClear(); override;
   public
-    constructor Create(ADatabase: TMetaDatabase; const AName: string);
+    constructor Create(AParentNode: TMetaNode; const AName: string);
     destructor Destroy(); override;
+
+    property Fields: TMetaFields read FFields;
   end;
 
   { TMetaTables }
-
   TMetaTables = class(TMetaNode)
   private
-    FTableList: TGenObjectList<TMetaNode>;
+    FList: TGenObjectList<TMetaTable>;
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
-
+    function Add(TableName: string): TMetaTable;
   public
-    constructor Create(ADatabase: TMetaDatabase);
+    constructor Create(AParentNode: TMetaNode);
     destructor Destroy(); override;
+
+    function Find(const TableName: string): TMetaTable;
+
+    property List: TGenObjectList<TMetaTable> read FList;
   end;
 
   { TMetaView }
 
   TMetaView = class(TMetaNode)
+  private
+    FFields: TMetaFields;
   protected
     procedure DoClear(); override;
   public
-    constructor Create(ADatabase: TMetaDatabase; const AName: string);
+    constructor Create(AParentNode: TMetaNode; const AName: string);
     destructor Destroy(); override;
+
+    property Fields: TMetaFields read FFields;
   end;
 
   { TMetaViews }
 
   TMetaViews = class(TMetaNode)
+  private
+     FList: TGenObjectList<TMetaView>;
   protected
+    function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
+    function Add(ViewName: string): TMetaView;
   public
-    constructor Create(ADatabase: TMetaDatabase);
+    constructor Create(AParentNode: TMetaNode);
     destructor Destroy(); override;
+
+    function Find(const ViewName: string): TMetaView;
+
+    property List: TGenObjectList<TMetaView> read FList;
   end;
 
   { TMetaDatabase }
@@ -165,9 +239,8 @@ type
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
-
   public
-    constructor Create(ConnectionInfo: TSqlConnectionInfo);
+    constructor Create(AParentNode: TMetaNode; ConnectionInfo: TSqlConnectionInfo);
     destructor Destroy(); override;
 
     procedure Clear();
@@ -190,18 +263,21 @@ type
 
   TMetaDatabases = class(TMetaNode)
   private
-    FDatabaseList: TGenObjectList<TMetaNode>;
+    FList: TGenObjectList<TMetaDatabase>;
   protected
     function GetNodes: TMetaNodeArray;  override;
   public
     constructor Create();
     destructor Destroy(); override;
 
+    procedure Clear();
     procedure ReLoad();
 
     function  Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
     procedure AddRange(ConnectionInfoList: TSqlConnectionInfoArray);
     procedure Remove(ADatabase: TMetaDatabase);
+
+    property List: TGenObjectList<TMetaDatabase> read FList;
   end;
 
 
@@ -499,12 +575,26 @@ uses
 
 { TMetaNode }
 
-constructor TMetaNode.Create(ADatabase: TMetaDatabase; const AName: string; ANodeType: TMetaNodeType);
+constructor TMetaNode.Create(AParentNode: TMetaNode; const AName: string; ANodeType: TMetaNodeType);
+var
+  Parent: TMetaNode;
 begin
   inherited Create();
-  FDatabase := ADatabase;
+  FParentNode := AParentNode;
   FName := AName;
   FNodeType := ANodeType;
+
+  Parent := FParentNode;
+  while Assigned(Parent) do
+  begin
+    if Parent is TMetaDatabase then
+    begin
+      FDatabase := Parent as TMetaDatabase;
+      break;
+    end;
+
+    Parent := Parent.FParentNode;
+  end;
 
   FIsContainer := not (FNodeType in [ntField, ntIndex, ntConstraint, ntTrigger, ntSequence]);
 end;
@@ -550,52 +640,129 @@ end;
 
 
 
+{ TMetaField }
 
-
-
-
-
-{ TMetaTable }
-
-procedure TMetaTable.DoClear();
+constructor TMetaField.Create(AParentNode: TMetaNode; const AName: string);
 begin
-  inherited DoClear();
+  inherited Create(AParentNode, AName, ntField);
+
 end;
 
-constructor TMetaTable.Create(ADatabase: TMetaDatabase; const AName: string);
+destructor TMetaField.Destroy();
 begin
-  inherited Create(ADatabase, AName, ntTable);
+  inherited Destroy();
+end;
+
+{ TMetaFields }
+
+constructor TMetaFields.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'Fields', ntFields);
+  FList := TGenObjectList<TMetaField>.Create(True, True);
+end;
+
+destructor TMetaFields.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaFields.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaFields.Add(FieldName: string): TMetaField;
+begin
+  Result := TMetaField.Create(Self, FieldName);
+  FList.Add(Result);
+end;
+
+function TMetaFields.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaFields.FindField(const FieldName: string): TMetaField;
+var
+  Field : TMetaField;
+begin
+  Result := nil;
+  for Field in FList do
+  begin
+    if Sys.IsSameText(FieldName, Field.Name) then
+      Exit(Field);
+  end;
+end;
+
+{ TMetaTable }
+constructor TMetaTable.Create(AParentNode: TMetaNode; const AName: string);
+begin
+  inherited Create(AParentNode, AName, ntTable);
+  FFields := TMetaFields.Create(Self);
 end;
 
 destructor TMetaTable.Destroy();
 begin
+  FFields.Free();
   inherited Destroy();
+end;
+
+procedure TMetaTable.DoClear();
+begin
+  FFields.DoClear();
 end;
 
 { TMetaTables }
 
-constructor TMetaTables.Create(ADatabase: TMetaDatabase);
+constructor TMetaTables.Create(AParentNode: TMetaNode);
 begin
-  inherited Create(ADatabase, 'Tables', ntTables);
-  FTableList := TGenObjectList<TMetaNode>.Create(True, True);
+  inherited Create(AParentNode, 'Tables', ntTables);
+  FList := TGenObjectList<TMetaTable>.Create(True, True);
 end;
 
 destructor TMetaTables.Destroy();
 begin
-  FTableList.Free();
+  FList.Free();
   inherited Destroy();
 end;
 
-
+function TMetaTables.Find(const TableName: string): TMetaTable;
+var
+  Item: TMetaTable;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(TableName, Item.Name) then
+      Exit(Item);
+  end;
+end;
 
 function TMetaTables.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
 begin
-  Result := ListToArray(FTableList);
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
 end;
 
 procedure TMetaTables.DoClear();
 begin
-  FTableList.Clear();
+  FList.Clear();
+end;
+
+function TMetaTables.Add(TableName: string): TMetaTable;
+begin
+  Result := TMetaTable.Create(Self, TableName);
+  FList.Add(Result);
 end;
 
 
@@ -604,43 +771,77 @@ end;
 
 { TMetaView }
 
-procedure TMetaView.DoClear();
+constructor TMetaView.Create(AParentNode: TMetaNode; const AName: string);
 begin
-  inherited DoClear();
-end;
-
-constructor TMetaView.Create(ADatabase: TMetaDatabase; const AName: string);
-begin
-  inherited Create(ADatabase, AName, ntView);
+  inherited Create(AParentNode, AName, ntView);
+  FFields := TMetaFields.Create(Self);
 end;
 
 destructor TMetaView.Destroy();
 begin
+  FFields.Free();
   inherited Destroy();
 end;
 
-{ TMetaViews }
-
-procedure TMetaViews.DoClear();
+procedure TMetaView.DoClear();
 begin
-  inherited DoClear();
+  FFields.DoClear();
 end;
 
-constructor TMetaViews.Create(ADatabase: TMetaDatabase);
+
+{ TMetaViews }
+constructor TMetaViews.Create(AParentNode: TMetaNode);
 begin
-  inherited Create(ADatabase, 'Views', ntViews);
+  inherited Create(AParentNode, 'Views', ntViews);
+  FList := TGenObjectList<TMetaView>.Create(True, True);
 end;
 
 destructor TMetaViews.Destroy();
 begin
+  FList.Free();
   inherited Destroy();
 end;
 
+procedure TMetaViews.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaViews.Find(const ViewName: string): TMetaView;
+var
+  Item: TMetaView;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(ViewName, Item.Name) then
+      Exit(Item);
+  end;
+end;
+
+function TMetaViews.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaViews.Add(ViewName: string): TMetaView;
+begin
+  Result := TMetaView.Create(Self, ViewName);
+  FList.Add(Result);
+end;
+
+
 { TMetaDatabase }
 
-constructor TMetaDatabase.Create(ConnectionInfo: TSqlConnectionInfo);
+constructor TMetaDatabase.Create(AParentNode: TMetaNode; ConnectionInfo: TSqlConnectionInfo);
 begin
-  inherited Create(Self, ConnectionInfo.Name, ntDatabase);
+  inherited Create(AParentNode, ConnectionInfo.Name, ntDatabase);
+  FDatabase := Self;
   FConnectionInfo := ConnectionInfo.Clone();
 
   FSqlStore := TSqlStore.Create(ConnectionInfo);
@@ -657,6 +858,12 @@ begin
   FConnectionInfo.Free();
   FSqlStore.Free();
   inherited Destroy();
+end;
+
+procedure TMetaDatabase.DoClear();
+begin
+  FTables.DoClear();
+  FViews.DoClear();
 end;
 
 procedure TMetaDatabase.Clear();
@@ -695,50 +902,108 @@ begin
 end;
 
 function TMetaDatabase.FindTable(const TableName: string): TMetaTable;
-   function MatchFunc(Item: TObject): Boolean;
-   begin
-     Result := (Item is TMetaTable) and (Sys.IsSameText(TableName, TMetaTable(Item).Name));
-   end;
-
 begin
-  // TODO: EDW
-  Result := nil;
+  Result := Self.Tables.Find(TableName);
 end;
 
 procedure TMetaDatabase.LoadFirebird();
+  // -------------------------------------------------------
+  procedure LoadField(tblList: TMemTable; MetaField: TMetaField);
+  begin
+    MetaField.FDataType        := tblList.FieldByName('DataType').AsString.Trim();
+    MetaField.FDataSubType     := tblList.FieldByName('DataSubType').AsString.Trim();
+    MetaField.FIsNullable      := tblList.FieldByName('IsNullable').AsInteger = 1;
+    MetaField.FSizeInChars     := tblList.FieldByName('SizeInChars').AsInteger;
+    MetaField.FSizeInBytes     := tblList.FieldByName('SizeInBytes').AsInteger;
+    MetaField.FPrecision       := tblList.FieldByName('DecimalPrecision').AsInteger;
+    MetaField.FScale           := tblList.FieldByName('DecimalScale').AsInteger;
+    MetaField.FDefaultValue    := tblList.FieldByName('DefaultValue').AsString.Trim();
+    MetaField.FExpression      := tblList.FieldByName('Calculation').AsString.Trim();
+    MetaField.FOrdinalPosition := tblList.FieldByName('OrdinalPosition').AsInteger;
+    MetaField.FDescription     := tblList.FieldByName('FieldDescription').AsString.Trim();
+    MetaField.FSequenceName    := tblList.FieldByName('SequenceName').AsString.Trim();
+  end;
 
   // -------------------------------------------------------
   procedure LoadTables();
   var
     SqlText : string;
-    Table: TMemTable;
+    tblList: TMemTable;
     TableName: string;
-    //MetaTable: TMetaTable;
-    //i : Integer;
+    FieldName: string;
+    MetaTable: TMetaTable;
+    MetaField: TMetaField;
   begin
     SqlText := SFirebirdTablesAndFieldsSql;
 
-    Table := FDatabase.SqlStore.Select(SqlText);
+    tblList := FDatabase.SqlStore.Select(SqlText);
     try
-      Table.First();
-      while not Table.Eof do
+      tblList.First();
+      while not tblList.Eof do
       begin
-        TableName := Table.FieldByName('TableName').AsString;
+
+        // table, if not already in the list
+        TableName := tblList.FieldByName('TableName').AsString;
         TableName := UnQuote(TableName);
-        // TODO: find the Table by name, if exists, or create it
-        //MetaTable := TMetaTable.Create(FDatabase, TableName);
-        //FTableList.Add(MetaTable);
-        //MetaTable.Load();
-        Table.Next();
+
+        MetaTable := Tables.Find(TableName);
+        if not Assigned(MetaTable) then
+          MetaTable := Tables.Add(TableName);
+
+        // field
+        FieldName := tblList.FieldByName('FieldName').AsString;
+        FieldName := UnQuote(FieldName);
+        MetaField := MetaTable.Fields.Add(FieldName);
+        LoadField(tblList, MetaField);
+
+        tblList.Next();
       end;
     finally
-      Table.Free();
+      tblList.Free();
     end;
   end;
   // -------------------------------------------------------
+  procedure LoadViews();
+  var
+    SqlText : string;
+    tblList: TMemTable;
+    ViewName: string;
+    FieldName: string;
+    MetaView: TMetaView;
+    MetaField: TMetaField;
+  begin
+    SqlText := SFirebirdTablesAndFieldsSql;
+    SqlText := SqlText.Replace('t.RDB$VIEW_BLR is null', 't.RDB$VIEW_BLR is not null', [rfReplaceAll, rfIgnoreCase]);
+
+    tblList := FDatabase.SqlStore.Select(SqlText);
+    try
+      tblList.First();
+      while not tblList.Eof do
+      begin
+        // table, if not already in the list
+        ViewName := tblList.FieldByName('TableName').AsString;
+        ViewName := UnQuote(ViewName);
+
+        MetaView := Views.Find(ViewName);
+        if not Assigned(MetaView) then
+          MetaView := Views.Add(ViewName);
+
+        // field
+        FieldName := tblList.FieldByName('FieldName').AsString;
+        FieldName := UnQuote(FieldName);
+        MetaField := MetaView.Fields.Add(FieldName);
+        LoadField(tblList, MetaField);
+
+        tblList.Next();
+      end;
+    finally
+      tblList.Free();
+    end;
+  end;
 
 begin
-
+  LoadTables();
+  LoadViews();
 end;
 
 procedure TMetaDatabase.LoadSqlite();
@@ -774,11 +1039,7 @@ begin
   Result[1] := Views;
 end;
 
-procedure TMetaDatabase.DoClear();
-begin
-  FTables.DoClear();
-  FViews.DoClear();
-end;
+
 
 
 { TMetaDatabases }
@@ -786,13 +1047,18 @@ end;
 constructor TMetaDatabases.Create();
 begin
   inherited Create(nil, 'Databases', ntDatabases);
-  FDatabaseList := TGenObjectList<TMetaNode>.Create(True, True);
+  FList := TGenObjectList<TMetaDatabase>.Create(True, True);
 end;
 
 destructor TMetaDatabases.Destroy();
 begin
-  FDatabaseList.Free(); // this frees the objects too.
+  FList.Free(); // this frees the objects too.
   inherited Destroy();
+end;
+
+procedure TMetaDatabases.Clear();
+begin
+  FList.Clear();
 end;
 
 procedure TMetaDatabases.ReLoad();
@@ -801,11 +1067,11 @@ var
   i : Integer;
 begin
   A := [];
-  SetLength(A, FDatabaseList.Count);
-  for i := 0 to FDatabaseList.Count - 1 do
-    A[i] := TMetaDatabase(FDatabaseList[i]).ConnectionInfo.Clone();
+  SetLength(A, FList.Count);
+  for i := 0 to FList.Count - 1 do
+    A[i] := FList[i].ConnectionInfo.Clone();
 
-  FDatabaseList.Clear();                                           // this frees the objects too.
+  FList.Clear();                                           // this frees the objects too.
   AddRange(A);                                                     // forces databases to call Load();
 
   for i := Low(A) to High(A) do                                    // dispose the TSqlConnectionInfo instances
@@ -814,8 +1080,8 @@ end;
 
 function TMetaDatabases.Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
 begin
-  Result := TMetaDatabase.Create(ConnectionInfo);
-  FDatabaseList.Add(Result);
+  Result := TMetaDatabase.Create(Self, ConnectionInfo);
+  FList.Add(Result);
   Result.Load();
 end;
 
@@ -829,12 +1095,17 @@ end;
 
 procedure TMetaDatabases.Remove(ADatabase: TMetaDatabase);
 begin
-  FDatabaseList.Remove(ADatabase); // this frees the object too.
+  FList.Remove(ADatabase); // this frees the object too.
 end;
 
 function TMetaDatabases.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
 begin
-   Result := ListToArray(FDatabaseList);
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
 end;
 
 
@@ -1321,14 +1592,13 @@ begin
   FSqlTransaction.Active := True;
 
   if FSqlQuery.SQL.Text <> SqlText then
-  begin
     FSqlQuery.SQL.Text := SqlText;
-    FSqlQuery.Prepare();
-  end;
+
+  if not FSqlQuery.Prepared then;
+     FSqlQuery.Prepare();
 
   if (FSqlQuery.Params.Count > 0) and (Length(Params) > 0) then
      DbSys.AssignParams(FSqlQuery.Params, Params);
-
 end;
 
 procedure TSqlStore.EndOperation();

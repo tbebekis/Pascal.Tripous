@@ -1,6 +1,6 @@
 unit o_TestBed;
-
-{$mode ObjFPC}{$H+}
+                // ObjFPC
+{$mode DELPHI}{$H+}
 {$WARN 5079 off : Unit "$1" is experimental}
 {$WARN 5027 off : Local variable "$1" is assigned but never used}
 interface
@@ -39,6 +39,8 @@ uses
 procedure TestSqlConnectionInfo();
 function  TestSchemaInfo(): string;
 procedure TestMetastores();
+
+procedure TestDynArray();
 
 
 implementation
@@ -182,7 +184,56 @@ begin
     ConInfo.Free();
   end;
 
+  DbSys.MetaDatabases.Clear();
+   //DbSys.MetaDatabases.Free();
+
 end;
+
+type
+
+  { TPerson }
+
+  TPerson = class
+  private
+    FName: string;
+  public
+    constructor Create(AName: string);
+    destructor Destroy(); override;
+
+    property Name: string read FName write FName;
+  end;
+
+{ TPerson }
+
+constructor TPerson.Create(AName: string);
+begin
+  inherited Create();
+  FName := AName;
+end;
+
+destructor TPerson.Destroy();
+var
+  S : string;
+begin
+  S := FName;
+  inherited Destroy();
+end;
+
+procedure TestDynArray();
+var
+  A: TGenObjectList<TPerson>;
+begin
+  A := TGenObjectList<TPerson>.Create(True, True);
+
+  A.Add(TPerson.Create('teo'));
+  A.Add(TPerson.Create('lakis'));
+
+  A.RemoveAt(0);
+
+  A.Free();
+end;
+
+
 
 end.
 
