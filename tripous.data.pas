@@ -150,16 +150,61 @@ type
     constructor Create(AParentNode: TMetaNode);
     destructor Destroy(); override;
 
-    function FindField(const FieldName: string): TMetaField;
+    function Find(const FieldName: string): TMetaField;
 
     property List: TGenObjectList<TMetaField> read FList;
+  end;
+
+  { TMetaIndex }
+
+  TMetaIndex = class(TMetaNode)
+  private
+    FFieldCount: Integer;
+    FFields: string;
+    FForeignKey: string;
+    FIndexType: string;
+    FIsActive: Boolean;
+    FIsDescending: Boolean;
+    FIsUnique: Boolean;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string);
+    destructor Destroy(); override;
+
+    property IndexType: string read FIndexType;
+    property Fields: string read FFields;
+    property FieldCount: Integer read FFieldCount;
+    property IsActive: Boolean read FIsActive;
+    property IsUnique: Boolean read FIsUnique;
+    property IsDescending: Boolean read FIsDescending;
+    property ForeignKey: string read FForeignKey;
+  end;
+
+  { TMetaIndexes }
+
+  TMetaIndexes = class(TMetaNode)
+  private
+    FList: TGenObjectList<TMetaIndex>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+
+    function Add(IndexName: string): TMetaIndex;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const IndexName: string): TMetaIndex;
+
+    property List: TGenObjectList<TMetaIndex> read FList;
   end;
 
   { TMetaTable }
 
   TMetaTable = class(TMetaNode)
   private
+    FDefinition: string;
     FFields: TMetaFields;
+    FIndexes: TMetaIndexes;
   protected
     procedure DoClear(); override;
   public
@@ -167,6 +212,8 @@ type
     destructor Destroy(); override;
 
     property Fields: TMetaFields read FFields;
+    property Indexes: TMetaIndexes read FIndexes;
+    property Definition: string read FDefinition;
   end;
 
   { TMetaTables }
@@ -190,6 +237,7 @@ type
 
   TMetaView = class(TMetaNode)
   private
+    FDefinition: string;
     FFields: TMetaFields;
   protected
     procedure DoClear(); override;
@@ -198,6 +246,7 @@ type
     destructor Destroy(); override;
 
     property Fields: TMetaFields read FFields;
+    property Definition: string read FDefinition;
   end;
 
   { TMetaViews }
@@ -645,7 +694,6 @@ end;
 constructor TMetaField.Create(AParentNode: TMetaNode; const AName: string);
 begin
   inherited Create(AParentNode, AName, ntField);
-
 end;
 
 destructor TMetaField.Destroy();
@@ -688,16 +736,77 @@ begin
       Result[i] := FList[i];
 end;
 
-function TMetaFields.FindField(const FieldName: string): TMetaField;
+function TMetaFields.Find(const FieldName: string): TMetaField;
 var
-  Field : TMetaField;
+  Item : TMetaField;
 begin
   Result := nil;
-  for Field in FList do
+  for Item in FList do
   begin
-    if Sys.IsSameText(FieldName, Field.Name) then
-      Exit(Field);
+    if Sys.IsSameText(FieldName, Item.Name) then
+      Exit(Item);
   end;
+end;
+
+{ TMetaIndex }
+
+constructor TMetaIndex.Create(AParentNode: TMetaNode; const AName: string);
+begin
+  inherited Create(AParentNode, AName, ntIndex);
+end;
+
+destructor TMetaIndex.Destroy();
+begin
+  inherited Destroy();
+end;
+
+
+{ TMetaIndexes }
+
+constructor TMetaIndexes.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'Indexes', ntIndexes);
+  FList := TGenObjectList<TMetaIndex>.Create(True, True);
+end;
+
+destructor TMetaIndexes.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaIndexes.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaIndexes.Add(IndexName: string): TMetaIndex;
+begin
+  Result := TMetaIndex.Create(Self, IndexName);
+  FList.Add(Result);
+end;
+
+function TMetaIndexes.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaIndexes.Find(const IndexName: string): TMetaIndex;
+var
+  Item : TMetaIndex;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(IndexName, Item.Name) then
+      Exit(Item);
+  end;
+
 end;
 
 { TMetaTable }
@@ -705,17 +814,20 @@ constructor TMetaTable.Create(AParentNode: TMetaNode; const AName: string);
 begin
   inherited Create(AParentNode, AName, ntTable);
   FFields := TMetaFields.Create(Self);
+  FIndexes := TMetaIndexes.Create(Self);
 end;
 
 destructor TMetaTable.Destroy();
 begin
   FFields.Free();
+  FIndexes.Free();
   inherited Destroy();
 end;
 
 procedure TMetaTable.DoClear();
 begin
   FFields.DoClear();
+  FIndexes.DoClear();
 end;
 
 { TMetaTables }
@@ -948,7 +1060,10 @@ procedure TMetaDatabase.LoadFirebird();
 
         MetaTable := Tables.Find(TableName);
         if not Assigned(MetaTable) then
+        begin
           MetaTable := Tables.Add(TableName);
+          MetaTable.FDefinition := tblList.FieldByName('Definition').AsString;
+        end;
 
         // field
         FieldName := tblList.FieldByName('FieldName').AsString;
@@ -986,7 +1101,10 @@ procedure TMetaDatabase.LoadFirebird();
 
         MetaView := Views.Find(ViewName);
         if not Assigned(MetaView) then
+        begin
           MetaView := Views.Add(ViewName);
+          MetaView.FDefinition := tblList.FieldByName('Definition').AsString;
+        end;
 
         // field
         FieldName := tblList.FieldByName('FieldName').AsString;
@@ -1000,10 +1118,69 @@ procedure TMetaDatabase.LoadFirebird();
       tblList.Free();
     end;
   end;
+  // -------------------------------------------------------
+  procedure LoadIndex(tblList: TMemTable; MetaIndex: TMetaIndex);
+  begin
+    //MetaIndex.FFields         := tblList.FieldByName('FieldName').AsString.Trim();
+    MetaIndex.FFieldCount     := tblList.FieldByName('FieldCount').AsInteger;
+    MetaIndex.FForeignKey     := tblList.FieldByName('ForeignKey').AsString.Trim();
+    MetaIndex.FIndexType      := tblList.FieldByName('IndexType').AsString.Trim();
+    MetaIndex.FIsActive       := not tblList.FieldByName('IsInactive').AsBoolean;
+    MetaIndex.FIsDescending   := tblList.FieldByName('IsDescending').AsBoolean;
+    MetaIndex.FIsUnique       := tblList.FieldByName('IsUnique').AsBoolean;
+  end;
+  // -------------------------------------------------------
+  // https://www.firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref40/fblangref-appx04-indices.html
+  procedure LoadIndexes();
+  var
+    SqlText : string;
+    tblList: TMemTable;
+    TableName: string;
+    IndexName: string;
+    FieldName: string;
+    MetaTable: TMetaTable;
+    MetaIndex: TMetaIndex;
+  begin
+    SqlText := SFirebiredIndexesSql;
 
+    tblList := FDatabase.SqlStore.Select(SqlText);
+    try
+      tblList.First();
+      while not tblList.Eof do
+      begin
+        TableName := tblList.FieldByName('TableName').AsString;
+        TableName := UnQuote(TableName);
+
+        MetaTable := Tables.Find(TableName);
+        if Assigned(MetaTable) then
+        begin
+          IndexName := tblList.FieldByName('IndexName').AsString;
+          IndexName := UnQuote(IndexName);
+
+          FieldName := tblList.FieldByName('FieldName').AsString;
+          FieldName := UnQuote(FieldName);
+
+          MetaIndex := MetaTable.Indexes.Find(IndexName);
+          if not Assigned(MetaIndex) then
+          begin
+            MetaIndex := MetaTable.Indexes.Add(IndexName);
+            MetaIndex.FFields := FieldName;
+            LoadIndex(tblList, MetaIndex);
+          end else begin
+            MetaIndex.FFields := MetaIndex.FFields + ';' + FieldName;
+          end;
+        end;
+        tblList.Next();
+      end;
+    finally
+      tblList.Free();
+    end;
+  end;
+  // -------------------------------------------------------
 begin
   LoadTables();
   LoadViews();
+  LoadIndexes();
 end;
 
 procedure TMetaDatabase.LoadSqlite();
