@@ -10,13 +10,31 @@ uses
   ;
 
 const
+  // ---------------------------------------------------------------------------------------------------------
+  // FirebirdSql
+  // ---------------------------------------------------------------------------------------------------------
+
+
   // https://www.firebirdfaq.org/faq174/
   // https://www.alberton.info/firebird_sql_meta_info.html
   // https://firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref30/fblangref30-appx04-systables.html
   // https://ib-aid.com/download/docs/firebird-language-reference-2.5/fblangref25-appx04-systables.html
   // https://docwiki.embarcadero.com/InterBase/2020/en/System_Tables
 
-
+  // https://www.firebirdfaq.org/faq174/
+  SFirebirdTablesSql =
+    'select                                                ' +
+    '  RDB$RELATION_NAME as TableName,                     ' +
+    '  RDB$OWNER_NAME    as OwnerName                      ' +
+    'from                                                  ' +
+    '  RDB$RELATIONS                                       ' +
+    'where                                                 ' +
+    '  (RDB$SYSTEM_FLAG is null or RDB$SYSTEM_FLAG = 0)    ' +
+    '  and RDB$VIEW_BLR is null                            ' +
+    'order by                                              ' +
+    '  RDB$RELATION_NAME                                   ' +
+    ''
+    ;
 
   SFirebirdTablesAndFieldsSql =
     'select                                                                                    ' +
@@ -50,12 +68,9 @@ const
     '  f.RDB$FIELD_LENGTH                              as SizeInBytes,                         ' +
     '  coalesce(f.RDB$FIELD_PRECISION, 0)              as DecimalPrecision,                    ' +
     '  coalesce(f.RDB$FIELD_SCALE, 0)                  as DecimalScale,                        ' +
-    '  coalesce(tf.RDB$DEFAULT_SOURCE, '''')             as DefaultValue,                      ' +
-    '  coalesce(f.RDB$COMPUTED_SOURCE, '''')             as Calculation,                       ' +
-    '  coalesce(tf.RDB$DESCRIPTION, '''')                as FieldDescription,                  ' +
-    '  tf.RDB$FIELD_POSITION                           as OrdinalPosition,                     ' +
-    '  coalesce(tf.RDB$GENERATOR_NAME, '''')             as SequenceName,                      ' +
-    '  coalesce(t.RDB$VIEW_SOURCE, '''')                 as Definition                         ' +
+    '  coalesce(tf.RDB$DEFAULT_SOURCE, '''')           as DefaultValue,                        ' +
+    '  coalesce(f.RDB$COMPUTED_SOURCE, '''')           as Expression,                          ' +
+    '  tf.RDB$FIELD_POSITION                           as OrdinalPosition                      ' +
     'from                                                                                      ' +
     '  RDB$RELATION_FIELDS tf                                                                  ' +
     '    left join RDB$RELATIONS t ON tf.RDB$RELATION_NAME = t.RDB$RELATION_NAME               ' +
@@ -66,10 +81,13 @@ const
     '  and t.RDB$VIEW_BLR is null                                                              ' +
     'order by                                                                                  ' +
     '  tf.RDB$RELATION_NAME,                                                                   ' +
-    '  tf.RDB$FIELD_NAME                                                                       '
+    '  tf.RDB$FIELD_POSITION                                                                   '
     ;
 
-  SFirebiredIndexesSql =
+
+  // https://www.firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref40/fblangref-appx04-indices.html
+
+  SFirebirdIndexesSql =
     'select                                                                                  ' +
     '    t.RDB$OWNER_NAME                        as OwnerName,                               ' +
     '    i.RDB$RELATION_NAME                     as TableName,                               ' +
@@ -98,7 +116,7 @@ const
     '    isg.RDB$FIELD_POSITION                                                              '
     ;
 
-  SFirebiredTriggersSql =
+  SFirebirdTriggersSql =
     'select                                                                ' +
     '    RDB$TRIGGER_NAME                    as TriggerName,               ' +
     '    RDB$RELATION_NAME                   as TableName,                 ' +
@@ -130,12 +148,13 @@ const
     '    RDB$TRIGGERS                                                      ' +
     'where                                                                 ' +
     '    (RDB$SYSTEM_FLAG is null or RDB$SYSTEM_FLAG  = 0)                 ' +
+    ' and (RDB$RELATION_NAME <> '''')                                      ' +
     'order by                                                              ' +
     '    RDB$RELATION_NAME,                                                ' +
     '    RDB$TRIGGER_NAME                                                  '
     ;
 
-  SFirebiredProceduresSql =
+  SFirebirdProceduresSql =
     'select                                                                                    ' +
     '  RDB$PROCEDURE_NAME                     as ProcedureName,                                ' +
     '  case RDB$PROCEDURE_TYPE                                                                 ' +
@@ -152,7 +171,7 @@ const
     '	(RDB$PROCEDURES.RDB$SYSTEM_FLAG  is null  or RDB$PROCEDURES.RDB$SYSTEM_FLAG  = 0)      '
     ;
 
-  SFirebiredSequencesSql =
+  SFirebirdSequencesSql =
     'select                                                 ' +
     '  RDB$GENERATOR_NAME        as SequenceName,           ' +
     '  RDB$GENERATOR_ID          as CurrentValue,           ' +
@@ -163,6 +182,54 @@ const
     'where                                                  ' +
     '  (RDB$SYSTEM_FLAG is null or RDB$SYSTEM_FLAG  = 0)    '
     ;
+
+
+  // ---------------------------------------------------------------------------------------------------------
+  // MsSql
+  // ---------------------------------------------------------------------------------------------------------
+
+   SMsSqlTablesAndFieldsSql =
+   'select                                                                                  ' +
+   '    c.TABLE_SCHEMA                                      as OwnerName,                   ' +
+   '    c.TABLE_NAME                                        as TableName,                   ' +
+   '    c.COLUMN_NAME                                       as FieldName,                   ' +
+   '    c.DATA_TYPE                                         as DataType,                    ' +
+   '    ''''                                                as DataSubType,                 ' +
+   '    c.IS_NULLABLE                                       as IsNullable,                  ' +
+   '    coalesce(c.CHARACTER_MAXIMUM_LENGTH, 0)             as SizeInChars,                 ' +
+   '    coalesce(c.CHARACTER_OCTET_LENGTH, 0)               as SizeInBytes,                 ' +
+   '    coalesce(c.NUMERIC_PRECISION, 0)                    as DecimalPrecision,            ' +
+   '    coalesce(c.NUMERIC_SCALE, 0)                        as DecimalScale,                ' +
+   '    coalesce(c.COLUMN_DEFAULT, '''')                    as DefaultValue,                ' +
+   '    coalesce(cc.Definition, '''')                       as Expression,                  ' +
+   '    c.ORDINAL_POSITION                                  as OrdinalPosition              ' +
+   'from                                                                                    ' +
+   '    INFORMATION_SCHEMA.COLUMNS c                                                        ' +
+   '        left join INFORMATION_SCHEMA.TABLES t  on c.TABLE_SCHEMA = t.TABLE_SCHEMA       ' +
+   '                and c.TABLE_NAME = t.TABLE_NAME                                         ' +
+   '		left join sys.computed_columns cc on cc.name = c.COLUMN_NAME                ' +
+   'where                                                                                   ' +
+   '    TABLE_TYPE = ''BASE TABLE''                                                         ' +
+   'order by                                                                                ' +
+   '   c.TABLE_NAME,                                                                        ' +
+   '   c.ORDINAL_POSITION                                                                   '
+   ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

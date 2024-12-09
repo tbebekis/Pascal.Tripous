@@ -50,7 +50,6 @@ type
     SQLTransaction1: TSQLTransaction;
   private
     tblPsw: TBufTable;
-    O: TObject;
 
     procedure BufTableCreate();
     procedure BufTableDestroy();

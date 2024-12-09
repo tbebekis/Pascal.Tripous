@@ -176,9 +176,12 @@ begin
   ConInfo := TSqlConnectionInfo.Create(nil);
   try
     ConInfo.Name := 'Default';
-    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird);
-    ConInfo.ConnectionString := 'User = SYSDBA; Psw = mirodato; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
 
+    //ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird);
+    //ConInfo.ConnectionString := 'User = SYSDBA; Psw = mirodato; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
+
+    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptMsSql);
+    ConInfo.ConnectionString := 'Data Source=localhost; Initial Catalog=AdventureWorksLT2012; Integrated Security=SSPI';
     DbSys.MetaDatabases.Add(ConInfo);
   finally
     ConInfo.Free();

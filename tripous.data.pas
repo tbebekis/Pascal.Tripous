@@ -109,13 +109,11 @@ type
     FDataSubType: string;
     FDataType: string;
     FDefaultValue: string;
-    FDescription: string;
     FExpression: string;
     FIsNullable: Boolean;
     FOrdinalPosition: Integer;
     FPrecision: Integer;
     FScale: Integer;
-    FSequenceName: string;
     FSizeInBytes: Integer;
     FSizeInChars: Integer;
   public
@@ -132,8 +130,6 @@ type
     property DefaultValue: string read FDefaultValue;
     property Expression: string read FExpression;    // when is a calculated field
     property OrdinalPosition: Integer read FOrdinalPosition;
-    property Description: string read FDescription;
-    property SequenceName: string read FSequenceName;
   end;
 
   { TMetaFields }
@@ -198,6 +194,46 @@ type
     property List: TGenObjectList<TMetaIndex> read FList;
   end;
 
+  { TMetaTrigger }
+
+  TMetaTrigger = class(TMetaNode)
+  private
+    FDefinition: string;
+    FIsActive: Boolean;
+    FIsValid: Boolean;
+    FTableName: string;
+    FTriggerType: string;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string);
+    destructor Destroy(); override;
+
+    property TriggerType: string read FTriggerType;
+    property TableName: string read FTableName;
+    property Definition: string read FDefinition;
+    property IsActive: Boolean read FIsActive;
+    property IsValid: Boolean read FIsValid;
+  end;
+
+  { TMetaTriggers }
+
+  TMetaTriggers = class(TMetaNode)
+  private
+    FList: TGenObjectList<TMetaTrigger>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+
+    function Add(IndexName: string): TMetaTrigger;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const TriggerName: string): TMetaTrigger;
+
+    property List: TGenObjectList<TMetaTrigger> read FList;
+  end;
+
+
   { TMetaTable }
 
   TMetaTable = class(TMetaNode)
@@ -205,6 +241,7 @@ type
     FDefinition: string;
     FFields: TMetaFields;
     FIndexes: TMetaIndexes;
+    FTriggers: TMetaTriggers;
   protected
     procedure DoClear(); override;
   public
@@ -213,6 +250,7 @@ type
 
     property Fields: TMetaFields read FFields;
     property Indexes: TMetaIndexes read FIndexes;
+    property Triggers: TMetaTriggers read FTriggers;
     property Definition: string read FDefinition;
   end;
 
@@ -267,11 +305,86 @@ type
     property List: TGenObjectList<TMetaView> read FList;
   end;
 
+  { TMetaProcedure }
+
+  TMetaProcedure = class(TMetaNode)
+  private
+    FDefinition: string;
+    FIsValid: Boolean;
+    FProcedureType: string;
+  protected
+    procedure DoClear(); override;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string);
+    destructor Destroy(); override;
+
+    property ProcedureType: string read FProcedureType;
+    property Definition: string read FDefinition;
+    property IsValid: Boolean read FIsValid;
+  end;
+
+  { TMetaProcedures }
+
+  TMetaProcedures = class(TMetaNode)
+  private
+     FList: TGenObjectList<TMetaProcedure>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+    function Add(ProcedureName: string): TMetaProcedure;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const ProcedureName: string): TMetaProcedure;
+
+    property List: TGenObjectList<TMetaProcedure> read FList;
+  end;
+
+
+  { TMetaSequence }
+
+  TMetaSequence = class(TMetaNode)
+  private
+    FCurrentValue: Integer;
+    FInitialValue: Integer;
+    FIncrementBy: Integer;
+  protected
+    procedure DoClear(); override;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string);
+    destructor Destroy(); override;
+
+    property CurrentValue: Integer read FCurrentValue;
+    property InitialValue: Integer read FInitialValue;
+    property IncrementBy: Integer read FIncrementBy;
+  end;
+
+  { TMetaSequences }
+
+  TMetaSequences = class(TMetaNode)
+  private
+     FList: TGenObjectList<TMetaSequence>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+    function Add(AName: string): TMetaSequence;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const AName: string): TMetaSequence;
+
+    property List: TGenObjectList<TMetaSequence> read FList;
+  end;
+
   { TMetaDatabase }
 
   TMetaDatabase = class(TMetaNode)
   private
     FConnectionInfo: TSqlConnectionInfo;
+    FProcedures: TMetaProcedures;
+    FSequences: TMetaSequences;
     FTables: TMetaTables;
     FViews: TMetaViews;
     FSqlStore: TSqlStore;
@@ -279,12 +392,14 @@ type
     FLoading: Boolean;
     FSqlProviderType: TSqlProviderType;
 
-    procedure LoadFirebird();
-    procedure LoadSqlite();
-    procedure LoadMsSql();
-    procedure LoadMySql();
-    procedure LoadPostgreSql();
-    procedure LoadOracle();
+    procedure LoadField(tblSql: TMemTable; MetaField: TMetaField);
+
+    procedure LoadTables();
+    procedure LoadViews();
+    procedure LoadIndexes();
+    procedure LoadTriggers();
+    procedure LoadProcedures();
+    procedure LoadSequences();
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
@@ -298,8 +413,11 @@ type
     function FindTable(const TableName: string): TMetaTable;
 
     property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
+
     property Tables: TMetaTables read FTables;
     property Views: TMetaViews read FViews;
+    property Procedures: TMetaProcedures read FProcedures;
+    property Sequences: TMetaSequences read FSequences;
 
     property Loading: Boolean read FLoading;
     property Loaded: Boolean read FLoaded;
@@ -430,8 +548,13 @@ type
   protected
     FName: string;
     FProviderType: TSqlProviderType;
-    FTablesSql : string;
+
     FTablesAndFieldsSql: string;
+    FViewsAndFieldsSql: string;
+    FIndexesSql: string;
+    FTriggersSql: string;
+    FProceduresSql: string;
+    FSequencesSql: string;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -440,8 +563,12 @@ type
     property ProviderType: TSqlProviderType read FProviderType;
 
     // metadata SELECTs
-    property TablesSql: string read FTablesSql;
     property TablesAndFieldsSql: string read FTablesAndFieldsSql;
+    property ViewsAndFieldsSql: string read FViewsAndFieldsSql;
+    property IndexesSql: string read FIndexesSql;
+    property TriggersSql: string read FTriggersSql;
+    property ProceduresSql: string read FProceduresSql;
+    property SequencesSql: string read FSequencesSql;
   end;
 
   { TSqlProviderFirebird }
@@ -806,8 +933,67 @@ begin
     if Sys.IsSameText(IndexName, Item.Name) then
       Exit(Item);
   end;
-
 end;
+
+{ TMetaTrigger }
+
+constructor TMetaTrigger.Create(AParentNode: TMetaNode; const AName: string);
+begin
+   inherited Create(AParentNode, AName, ntTrigger);
+end;
+
+destructor TMetaTrigger.Destroy();
+begin
+  inherited Destroy();
+end;
+
+{ TMetaTriggers }
+
+constructor TMetaTriggers.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'Triggers', ntTriggers);
+  FList := TGenObjectList<TMetaTrigger>.Create(True, True);
+end;
+
+destructor TMetaTriggers.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaTriggers.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaTriggers.Add(IndexName: string): TMetaTrigger;
+begin
+  Result := TMetaTrigger.Create(Self, IndexName);
+  FList.Add(Result);
+end;
+
+function TMetaTriggers.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaTriggers.Find(const TriggerName: string): TMetaTrigger;
+var
+  Item : TMetaTrigger;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(TriggerName, Item.Name) then
+      Exit(Item);
+  end;
+end;
+
 
 { TMetaTable }
 constructor TMetaTable.Create(AParentNode: TMetaNode; const AName: string);
@@ -815,12 +1001,14 @@ begin
   inherited Create(AParentNode, AName, ntTable);
   FFields := TMetaFields.Create(Self);
   FIndexes := TMetaIndexes.Create(Self);
+  FTriggers := TMetaTriggers.Create(Self);
 end;
 
 destructor TMetaTable.Destroy();
 begin
-  FFields.Free();
+  FTriggers.Free();
   FIndexes.Free();
+  FFields.Free();
   inherited Destroy();
 end;
 
@@ -947,6 +1135,132 @@ begin
   FList.Add(Result);
 end;
 
+{ TMetaProcedure }
+
+constructor TMetaProcedure.Create(AParentNode: TMetaNode; const AName: string);
+begin
+  inherited Create(AParentNode, AName, ntProcedure);
+end;
+
+destructor TMetaProcedure.Destroy();
+begin
+  inherited Destroy();
+end;
+
+procedure TMetaProcedure.DoClear();
+begin
+end;
+
+{ TMetaProcedures }
+
+constructor TMetaProcedures.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'Procedures', ntProcedures);
+  FList := TGenObjectList<TMetaProcedure>.Create(True, True);
+end;
+
+destructor TMetaProcedures.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaProcedures.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaProcedures.Add(ProcedureName: string): TMetaProcedure;
+begin
+  Result := TMetaProcedure.Create(Self, ProcedureName);
+  FList.Add(Result);
+end;
+
+function TMetaProcedures.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaProcedures.Find(const ProcedureName: string): TMetaProcedure;
+var
+  Item: TMetaProcedure;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(ProcedureName, Item.Name) then
+      Exit(Item);
+  end;
+
+end;
+
+{ TMetaSequence }
+
+constructor TMetaSequence.Create(AParentNode: TMetaNode; const AName: string);
+begin
+  inherited Create(AParentNode, AName, ntSequence);
+end;
+
+destructor TMetaSequence.Destroy();
+begin
+  inherited Destroy();
+end;
+
+procedure TMetaSequence.DoClear();
+begin
+end;
+
+{ TMetaSequences }
+
+constructor TMetaSequences.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'Sequences', ntSequences);
+  FList := TGenObjectList<TMetaSequence>.Create(True, True);
+end;
+
+destructor TMetaSequences.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaSequences.DoClear();
+begin
+  FList.Clear();
+end;
+
+function TMetaSequences.Add(AName: string): TMetaSequence;
+begin
+  Result := TMetaSequence.Create(Self, AName);
+  FList.Add(Result);
+end;
+
+function TMetaSequences.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaSequences.Find(const AName: string): TMetaSequence;
+var
+  Item: TMetaSequence;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(AName, Item.Name) then
+      Exit(Item);
+  end;
+end;
 
 { TMetaDatabase }
 
@@ -961,12 +1275,16 @@ begin
 
   FTables := TMetaTables.Create(Self);
   FViews  := TMetaViews.Create(Self);
+  FProcedures := TMetaProcedures.Create(Self);
+  FSequences := TMetaSequences.Create(Self);
 end;
 
 destructor TMetaDatabase.Destroy();
 begin
-  FTables.Free();
+  FSequences.Free();
+  FProcedures.Free();
   FViews.Free();
+  FTables.Free();
   FConnectionInfo.Free();
   FSqlStore.Free();
   inherited Destroy();
@@ -974,8 +1292,10 @@ end;
 
 procedure TMetaDatabase.DoClear();
 begin
-  FTables.DoClear();
+  FSequences.DoClear();
+  FProcedures.DoClear();
   FViews.DoClear();
+  FTables.DoClear();
 end;
 
 procedure TMetaDatabase.Clear();
@@ -989,6 +1309,282 @@ begin
   end;
 end;
 
+procedure TMetaDatabase.LoadField(tblSql: TMemTable; MetaField: TMetaField);
+begin
+  MetaField.FDataType        := tblSql.FieldByName('DataType').AsString.Trim();
+  MetaField.FDataSubType     := tblSql.FieldByName('DataSubType').AsString.Trim();
+  MetaField.FIsNullable      := tblSql.FieldByName('IsNullable').AsInteger = 1;
+  MetaField.FSizeInChars     := tblSql.FieldByName('SizeInChars').AsInteger;
+  MetaField.FSizeInBytes     := tblSql.FieldByName('SizeInBytes').AsInteger;
+  MetaField.FPrecision       := tblSql.FieldByName('DecimalPrecision').AsInteger;
+  MetaField.FScale           := tblSql.FieldByName('DecimalScale').AsInteger;
+  MetaField.FDefaultValue    := tblSql.FieldByName('DefaultValue').AsString.Trim();
+  MetaField.FExpression      := tblSql.FieldByName('Expression').AsString.Trim();
+  MetaField.FOrdinalPosition := tblSql.FieldByName('OrdinalPosition').AsInteger;
+end;
+procedure TMetaDatabase.LoadTables();
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  TableName: string;
+  FieldName: string;
+  MetaTable: TMetaTable;
+  MetaField: TMetaField;
+begin
+  SqlText := SqlStore.Provider.TablesAndFieldsSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+
+      // table, if not already in the list
+      TableName := tblSql.FieldByName('TableName').AsString;
+      TableName := UnQuote(TableName);
+
+      MetaTable := Tables.Find(TableName);
+      if not Assigned(MetaTable) then
+      begin
+        MetaTable := Tables.Add(TableName);
+        MetaTable.FDefinition := tblSql.FieldByName('Definition').AsString;
+      end;
+
+      // field
+      FieldName := tblSql.FieldByName('FieldName').AsString;
+      FieldName := UnQuote(FieldName);
+      MetaField := MetaTable.Fields.Add(FieldName);
+      LoadField(tblSql, MetaField);
+
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+end;
+// -------------------------------------------------------
+procedure TMetaDatabase.LoadViews();
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  ViewName: string;
+  FieldName: string;
+  MetaView: TMetaView;
+  MetaField: TMetaField;
+begin
+  SqlText := SqlStore.Provider.ViewsAndFieldsSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+      // table, if not already in the list
+      ViewName := tblSql.FieldByName('TableName').AsString;
+      ViewName := UnQuote(ViewName);
+
+      MetaView := Views.Find(ViewName);
+      if not Assigned(MetaView) then
+      begin
+        MetaView := Views.Add(ViewName);
+        MetaView.FDefinition := tblSql.FieldByName('Definition').AsString;
+      end;
+
+      // field
+      FieldName := tblSql.FieldByName('FieldName').AsString;
+      FieldName := UnQuote(FieldName);
+      MetaField := MetaView.Fields.Add(FieldName);
+      LoadField(tblSql, MetaField);
+
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+end;
+
+
+procedure TMetaDatabase.LoadIndexes();
+  // -------------------------------------------------------
+  procedure LoadIndex(tblSql: TMemTable; MetaIndex: TMetaIndex);
+  begin
+    //MetaIndex.FFields         := tblSql.FieldByName('FieldName').AsString.Trim();
+    MetaIndex.FFieldCount     := tblSql.FieldByName('FieldCount').AsInteger;
+    MetaIndex.FForeignKey     := tblSql.FieldByName('ForeignKey').AsString.Trim();
+    MetaIndex.FIndexType      := tblSql.FieldByName('IndexType').AsString.Trim();
+    MetaIndex.FIsActive       := not tblSql.FieldByName('IsInactive').AsBoolean;
+    MetaIndex.FIsDescending   := tblSql.FieldByName('IsDescending').AsBoolean;
+    MetaIndex.FIsUnique       := tblSql.FieldByName('IsUnique').AsBoolean;
+  end;
+  // -------------------------------------------------------
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  TableName: string;
+  IndexName: string;
+  FieldName: string;
+  MetaTable: TMetaTable;
+  MetaIndex: TMetaIndex;
+begin
+  SqlText := SqlStore.Provider.IndexesSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+      TableName := tblSql.FieldByName('TableName').AsString;
+      TableName := UnQuote(TableName);
+
+      MetaTable := Tables.Find(TableName);
+      if Assigned(MetaTable) then
+      begin
+        IndexName := tblSql.FieldByName('IndexName').AsString;
+        IndexName := UnQuote(IndexName);
+
+        FieldName := tblSql.FieldByName('FieldName').AsString;
+        FieldName := UnQuote(FieldName);
+
+        MetaIndex := MetaTable.Indexes.Find(IndexName);
+        if not Assigned(MetaIndex) then
+        begin
+          MetaIndex := MetaTable.Indexes.Add(IndexName);
+          MetaIndex.FFields := FieldName;
+          LoadIndex(tblSql, MetaIndex);
+        end else begin
+          MetaIndex.FFields := MetaIndex.FFields + ';' + FieldName;
+        end;
+      end;
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+end;
+
+procedure TMetaDatabase.LoadTriggers();
+  // -------------------------------------------------------
+  procedure LoadTrigger(tblSql: TMemTable; MetaTrigger: TMetaTrigger);
+  begin
+    MetaTrigger.FTableName     := UnQuote(tblSql.FieldByName('TableName').AsString.Trim());
+    MetaTrigger.FTriggerType   := tblSql.FieldByName('TriggerType').AsString.Trim();
+    MetaTrigger.FIsActive      := not tblSql.FieldByName('IsInactive').AsBoolean;
+    MetaTrigger.FDefinition    := tblSql.FieldByName('Definition').AsString.Trim();
+    MetaTrigger.FIsValid       := tblSql.FieldByName('IsValid').AsBoolean;
+  end;
+  // -------------------------------------------------------
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  TableName: string;
+  TriggerName: string;
+  MetaTable: TMetaTable;
+  MetaTrigger: TMetaTrigger;
+begin
+  SqlText := SqlStore.Provider.TriggersSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+      TableName := tblSql.FieldByName('TableName').AsString;
+      TableName := UnQuote(TableName);
+
+      MetaTable := Tables.Find(TableName);
+      if Assigned(MetaTable) then
+      begin
+        TriggerName := tblSql.FieldByName('TriggerName').AsString;
+        TriggerName := UnQuote(TriggerName);
+
+        MetaTrigger := MetaTable.Triggers.Add(TriggerName);
+        LoadTrigger(tblSql, MetaTrigger);
+      end;
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+end;
+// -------------------------------------------------------
+procedure TMetaDatabase.LoadProcedures();
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  ProcedureName: string;
+  MetaProcedure: TMetaProcedure;
+begin
+  SqlText := SqlStore.Provider.ProceduresSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+      ProcedureName := tblSql.FieldByName('ProcedureName').AsString.Trim();
+      ProcedureName := UnQuote(ProcedureName);
+
+      MetaProcedure := Procedures.Add(ProcedureName);
+      MetaProcedure.FProcedureType := tblSql.FieldByName('ProcedureType').AsString.Trim();
+      MetaProcedure.FDefinition    := tblSql.FieldByName('Definition').AsString.Trim();
+      MetaProcedure.FIsValid       := tblSql.FieldByName('IsValid').AsBoolean;
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+
+end;
+// -------------------------------------------------------
+procedure TMetaDatabase.LoadSequences();
+var
+  SqlText : string;
+  tblSql: TMemTable;
+  SequenceName: string;
+  MetaSequence: TMetaSequence;
+begin
+  SqlText := SqlStore.Provider.SequencesSql;
+
+  if Sys.IsEmpty(SqlText) then
+     Exit;
+
+  tblSql := FDatabase.SqlStore.Select(SqlText);
+  try
+    tblSql.First();
+    while not tblSql.Eof do
+    begin
+      SequenceName := tblSql.FieldByName('SequenceName').AsString.Trim();
+      SequenceName := UnQuote(SequenceName);
+
+      MetaSequence := Sequences.Add(SequenceName);
+      MetaSequence.FCurrentValue := tblSql.FieldByName('CurrentValue').AsInteger;
+      MetaSequence.FInitialValue := tblSql.FieldByName('InitialValue').AsInteger;
+      MetaSequence.FIncrementBy  := tblSql.FieldByName('IncrementBy').AsInteger;
+
+      tblSql.Next();
+    end;
+  finally
+    tblSql.Free();
+  end;
+
+end;
+// -------------------------------------------------------
+
 procedure TMetaDatabase.Load();
 begin
   if not FLoaded then
@@ -997,6 +1593,14 @@ begin
     try
       DoClear();
 
+      LoadTables();
+      LoadViews();
+      LoadIndexes();
+      LoadTriggers();
+      LoadProcedures();
+      LoadSequences();
+
+      {
       case SqlProviderType of
         ptFirebird   : LoadFirebird();
         ptSqlite     : LoadSqlite();
@@ -1005,6 +1609,7 @@ begin
         ptPostgreSql : LoadPostgreSql();
         ptOracle     : LoadOracle();
       end;
+      }
 
       FLoaded := True;
     finally
@@ -1018,195 +1623,7 @@ begin
   Result := Self.Tables.Find(TableName);
 end;
 
-procedure TMetaDatabase.LoadFirebird();
-  // -------------------------------------------------------
-  procedure LoadField(tblList: TMemTable; MetaField: TMetaField);
-  begin
-    MetaField.FDataType        := tblList.FieldByName('DataType').AsString.Trim();
-    MetaField.FDataSubType     := tblList.FieldByName('DataSubType').AsString.Trim();
-    MetaField.FIsNullable      := tblList.FieldByName('IsNullable').AsInteger = 1;
-    MetaField.FSizeInChars     := tblList.FieldByName('SizeInChars').AsInteger;
-    MetaField.FSizeInBytes     := tblList.FieldByName('SizeInBytes').AsInteger;
-    MetaField.FPrecision       := tblList.FieldByName('DecimalPrecision').AsInteger;
-    MetaField.FScale           := tblList.FieldByName('DecimalScale').AsInteger;
-    MetaField.FDefaultValue    := tblList.FieldByName('DefaultValue').AsString.Trim();
-    MetaField.FExpression      := tblList.FieldByName('Calculation').AsString.Trim();
-    MetaField.FOrdinalPosition := tblList.FieldByName('OrdinalPosition').AsInteger;
-    MetaField.FDescription     := tblList.FieldByName('FieldDescription').AsString.Trim();
-    MetaField.FSequenceName    := tblList.FieldByName('SequenceName').AsString.Trim();
-  end;
 
-  // -------------------------------------------------------
-  procedure LoadTables();
-  var
-    SqlText : string;
-    tblList: TMemTable;
-    TableName: string;
-    FieldName: string;
-    MetaTable: TMetaTable;
-    MetaField: TMetaField;
-  begin
-    SqlText := SFirebirdTablesAndFieldsSql;
-
-    tblList := FDatabase.SqlStore.Select(SqlText);
-    try
-      tblList.First();
-      while not tblList.Eof do
-      begin
-
-        // table, if not already in the list
-        TableName := tblList.FieldByName('TableName').AsString;
-        TableName := UnQuote(TableName);
-
-        MetaTable := Tables.Find(TableName);
-        if not Assigned(MetaTable) then
-        begin
-          MetaTable := Tables.Add(TableName);
-          MetaTable.FDefinition := tblList.FieldByName('Definition').AsString;
-        end;
-
-        // field
-        FieldName := tblList.FieldByName('FieldName').AsString;
-        FieldName := UnQuote(FieldName);
-        MetaField := MetaTable.Fields.Add(FieldName);
-        LoadField(tblList, MetaField);
-
-        tblList.Next();
-      end;
-    finally
-      tblList.Free();
-    end;
-  end;
-  // -------------------------------------------------------
-  procedure LoadViews();
-  var
-    SqlText : string;
-    tblList: TMemTable;
-    ViewName: string;
-    FieldName: string;
-    MetaView: TMetaView;
-    MetaField: TMetaField;
-  begin
-    SqlText := SFirebirdTablesAndFieldsSql;
-    SqlText := SqlText.Replace('t.RDB$VIEW_BLR is null', 't.RDB$VIEW_BLR is not null', [rfReplaceAll, rfIgnoreCase]);
-
-    tblList := FDatabase.SqlStore.Select(SqlText);
-    try
-      tblList.First();
-      while not tblList.Eof do
-      begin
-        // table, if not already in the list
-        ViewName := tblList.FieldByName('TableName').AsString;
-        ViewName := UnQuote(ViewName);
-
-        MetaView := Views.Find(ViewName);
-        if not Assigned(MetaView) then
-        begin
-          MetaView := Views.Add(ViewName);
-          MetaView.FDefinition := tblList.FieldByName('Definition').AsString;
-        end;
-
-        // field
-        FieldName := tblList.FieldByName('FieldName').AsString;
-        FieldName := UnQuote(FieldName);
-        MetaField := MetaView.Fields.Add(FieldName);
-        LoadField(tblList, MetaField);
-
-        tblList.Next();
-      end;
-    finally
-      tblList.Free();
-    end;
-  end;
-  // -------------------------------------------------------
-  procedure LoadIndex(tblList: TMemTable; MetaIndex: TMetaIndex);
-  begin
-    //MetaIndex.FFields         := tblList.FieldByName('FieldName').AsString.Trim();
-    MetaIndex.FFieldCount     := tblList.FieldByName('FieldCount').AsInteger;
-    MetaIndex.FForeignKey     := tblList.FieldByName('ForeignKey').AsString.Trim();
-    MetaIndex.FIndexType      := tblList.FieldByName('IndexType').AsString.Trim();
-    MetaIndex.FIsActive       := not tblList.FieldByName('IsInactive').AsBoolean;
-    MetaIndex.FIsDescending   := tblList.FieldByName('IsDescending').AsBoolean;
-    MetaIndex.FIsUnique       := tblList.FieldByName('IsUnique').AsBoolean;
-  end;
-  // -------------------------------------------------------
-  // https://www.firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref40/fblangref-appx04-indices.html
-  procedure LoadIndexes();
-  var
-    SqlText : string;
-    tblList: TMemTable;
-    TableName: string;
-    IndexName: string;
-    FieldName: string;
-    MetaTable: TMetaTable;
-    MetaIndex: TMetaIndex;
-  begin
-    SqlText := SFirebiredIndexesSql;
-
-    tblList := FDatabase.SqlStore.Select(SqlText);
-    try
-      tblList.First();
-      while not tblList.Eof do
-      begin
-        TableName := tblList.FieldByName('TableName').AsString;
-        TableName := UnQuote(TableName);
-
-        MetaTable := Tables.Find(TableName);
-        if Assigned(MetaTable) then
-        begin
-          IndexName := tblList.FieldByName('IndexName').AsString;
-          IndexName := UnQuote(IndexName);
-
-          FieldName := tblList.FieldByName('FieldName').AsString;
-          FieldName := UnQuote(FieldName);
-
-          MetaIndex := MetaTable.Indexes.Find(IndexName);
-          if not Assigned(MetaIndex) then
-          begin
-            MetaIndex := MetaTable.Indexes.Add(IndexName);
-            MetaIndex.FFields := FieldName;
-            LoadIndex(tblList, MetaIndex);
-          end else begin
-            MetaIndex.FFields := MetaIndex.FFields + ';' + FieldName;
-          end;
-        end;
-        tblList.Next();
-      end;
-    finally
-      tblList.Free();
-    end;
-  end;
-  // -------------------------------------------------------
-begin
-  LoadTables();
-  LoadViews();
-  LoadIndexes();
-end;
-
-procedure TMetaDatabase.LoadSqlite();
-begin
-
-end;
-
-procedure TMetaDatabase.LoadMsSql();
-begin
-
-end;
-
-procedure TMetaDatabase.LoadMySql();
-begin
-
-end;
-
-procedure TMetaDatabase.LoadPostgreSql();
-begin
-
-end;
-
-procedure TMetaDatabase.LoadOracle();
-begin
-
-end;
 
 function TMetaDatabase.GetNodes: TMetaNodeArray;
 begin
@@ -1443,9 +1860,9 @@ function TSqlConnectionInfo.GetConnectorType: string;
 begin
   Result := FConnectorType;
 
-  if not Sys.IsEmpty(FConnectorType) then
+  if not Sys.IsEmpty(FProvider) then
   begin
-    if Sys.IsSameText(FConnectorType, 'MsSql') then
+    if Sys.IsSameText(FProvider, 'MsSql') then
       Result := 'MSSQLServer'
   end else
     Result := Provider;
@@ -1639,28 +2056,15 @@ constructor TSqlProviderFirebird.Create();
 begin
   inherited Create();
   FProviderType := ptFirebird;
-  FName := SqlProviders.SFirebird;
+  FName         := SqlProviders.SFirebird;
 
-  FTablesSql := SFirebirdTablesSql;
   FTablesAndFieldsSql := SFirebirdTablesAndFieldsSql;
-
-
-{
-select rdb$relation_name
-from rdb$relations
-where rdb$view_blr is not null
-and (rdb$system_flag is null or rdb$system_flag = 0);
-
-Table and view columns are stored in RDB$RELATION_FIELDS. It stores the name, null flag, default value, and domain. In order to get the datatype you need to read domain info from rdb$fields. Here's a query that lists all tables with their columns:
-
-select f.rdb$relation_name, f.rdb$field_name
-from rdb$relation_fields f
-join rdb$relations r on f.rdb$relation_name = r.rdb$relation_name
-and r.rdb$view_blr is null
-and (r.rdb$system_flag is null or r.rdb$system_flag = 0)
-order by 1, f.rdb$field_position;
-
-}
+  FViewsAndFieldsSql  := SFirebirdTablesAndFieldsSql;
+  FViewsAndFieldsSql  := FViewsAndFieldsSql.Replace('t.RDB$VIEW_BLR is null', 't.RDB$VIEW_BLR is not null', [rfReplaceAll, rfIgnoreCase]);
+  FIndexesSql         := SFirebirdIndexesSql;
+  FTriggersSql        := SFirebirdTriggersSql;
+  FProceduresSql      := SFirebirdProceduresSql;
+  FSequencesSql       := SFirebirdSequencesSql;
 end;
 
 destructor TSqlProviderFirebird.Destroy();
@@ -1685,6 +2089,16 @@ end;
 constructor TSqlProviderMsSql.Create();
 begin
   inherited Create();
+
+  FProviderType := ptMsSql;
+  FName         := SqlProviders.SMsSql;
+
+  FTablesAndFieldsSql := SMsSqlTablesAndFieldsSql;
+  //FViewsAndFieldsSql  := SMsSqlTablesAndFieldsSql;
+  //FIndexesSql         := SMsSqlIndexesSql;
+  //FTriggersSql        := SMsSqlTriggersSql;
+  //FProceduresSql      := SMsSqlProceduresSql;
+  //FSequencesSql       := SMsSqlSequencesSql;
 end;
 
 destructor TSqlProviderMsSql.Destroy();
