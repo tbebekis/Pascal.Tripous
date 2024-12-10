@@ -195,7 +195,7 @@ const
    '    c.COLUMN_NAME                                       as FieldName,                   ' +
    '    c.DATA_TYPE                                         as DataType,                    ' +
    '    ''''                                                as DataSubType,                 ' +
-   '    c.IS_NULLABLE                                       as IsNullable,                  ' +
+   '    case c.IS_NULLABLE when ''YES'' then 1 else 0 end   as IsNullable,                  ' +
    '    coalesce(c.CHARACTER_MAXIMUM_LENGTH, 0)             as SizeInChars,                 ' +
    '    coalesce(c.CHARACTER_OCTET_LENGTH, 0)               as SizeInBytes,                 ' +
    '    coalesce(c.NUMERIC_PRECISION, 0)                    as DecimalPrecision,            ' +

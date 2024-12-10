@@ -37,7 +37,6 @@ object MainForm: TMainForm
     Connected = False
     LoginPrompt = False
     KeepConnection = False
-    ConnectorType = 'Firebird'
     Left = 112
     Top = 8
   end

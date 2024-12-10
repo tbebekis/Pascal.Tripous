@@ -238,7 +238,6 @@ type
 
   TMetaTable = class(TMetaNode)
   private
-    FDefinition: string;
     FFields: TMetaFields;
     FIndexes: TMetaIndexes;
     FTriggers: TMetaTriggers;
@@ -251,7 +250,6 @@ type
     property Fields: TMetaFields read FFields;
     property Indexes: TMetaIndexes read FIndexes;
     property Triggers: TMetaTriggers read FTriggers;
-    property Definition: string read FDefinition;
   end;
 
   { TMetaTables }
@@ -571,7 +569,7 @@ type
     property SequencesSql: string read FSequencesSql;
   end;
 
-  { TSqlProviderFirebird }
+  { TSqlProviderFirebird - 'User = SYSDBA; Psw = password; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';  }
   TSqlProviderFirebird = class(TSqlProvider)
   public
     constructor Create(); override;
@@ -586,8 +584,19 @@ type
     destructor Destroy(); override;
   end;
 
-  { TSqlProviderMsSql }
+  { TSqlProviderMsSql
 
+  Download the dblib_current.zip
+  from https://downloads.freepascal.org/fpc/contrib/windows/
+  or from ftp://ftp.freepascal.org/fpc/contrib/windows/
+  and unzip it.
+
+  In the unzip folder go to Win32 or Win64 folder
+  get the dblib.dll
+  and the libiconv.dll
+  and place them in the same folder as your app's executable.
+
+  SEE: https://wiki.freepascal.org/mssqlconn }
   TSqlProviderMsSql = class(TSqlProvider)
   public
     constructor Create(); override;
@@ -1348,10 +1357,7 @@ begin
 
       MetaTable := Tables.Find(TableName);
       if not Assigned(MetaTable) then
-      begin
         MetaTable := Tables.Add(TableName);
-        MetaTable.FDefinition := tblSql.FieldByName('Definition').AsString;
-      end;
 
       // field
       FieldName := tblSql.FieldByName('FieldName').AsString;
@@ -1813,9 +1819,9 @@ begin
     List := Sys.Split(FConnectionString, ';');
     for i := 0 to List.Count - 1 do
     begin
-      Key := List.Names[i];
+      Key   := List.Names[i];
       Value := Trim(List.Values[Key]);
-      Key := Trim(Key);
+      Key   := Trim(Key);
 
       if      Sys.IsSameText(Key, 'Type')
            or Sys.IsSameText(Key, 'ConnectorType') then
@@ -1998,6 +2004,7 @@ begin
   Providers := TList.Create();
 
   Providers.Add(TSqlProviderFirebird.Create());
+  Providers.Add(TSqlProviderMsSql.Create());
 end;
 
 class destructor SqlProviders.Destroy();

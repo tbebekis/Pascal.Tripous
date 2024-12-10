@@ -23,7 +23,7 @@ uses
 
   , LazFileUtils
   , DB
-  , SQLDB
+  , SQLDB, MSSQLConn
   , IBConnection
 
   ,Laz2_DOM
