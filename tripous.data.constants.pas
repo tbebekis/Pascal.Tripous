@@ -25,7 +25,7 @@ const
   SFirebirdTablesSql =
     'select                                                ' +
     '  RDB$RELATION_NAME as TableName,                     ' +
-    '  RDB$OWNER_NAME    as OwnerName                      ' +
+    '  RDB$OWNER_NAME    as SchemaName                      ' +
     'from                                                  ' +
     '  RDB$RELATIONS                                       ' +
     'where                                                 ' +
@@ -36,10 +36,27 @@ const
     ''
     ;
 
-  SFirebirdTablesAndFieldsSql =
+
+  SFirebirdViewsSql =
+    'select                                                ' +
+    '  RDB$OWNER_NAME                  as SchemaName,       ' +
+    '  RDB$RELATION_NAME               as TableName,       ' +
+    '  coalesce(RDB$VIEW_SOURCE, '''') as Definition       ' +
+    'from                                                  ' +
+    '  RDB$RELATIONS                                       ' +
+    'where                                                 ' +
+    '  (RDB$SYSTEM_FLAG is null or RDB$SYSTEM_FLAG = 0)    ' +
+    '  and RDB$VIEW_BLR is not null                        ' +
+    'order by                                              ' +
+    '  RDB$RELATION_NAME                                   '
+    ;
+
+
+  SFirebirdFieldsSql =
     'select                                                                                    ' +
-    '  t.RDB$OWNER_NAME                                as OwnerName,                           ' +
+    '  t.RDB$OWNER_NAME                                as SchemaName,                           ' +
     '  tf.RDB$RELATION_NAME                            as TableName,                           ' +
+    '  coalesce(t.RDB$VIEW_SOURCE, '''')               as Definition                           ' +
     '  tf.RDB$FIELD_NAME                               as FieldName,                           ' +
     '  case f.RDB$FIELD_TYPE                                                                   ' +
     '    when 7 then ''SMALLINT''                                                              ' +
@@ -89,7 +106,7 @@ const
 
   SFirebirdIndexesSql =
     'select                                                                                  ' +
-    '    t.RDB$OWNER_NAME                        as OwnerName,                               ' +
+    '    t.RDB$OWNER_NAME                        as SchemaName,                               ' +
     '    i.RDB$RELATION_NAME                     as TableName,                               ' +
     '    i.RDB$INDEX_NAME                        as IndexName,                               ' +
     '    isg.RDB$FIELD_NAME                      as FieldName,                               ' +
@@ -98,10 +115,6 @@ const
     '    coalesce(rc.RDB$CONSTRAINT_TYPE, '''')  as IndexType,                               ' +
     '    i.RDB$SEGMENT_COUNT                     as FieldCount,                              ' +
     '    coalesce(i.RDB$INDEX_INACTIVE, 0)       as IsInactive,                              ' +
-    '    case i.RDB$INDEX_TYPE                                                               ' +
-    '        when 1 then 1                                                                   ' +
-    '        else 0                                                                          ' +
-    '    end                                     as IsDescending,                            ' +
     '    coalesce(i.RDB$FOREIGN_KEY, '''')       as ForeignKey                               ' +
     'from                                                                                    ' +
     '    RDB$INDEX_SEGMENTS isg                                                              ' +
@@ -154,6 +167,38 @@ const
     '    RDB$TRIGGER_NAME                                                  '
     ;
 
+  SFirebirdConstraintsSql =
+    'select                                                                                                   ' +
+    '    rel.RDB$OWNER_NAME                        as SchemaName,                                              ' +
+    '    rc.RDB$CONSTRAINT_NAME                    as ConstraintName,                                         ' +
+    '    coalesce(rc.RDB$CONSTRAINT_TYPE, '''')    as ConstraintType,                                         ' +
+    '    rc.RDB$RELATION_NAME                      as TableName,                                              ' +
+    '    s.RDB$FIELD_NAME                          as FieldName,                                              ' +
+    '    coalesce(i2.RDB$RELATION_NAME, '''')      as ForeignTable,                                           ' +
+    '    coalesce(s2.RDB$FIELD_NAME, '''')         as ForeignField,                                           ' +
+    '    coalesce(refc.RDB$UPDATE_RULE, '''')      as UpdateRule,                                             ' +
+    '    coalesce(refc.RDB$DELETE_RULE, '''')      as DeleteRule,                                             ' +
+    '    (s.RDB$FIELD_POSITION + 1)                as FieldPosition                                           ' +
+    'from                                                                                                     ' +
+    '    RDB$INDEX_SEGMENTS s                                                                                 ' +
+    '        left join RDB$INDICES i on i.RDB$INDEX_NAME = s.RDB$INDEX_NAME                                   ' +
+    '        left join RDB$RELATION_CONSTRAINTS rc on rc.RDB$INDEX_NAME = s.RDB$INDEX_NAME                    ' +
+    '        left join RDB$REF_CONSTRAINTS refc on rc.RDB$CONSTRAINT_NAME = refc.RDB$CONSTRAINT_NAME          ' +
+    '        left join RDB$RELATION_CONSTRAINTS rc2 on rc2.RDB$CONSTRAINT_NAME = refc.RDB$const_name_uq       ' +
+    '        left join RDB$INDICES i2 on i2.RDB$INDEX_NAME = rc2.RDB$INDEX_NAME                               ' +
+    '        left join RDB$INDEX_SEGMENTS s2 on i2.RDB$INDEX_NAME = s2.RDB$INDEX_NAME                         ' +
+    '        left join RDB$relations rel on rel.RDB$RELATION_NAME = rc.RDB$RELATION_NAME                      ' +
+    'where                                                                                                    ' +
+    '  (rc.RDB$CONSTRAINT_TYPE IS NOT NULL)                                                                   ' +
+    '  and (rel.RDB$SYSTEM_FLAG  is null  or rel.RDB$SYSTEM_FLAG  = 0)                                        ' +
+    'order by                                                                                                 ' +
+    '    rc.RDB$RELATION_NAME,                                                                                ' +
+    '    rc.RDB$CONSTRAINT_NAME,                                                                              ' +
+    '    s.RDB$FIELD_POSITION                                                                                 '
+    ;
+
+
+
   SFirebirdProceduresSql =
     'select                                                                                    ' +
     '  RDB$PROCEDURE_NAME                     as ProcedureName,                                ' +
@@ -188,9 +233,35 @@ const
   // MsSql
   // ---------------------------------------------------------------------------------------------------------
 
-   SMsSqlTablesAndFieldsSql =
+  SMsSqlTablesSql =
+   'select                                              ' +
+   '	TABLE_SCHEMA 			as SchemaName,   ' +
+   '	TABLE_NAME			as TableName    ' +
+   'from                                                ' +
+   '	INFORMATION_SCHEMA.TABLES                       ' +
+   'where                                               ' +
+   '  	TABLE_TYPE = ''BASE TABLE''                     '
+   ;
+
+
+  SMsSqlViewsSql =
+   'select                                                            ' +
+   '	t.TABLE_SCHEMA 			as SchemaName,                 ' +
+   '	t.TABLE_NAME			as TableName,                 ' +
+   '	m.definition                    as Definition                 ' +
+   'from                                                              ' +
+   '	INFORMATION_SCHEMA.TABLES t                                   ' +
+   '        left join SYS.VIEWS v on v.name = t.TABLE_NAME            ' +
+   '        left join SYS.SQL_MODULES m on m.object_id = v.object_id  ' +
+   'where                                                             ' +
+   '  	t.TABLE_TYPE = ''VIEW''                                       '
+   ;
+
+
+
+   SMsSqlFieldsSql =
    'select                                                                                  ' +
-   '    c.TABLE_SCHEMA                                      as OwnerName,                   ' +
+   '    c.TABLE_SCHEMA                                      as SchemaName,                   ' +
    '    c.TABLE_NAME                                        as TableName,                   ' +
    '    c.COLUMN_NAME                                       as FieldName,                   ' +
    '    c.DATA_TYPE                                         as DataType,                    ' +
@@ -215,25 +286,138 @@ const
    '   c.ORDINAL_POSITION                                                                   '
    ;
 
+   SMsSqlIndexesSql =
+   'select                                                                                                    ' +
+   '    SCHEMA_NAME(t.schema_id) 		as SchemaName,                                                 ' +
+   '    t.name					as TableName,                                                 ' +
+   '    ind.name				as IndexName,                                                 ' +
+   '    col.name 				as FieldName,                                                 ' +
+   '    ic.key_ordinal				as FieldPosition,                                             ' +
+   '    is_unique				as IsUnique,                                                  ' +
+   '    ind.type_desc				as IndexType,                                                 ' +
+   '    is_primary_key				as IsPrimary                                                  ' +
+   'from                                                                                                      ' +
+   '	sys.indexes ind                                                                                       ' +
+   '        inner join sys.index_columns ic on  ind.object_id = ic.object_id and ind.index_id = ic.index_id   ' +
+   '        inner join sys.columns col on ic.object_id = col.object_id and ic.column_id = col.column_id       ' +
+   '        inner join sys.tables t on ind.object_id = t.object_id                                            ' +
+   'where                                                                                                     ' +
+   '	 t.is_ms_shipped = 0 AND                                                                              ' +
+   '	 ic.is_included_column = 0                                                                            ' +
+   'order by                                                                                                  ' +
+   '     t.name,                                                                                              ' +
+   '     ind.name,                                                                                            ' +
+   '     ic.key_ordinal                                                                                       '
+   ;
 
+   SMsSqlTriggersSql   =
+   'select                                                                         ' +
+   '    tr.name                                                 as TriggerName,    ' +
+   '    SCHEMA_NAME(t.schema_id)                       	        as SchemaName,      ' +
+   '    t.name                                                  as TableName,      ' +
+   '    tt.IsAfter + tt.IsInsert + tt.IsUpdate + tt.IsDelete    as TriggerType,    ' +
+   '    tr.is_disabled                                          as IsInactive,     ' +
+   '    OBJECT_DEFINITION(tr.object_id)                         as Definition      ' +
+   'from                                                                           ' +
+   '    sys.triggers as tr                                                         ' +
+   '        inner join sys.tables t on tr.parent_id = t.object_id                  ' +
+   '        inner join (                                                           ' +
+   'select                                                                         ' +
+   '    tr.name                                             as TriggerName,        ' +
+   '    t.name                                              as TableName,          ' +
+   '    case                                                                       ' +
+   '        OBJECTPROPERTY(tr.object_id, ''ExecIsAfterTrigger'')                   ' +
+   '            when 1 then ''after ''                                             ' +
+   '            else ''before '' end                           as IsAfter,         ' +
+   '    case                                                                       ' +
+   '        OBJECTPROPERTY(tr.object_id, ''ExecIsInsertTrigger'')                  ' +
+   '            when 1 then ''insert ''                                            ' +
+   '            else '''' end                                 as IsInsert,         ' +
+   '    case                                                                       ' +
+   '        OBJECTPROPERTY(tr.object_id, ''ExecIsUpdateTrigger'')                  ' +
+   '            when 1 then ''update ''                                            ' +
+   '            else '''' end                                 as IsUpdate,         ' +
+   '    case                                                                       ' +
+   '        OBJECTPROPERTY(tr.object_id, ''ExecIsDeleteTrigger'')                  ' +
+   '            when 1 then ''delete ''                                            ' +
+   '            else '''' end                                 as IsDelete          ' +
+   'from                                                                           ' +
+   '    sys.triggers as tr                                                         ' +
+   '        inner join sys.tables t on tr.parent_id = t.object_id                  ' +
+   '        ) as tt on tt.TableName = t.name and tt.TriggerName = tr.name          '
+   ;
 
+   SMsSqlConstraintsSql =
+   'select distinct                                                                                                                           ' +
+   '    Constraints.constraint_schema				as SchemaName,                                                                 ' +
+   '    Constraints.constraint_name                             as ConstraintName,                                                            ' +
+   '    Constraints.constraint_type                             as ConstraintType,                                                            ' +
+   '    KeyColumns.table_name					as TableName,                                                                 ' +
+   '    KeyColumns.column_name					as FieldName,                                                                 ' +
+   '    coalesce(Constraints2.table_name, '''')                 as ForeignTable,                                                              ' +
+   '	coalesce(ForeignInfo.ForeignField, '''') 		as ForeignField,                                                              ' +
+   '    coalesce(Constraints2.table_schema, '''')               as ForeignSchema,                                                             ' +
+   '    coalesce(Refs.update_rule, '''')			as UpdateRule,                                                                ' +
+   '    coalesce(Refs.delete_rule, '''')			as DeleteRule,                                                                ' +
+   '    KeyColumns.ordinal_position				as FieldPosition                                                              ' +
+   'from                                                                                                                                      ' +
+   '    INFORMATION_SCHEMA.TABLE_CONSTRAINTS as Constraints                                                                                   ' +
+   '		inner join INFORMATION_SCHEMA.KEY_COLUMN_USAGE as KeyColumns                                                                  ' +
+   '			on (Constraints.constraint_catalog = KeyColumns.constraint_catalog or Constraints.constraint_catalog is null)         ' +
+   '			and Constraints.constraint_schema = KeyColumns.constraint_schema                                                      ' +
+   '			and Constraints.constraint_name = KeyColumns.constraint_name                                                          ' +
+   '			and Constraints.table_name = KeyColumns.table_name                                                                    ' +
+   '		left join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS as Refs                                                                  ' +
+   '			on (Constraints.constraint_catalog = Refs.constraint_catalog or Constraints.constraint_catalog is null)               ' +
+   '			and Constraints.constraint_schema = Refs.constraint_schema                                                            ' +
+   '			and Constraints.constraint_name = Refs.constraint_name                                                                ' +
+   '		left join INFORMATION_SCHEMA.TABLE_CONSTRAINTS as Constraints2                                                                ' +
+   '			on (Constraints2.constraint_catalog = Refs.constraint_catalog or Constraints2.constraint_catalog is null)             ' +
+   '			and Constraints2.constraint_schema = Refs.unique_constraint_schema                                                    ' +
+   '			and Constraints2.constraint_name = Refs.unique_constraint_name                                                        ' +
+   '		left join (                                                                                                                   ' +
+   'select                                                                                                                                     ' +
+   '  ForeignKeys.name                                  as ConstraintName,                                                                     ' +
+   '  SCHEMA_NAME(ForeignKeys.schema_id)                as SchemaName,                                                                          ' +
+   '  OBJECT_NAME(ForeignKeys.parent_object_id)         as TableName,                                                                          ' +
+   '  ParentColumns.name                                as FieldName,                                                                          ' +
+   '  OBJECT_NAME(ForeignKeys.referenced_object_id)     as ForeignTable,                                                                       ' +
+   '  RefColums.name                                    as ForeignField                                                                        ' +
+   'from                                                                                                                                       ' +
+   '  sys.foreign_keys as ForeignKeys                                                                                                          ' +
+   '    inner join sys.foreign_key_columns as ForeignKeyColumns                                                                                ' +
+   '            on  ForeignKeys.parent_object_id = ForeignKeyColumns.parent_object_id                                                          ' +
+   '            and ForeignKeys.object_id = ForeignKeyColumns.constraint_object_id                                                             ' +
+   '            and ForeignKeys.referenced_object_id = ForeignKeyColumns.referenced_object_id                                                  ' +
+   '    inner join sys.columns as ParentColumns                                                                                                ' +
+   '            on  ForeignKeyColumns.parent_object_id = ParentColumns.object_id                                                               ' +
+   '            and ForeignKeyColumns.parent_column_id = ParentColumns.column_id                                                               ' +
+   '    inner join sys.columns as RefColums                                                                                                    ' +
+   '            on  ForeignKeyColumns.referenced_object_id = RefColums.object_id                                                               ' +
+   '            and ForeignKeyColumns.referenced_column_id = RefColums.column_id                                                               ' +
+   ') ForeignInfo                                                                                                                              ' +
+   '	on  ForeignInfo.ConstraintName = Constraints.constraint_name                                                                          ' +
+   '	and ForeignInfo.SchemaName = Constraints.constraint_schema                                                                      ' +
+   '	and ForeignInfo.TableName = KeyColumns.table_name                                                                                     ' +
+   '	and ForeignInfo.FieldName = KeyColumns.column_name                                                                                    ' +
+   'order by                                                                                                                                   ' +
+   '    KeyColumns.table_name,                                                                                                                 ' +
+   '    Constraints.constraint_name,                                                                                                           ' +
+   '    ordinal_position                                                                                                                       '
+   ;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   SMsSqlProceduresSql   =
+   'select                                                                          ' +
+   '  r.SPECIFIC_SCHEMA              as SchemaName,                                  ' +
+   '  r.SPECIFIC_NAME                as ProcedureName,                              ' +
+   '  r.ROUTINE_TYPE                 as ProcedureType,                              ' +
+   '  r.ROUTINE_DEFINITION           as Definition                                  ' +
+   'from                                                                            ' +
+   '  INFORMATION_SCHEMA.ROUTINES r                                                 ' +
+   '  	left join sys.procedures p on p.name  = r.SPECIFIC_NAME and p.type = ''P''  ' +
+   'where                                                                           ' +
+   '	is_ms_shipped = 0                                                           '
+   ;
 
 
 

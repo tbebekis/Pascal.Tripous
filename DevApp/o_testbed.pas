@@ -170,6 +170,25 @@ begin
 end;
 
 procedure TestMetastores();
+
+  procedure FirebirdConInfo(ConInfo: TSqlConnectionInfo);
+  begin
+    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird);
+    ConInfo.ConnectionString := 'Server=localhost; User=SYSDBA; Psw=mirodato; Database=C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
+  end;
+
+  procedure MsSqlConInfo(ConInfo: TSqlConnectionInfo);
+  begin
+    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptMsSql);
+    ConInfo.ConnectionString := 'Server=localhost; Database=AdventureWorksLT2012; Integrated Security=SSPI';
+  end;
+
+  procedure MySqlConInfo(ConInfo: TSqlConnectionInfo);
+  begin
+    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptMySql);
+    ConInfo.ConnectionString := 'Server=localhost; Database=employees; User=root; Psw=yoda2k';
+  end;
+
 var
   ConInfo: TSqlConnectionInfo;
 begin
@@ -177,19 +196,16 @@ begin
   try
     ConInfo.Name := 'Default';
 
-    //ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird);
-    //ConInfo.ConnectionString := 'User = SYSDBA; Psw = mirodato; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';
+    //FirebirdConInfo(ConInfo);
+    //MsSqlConInfo(ConInfo);
+    MySqlConInfo(ConInfo);
 
-    ConInfo.Provider := SqlProviders.ProviderTypeToString(ptMsSql);
-    ConInfo.ConnectionString := 'Data Source=localhost; Initial Catalog=AdventureWorksLT2012; Integrated Security=SSPI';
     DbSys.MetaDatabases.Add(ConInfo);
   finally
     ConInfo.Free();
   end;
 
   DbSys.MetaDatabases.Clear();
-   //DbSys.MetaDatabases.Free();
-
 end;
 
 type
