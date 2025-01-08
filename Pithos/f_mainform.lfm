@@ -1,0 +1,113 @@
+object MainForm: TMainForm
+  Left = 368
+  Height = 629
+  Top = 152
+  Width = 1156
+  Caption = 'Pithos'
+  ClientHeight = 629
+  ClientWidth = 1156
+  Menu = MainMenu
+  Position = poDesktopCenter
+  LCLVersion = '3.4.0.0'
+  WindowState = wsMaximized
+  object ToolBar: TToolBar
+    Left = 0
+    Height = 34
+    Top = 0
+    Width = 1156
+    AutoSize = True
+    ButtonHeight = 32
+    ButtonWidth = 32
+    Caption = 'ToolBar'
+    Images = dmCommon.CommonImageList
+    TabOrder = 0
+    Wrapable = False
+    object btnExit: TToolButton
+      Left = 1
+      Top = 2
+      Caption = 'Exit'
+      ImageIndex = 0
+      MenuItem = mnuExit
+      ParentShowHint = False
+      ShowCaption = False
+      ShowHint = True
+    end
+  end
+  object StatusBar: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 606
+    Width = 1156
+    Panels = <>
+  end
+  object TreeView1: TTreeView
+    Left = 0
+    Height = 572
+    Top = 34
+    Width = 235
+    Align = alLeft
+    TabOrder = 2
+  end
+  object Splitter1: TSplitter
+    Left = 235
+    Height = 572
+    Top = 34
+    Width = 5
+    Beveled = True
+  end
+  object pnlRight: TPanel
+    Left = 240
+    Height = 572
+    Top = 34
+    Width = 916
+    Align = alClient
+    Caption = 'pnlRight'
+    ClientHeight = 572
+    ClientWidth = 916
+    TabOrder = 4
+    object mmoLog: TMemo
+      Left = 1
+      Height = 90
+      Top = 481
+      Width = 914
+      Align = alBottom
+      Color = clForm
+      Font.CharSet = ANSI_CHARSET
+      Font.Height = -13
+      Font.Name = 'Courier New'
+      Font.Pitch = fpFixed
+      Font.Quality = fqDraft
+      ParentFont = False
+      TabOrder = 0
+    end
+    object Splitter2: TSplitter
+      Cursor = crVSplit
+      Left = 1
+      Height = 5
+      Top = 476
+      Width = 914
+      Align = alBottom
+      Beveled = True
+      ResizeAnchor = akBottom
+    end
+    object pnlBody: TPanel
+      Left = 1
+      Height = 475
+      Top = 1
+      Width = 914
+      Align = alClient
+      TabOrder = 2
+    end
+  end
+  object MainMenu: TMainMenu
+    Left = 32
+    Top = 504
+    object mnuFile: TMenuItem
+      Caption = 'File'
+      object mnuExit: TMenuItem
+        Caption = 'Exit'
+        ImageIndex = 0
+      end
+    end
+  end
+end

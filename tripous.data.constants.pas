@@ -113,8 +113,6 @@ const
     '    (isg.RDB$FIELD_POSITION + 1)            as FieldPosition,                           ' +
     '    i.RDB$UNIQUE_FLAG                       as IsUnique,                                ' +
     '    coalesce(rc.RDB$CONSTRAINT_TYPE, '''')  as IndexType,                               ' +
-    '    i.RDB$SEGMENT_COUNT                     as FieldCount,                              ' +
-    '    coalesce(i.RDB$INDEX_INACTIVE, 0)       as IsInactive,                              ' +
     '    coalesce(i.RDB$FOREIGN_KEY, '''')       as ForeignKey                               ' +
     'from                                                                                    ' +
     '    RDB$INDEX_SEGMENTS isg                                                              ' +

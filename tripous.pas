@@ -26,6 +26,7 @@ uses
   ,bufdataset
   ,laz2_DOM
   ,fpjsonrtti
+  ,LCLType
 
   //, Laz2_XMLUtils
   ;
@@ -1025,6 +1026,7 @@ type
     class function InMainThread(): Boolean;
     class procedure ProcessMessages();
     class procedure ClearObjectList(List: TList);
+    class function LoadResourceTextFile(ResourceName: string): string;
 
     { properties }
     class property InvariantFormatSettings    : TFormatSettings read FInvariantFormatSettings;
@@ -4639,10 +4641,6 @@ begin
   FAppExeName   := ChangeFileExt(ExtractFileName(FAppPath), '');
 
   FInvariantFormatSettings := FormatSettings;
-
-
-
-
 end;
 (*----------------------------------------------------------------------------*)
 class destructor Sys.Destroy;
@@ -5940,7 +5938,25 @@ begin
   end;
 end;
 
-
+class function Sys.LoadResourceTextFile(ResourceName: string): string;
+var
+  RS : TResourceStream;
+  SS : TStringStream;
+begin
+  RS := TResourceStream.Create(HInstance, ResourceName, RT_RCDATA);
+  try
+    RS.Position := 0;
+    SS := TStringStream.Create();
+    try
+      SS.LoadFromStream(RS);
+      Result := SS.DataString;
+    finally
+      SS.Free();
+    end;
+  finally
+    RS.Free;
+  end;
+end;
 
 
 

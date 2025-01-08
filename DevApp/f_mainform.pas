@@ -158,8 +158,9 @@ end;
 
 procedure TMainForm.Test();
 begin
-  TestMetastores();
+  //TestMetastores();
   //TestDynArray();
+  mmoLog.Text := LoadResourceAsString('PostgreSql_TableFields');
 end;
 
 

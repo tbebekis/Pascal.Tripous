@@ -41,6 +41,15 @@ type
     ntSequence
   );
 
+  TConstraintType = (
+    Unknown = 0,
+    PrimaryKey = 1,
+    ForeignKey = 2,
+    Unique = 3,
+    Check = 4,
+    NotNull = 5
+  );
+
 
 
   TSqlProviderType = (
@@ -165,8 +174,8 @@ type
     destructor Destroy(); override;
 
     property IndexType: string read FIndexType;
-    property Fields: string read FFields;
     property IsUnique: Boolean read FIsUnique;
+    property Fields: string read FFields;
   end;
 
   { TMetaIndexes }
@@ -193,7 +202,6 @@ type
   TMetaTrigger = class(TMetaNode)
   private
     FDefinition: string;
-    FIsActive: Boolean;
     FTableName: string;
     FTriggerType: string;
   public
@@ -203,7 +211,6 @@ type
     property TriggerType: string read FTriggerType;
     property TableName: string read FTableName;
     property Definition: string read FDefinition;
-    property IsActive: Boolean read FIsActive;
   end;
 
   { TMetaTriggers }
@@ -229,7 +236,8 @@ type
 
   TMetaConstraint = class(TMetaNode)
   private
-    FConstraintType: string;
+    FConstraintType: TConstraintType;
+    FConstraintTypeText: string;
     FDeleteRule: string;
     FFields: string;
     FForeignFields: string;
@@ -239,7 +247,8 @@ type
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
     destructor Destroy(); override;
 
-    property ConstraintType: string read FConstraintType;
+    property ConstraintTypeText: string read FConstraintTypeText;
+    property ConstraintType: TConstraintType read FConstraintType;
     property Fields: string read FFields;
     property ForeignTable: string read FForeignTable;
     property ForeignFields: string read FForeignFields;
@@ -595,6 +604,16 @@ type
     FConstraintsSql: string;
     FProceduresSql: string;
     FSequencesSql: string;
+
+    function GetTablesSql(): string; virtual;
+    function GetViewsSql(): string; virtual;
+    function GetTableFieldsSql(): string; virtual;
+    function GetViewFieldsSql(): string; virtual;
+    function GetIndexesSql(): string; virtual;
+    function GetTriggersSql(): string; virtual;
+    function GetConstraintsSql(): string; virtual;
+    function GetProceduresSql(): string; virtual;
+    function GetSequencesSql(): string; virtual;
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
@@ -603,15 +622,15 @@ type
     property ProviderType: TSqlProviderType read FProviderType;
 
     // metadata SELECTs
-    property TablesSql: string read FTablesSql;
-    property TableFieldsSql: string read FTableFieldsSql;
-    property ViewsSql: string read FViewsSql;
-    property ViewFieldsSql: string read FViewFieldsSql;
-    property IndexesSql: string read FIndexesSql;
-    property TriggersSql: string read FTriggersSql;
-    property ConstraintsSql: string read FConstraintsSql;
-    property ProceduresSql: string read FProceduresSql;
-    property SequencesSql: string read FSequencesSql;
+    property TablesSql:      string read GetTablesSql;
+    property TableFieldsSql: string read GetTableFieldsSql;
+    property ViewsSql:       string read GetViewsSql;
+    property ViewFieldsSql:  string read GetViewFieldsSql;
+    property IndexesSql:     string read GetIndexesSql;
+    property TriggersSql:    string read GetTriggersSql;
+    property ConstraintsSql: string read GetConstraintsSql;
+    property ProceduresSql:  string read GetProceduresSql;
+    property SequencesSql:   string read GetSequencesSql;
   end;
 
   { TSqlProviderFirebird - 'User = SYSDBA; Psw = password; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';  }
@@ -689,6 +708,10 @@ type
   public
     constructor Create(ConnectionInfo: TSqlConnectionInfo);
     destructor Destroy(); override;
+
+    procedure StartTransaction();
+    procedure Commit();
+    procedure Rollback();
 
     function  Select(const SqlText: string; Params: array of const): TMemTable; overload;
     function  Select(const SqlText: string): TMemTable; overload;
@@ -792,6 +815,7 @@ type
 
 implementation
 
+{$R MetadataSqls\Resources.RC}
 
 uses
    Tripous.Data.Constants
@@ -1673,7 +1697,7 @@ procedure TMetaDatabase.LoadTriggers();
   begin
     MetaTrigger.FTableName     := UnQuote(tblSql.FieldByName('TableName').AsString.Trim());
     MetaTrigger.FTriggerType   := tblSql.FieldByName('TriggerType').AsString.Trim();
-    MetaTrigger.FIsActive      := not tblSql.FieldByName('IsInactive').AsBoolean;
+    //MetaTrigger.FIsActive      := not tblSql.FieldByName('IsInactive').AsBoolean;
     MetaTrigger.FDefinition    := tblSql.FieldByName('Definition').AsString.Trim();
   end;
   // -------------------------------------------------------
@@ -1792,12 +1816,13 @@ begin
         if not Assigned(MetaConstraint) then
         begin
           MetaConstraint := MetaTable.Constraints.Add(ConstraintName, Schema);
-          MetaConstraint.FConstraintType := tblSql.FieldByName('ConstraintType').AsString.Trim();
-          MetaConstraint.FFields         := FieldName;
-          MetaConstraint.FForeignTable   := tblSql.FieldByName('ForeignTable').AsString.Trim();
-          MetaConstraint.FForeignFields  := ForeignField;
-          MetaConstraint.FUpdateRule     := tblSql.FieldByName('UpdateRule').AsString.Trim();
-          MetaConstraint.FDeleteRule     := tblSql.FieldByName('DeleteRule').AsString.Trim();
+          MetaConstraint.FConstraintTypeText := tblSql.FieldByName('ConstraintTypeText').AsString.Trim();
+          MetaConstraint.FConstraintType     := TConstraintType(tblSql.FieldByName('ConstraintType').AsInteger);
+          MetaConstraint.FFields             := FieldName;
+          MetaConstraint.FForeignTable       := tblSql.FieldByName('ForeignTable').AsString.Trim();
+          MetaConstraint.FForeignFields      := ForeignField;
+          MetaConstraint.FUpdateRule         := tblSql.FieldByName('UpdateRule').AsString.Trim();
+          MetaConstraint.FDeleteRule         := tblSql.FieldByName('DeleteRule').AsString.Trim();
         end else begin
           if FieldName <> '' then
              MetaConstraint.FFields  := MetaConstraint.FFields + ';' + FieldName;
@@ -2317,6 +2342,116 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProvider.GetTablesSql(): string;
+var
+  ResourceName: string;
+begin
+  if FTablesSql = '' then
+  begin
+    ResourceName := Self.Name + '_Tables';
+    FTablesSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FTablesSql;
+end;
+
+function TSqlProvider.GetViewsSql(): string;
+var
+  ResourceName: string;
+begin
+  if FViewsSql = '' then
+  begin
+    ResourceName := Self.Name + '_Views';
+    FViewsSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FViewsSql;
+end;
+
+function TSqlProvider.GetTableFieldsSql(): string;
+var
+  ResourceName: string;
+begin
+  if FTableFieldsSql = '' then
+  begin
+    ResourceName := Self.Name + '_TableFields';
+    FTableFieldsSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FTableFieldsSql;
+end;
+
+function TSqlProvider.GetViewFieldsSql(): string;
+var
+  ResourceName: string;
+begin
+  if FViewFieldsSql = '' then
+  begin
+    ResourceName := Self.Name + '_ViewFields';
+    FViewFieldsSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FViewFieldsSql;
+end;
+
+function TSqlProvider.GetIndexesSql(): string;
+var
+  ResourceName: string;
+begin
+  if FIndexesSql = '' then
+  begin
+    ResourceName := Self.Name + '_Indexes';
+    FIndexesSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FIndexesSql;
+end;
+
+function TSqlProvider.GetTriggersSql(): string;
+var
+  ResourceName: string;
+begin
+  if FTriggersSql = '' then
+  begin
+    ResourceName := Self.Name + '_Triggers';
+    FTriggersSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FTriggersSql;
+end;
+
+function TSqlProvider.GetConstraintsSql(): string;
+var
+  ResourceName: string;
+begin
+  if FConstraintsSql = '' then
+  begin
+    ResourceName := Self.Name + '_Constraints';
+    FConstraintsSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FConstraintsSql;
+end;
+
+function TSqlProvider.GetProceduresSql(): string;
+var
+  ResourceName: string;
+begin
+  if FProceduresSql = '' then
+  begin
+    ResourceName := Self.Name + '_Procedures';
+    FProceduresSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FProceduresSql;
+end;
+
+function TSqlProvider.GetSequencesSql(): string;
+var
+  ResourceName: string;
+begin
+  if FSequencesSql = '' then
+  begin
+    ResourceName := Self.Name + '_Sequences';
+    FSequencesSql := Sys.LoadResourceTextFile(ResourceName);
+  end;
+  Result := FSequencesSql;
+end;
+
+
+
 { TSqlProviderFirebird }
 
 constructor TSqlProviderFirebird.Create();
@@ -2324,7 +2459,7 @@ begin
   inherited Create();
   FProviderType := ptFirebird;
   FName         := SqlProviders.SFirebird;
-
+  {
   FTablesSql           := SFirebirdTablesSql;
   FTableFieldsSql      := SFirebirdFieldsSql;
   FViewsSql            := SFirebirdViewsSql;
@@ -2335,6 +2470,7 @@ begin
   FConstraintsSql      := SFirebirdConstraintsSql;
   FProceduresSql       := SFirebirdProceduresSql;
   FSequencesSql        := SFirebirdSequencesSql;
+  }
 end;
 
 destructor TSqlProviderFirebird.Destroy();
@@ -2347,6 +2483,8 @@ end;
 constructor TSqlProviderSqlite.Create();
 begin
   inherited Create();
+  FProviderType := ptSqlite;
+  FName         := SqlProviders.SSqlite;
 end;
 
 destructor TSqlProviderSqlite.Destroy();
@@ -2359,10 +2497,9 @@ end;
 constructor TSqlProviderMsSql.Create();
 begin
   inherited Create();
-
   FProviderType := ptMsSql;
   FName         := SqlProviders.SMsSql;
-
+  {
   FTablesSql          := SMsSqlTablesSql;
   FTableFieldsSql     := SMsSqlFieldsSql;
   FViewsSql           := SMsSqlViewsSql;
@@ -2375,7 +2512,7 @@ begin
   FConstraintsSql     := SMsSqlConstraintsSql;
   FProceduresSql      := SMsSqlProceduresSql;
   //FSequencesSql       := SMsSqlSequencesSql;
-
+  }
 end;
 
 destructor TSqlProviderMsSql.Destroy();
@@ -2388,6 +2525,8 @@ end;
 constructor TSqlProviderMySql.Create();
 begin
   inherited Create();
+  FProviderType := ptMySql;
+  FName         := SqlProviders.SMySql;
 end;
 
 destructor TSqlProviderMySql.Destroy();
@@ -2400,6 +2539,8 @@ end;
 constructor TSqlProviderPostgreSql.Create();
 begin
   inherited Create();
+  FProviderType := ptPostgreSql;
+  FName         := SqlProviders.SPostgreSql;
 end;
 
 destructor TSqlProviderPostgreSql.Destroy();
@@ -2412,6 +2553,8 @@ end;
 constructor TSqlProviderOracle.Create();
 begin
   inherited Create();
+  FProviderType := ptOracle;
+  FName         := SqlProviders.SOracle;
 end;
 
 destructor TSqlProviderOracle.Destroy();
@@ -2450,6 +2593,36 @@ begin
   FConnectionInfo.Free();
 
   inherited Destroy();
+end;
+
+procedure TSqlStore.StartTransaction();
+begin
+  if FSqlTransaction.Active then
+    Sys.Error('Transaction is already started.');
+
+  FSqlConnector.Connected := True;
+  //FSqlTransaction.Active := True;
+  FSqlTransaction.StartTransaction();
+end;
+
+procedure TSqlStore.Commit();
+begin
+  if not FSqlTransaction.Active then
+    Sys.Error('Transaction is not active.');
+
+  //FSqlTransaction.Active := False;
+  FSqlTransaction.Commit();
+  FSqlConnector.Connected := False;
+end;
+
+procedure TSqlStore.Rollback();
+begin
+  if not FSqlTransaction.Active then
+    Sys.Error('Transaction is not active.');
+
+  //FSqlTransaction.Active := False;
+  FSqlTransaction.Rollback();
+  FSqlConnector.Connected := False;
 end;
 
 procedure TSqlStore.BeginOperation(const SqlText: string; Params: array of const);

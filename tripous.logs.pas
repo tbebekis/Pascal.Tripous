@@ -23,9 +23,20 @@ uses
   ,SQLDB
   ,sqlite3conn
   ,BufDataset
-  ,fgl
+  //,fgl
   ,Tripous
   ;
+
+
+{ 1. A TLogListener automatically adds itself to Logger.Listeners when created
+     and automatically removes itself from Logger.Listeners when destroyed.
+  2. TLogTextListener and TLogLineListener inherit from TLogToMainThreadListener
+     which synchronizes updates to MainThread controls
+  3. The TFormLogListener shows a Form in the upper right screen corner
+     where it displays log information
+  4. The TSqlDbLogListener saves log information in a database.
+     Using the CreateSQLite() it makes it to use a SQLite database,
+     so the property sqlite3.dll should be in the project folder. }
  
 type
   TLogLevel =  (
@@ -420,6 +431,34 @@ type
     class property RetainSizeKiloBytes : SizeInt read GetRetainSizeKiloBytes write FRetainSizeKiloBytes;
     // After how many writes to check whether it is time to apply the retain policy. Defaults to 100
     class property RetainPolicyCounter: Integer read GetRetainPolicyCounter write FRetainPolicyCounter;
+  end;
+
+  { LogBox }
+
+  LogBox = class
+  class var
+    FLock                   : SyncObjs.TCriticalSection;
+    FLockCount              : Integer;
+
+    mmoLog: TCustomMemo;
+    LogLineListener: TLogLineListener;
+    FLogTextList  : TStringList;
+
+    class procedure Lock();
+    class procedure UnLock();
+
+    class procedure DoClear();
+    class procedure DoLog();
+  public
+    class constructor Create();
+    class destructor Destroy();
+
+    class procedure Initialize(Memo: TCustomMemo; UseLogListenerToo: Boolean = True);
+    class procedure Clear();
+    class procedure Append(Text: string);
+    class procedure AppendLine(Text: string); overload;
+    class procedure AppendLine(Ex: Exception); overload;
+    class procedure AppendLine(); overload;
   end;
 
 
@@ -2649,6 +2688,135 @@ begin
   ScopeId := '';
   EventId := '0';
   Log(Source, ScopeId, EventId, loError, Ex, Text, nil);
+end;
+
+
+type
+
+  { TLogBoxLineListener }
+
+  TLogBoxLineListener = class(TLogLineListener)
+  private
+     procedure LogProc(LogText: string);
+  public
+    constructor Create(LogLineProc: TLogTextProc); override;
+  end;
+
+{ TLogBoxLineListener }
+constructor TLogBoxLineListener.Create(LogLineProc: TLogTextProc);
+begin
+  inherited Create(LogProc);
+end;
+
+procedure TLogBoxLineListener.LogProc(LogText: string);
+begin
+  if Assigned(LogBox.mmoLog) then
+     LogBox.mmoLog.Append(Trim(LogText) + sLineBreak);
+end;
+
+
+
+{ LogBox }
+class constructor LogBox.Create();
+begin
+  FLock           := SyncObjs.TCriticalSection.Create();
+  FLogTextList    := TStringList.Create();
+end;
+
+class destructor LogBox.Destroy();
+begin
+  FLogTextList.Free();
+  FLock.Free();
+end;
+
+class procedure LogBox.Lock;
+begin
+  Inc(FLockCount);
+  if FLockCount = 1 then
+    FLock.Enter;
+end;
+
+class procedure LogBox.UnLock;
+begin
+  Dec(FLockCount);
+  if FLockCount <= 0 then
+  begin
+    FLockCount := 0;
+    FLock.Leave();
+  end;
+end;
+
+class procedure LogBox.Initialize(Memo: TCustomMemo; UseLogListenerToo: Boolean);
+begin
+  if not Assigned(mmoLog) then
+     mmoLog := Memo;
+
+  if UseLogListenerToo and not Assigned(LogLineListener) then
+    LogLineListener := TLogBoxLineListener.Create(nil);
+end;
+
+class procedure LogBox.DoClear();
+begin
+  if Assigned(LogBox.mmoLog) then
+     LogBox.mmoLog.Clear();
+end;
+
+class procedure LogBox.DoLog();
+var
+  Text: string;
+begin
+  if Assigned(LogBox.mmoLog) then
+  begin
+    if FLogTextList.Count > 0 then
+    begin
+      Text := FLogTextList[0];
+      FLogTextList.Delete(0);
+      LogBox.mmoLog.Append(Text);
+    end;
+  end;
+end;
+
+class procedure LogBox.Clear();
+begin
+  Lock();
+  try
+    TThread.Synchronize(TThread.CurrentThread, DoClear);  // Addr(DoClear)
+  finally
+    UnLock();
+  end;
+end;
+
+class procedure LogBox.Append(Text: string);
+begin
+  Lock();
+  try
+    FLogTextList.Add(Text);
+    TThread.Synchronize(TThread.CurrentThread, DoLog);  // Addr(DoLog)
+  finally
+    UnLock();
+  end;
+end;
+
+class procedure LogBox.AppendLine(Text: string);
+begin
+  Text := sLineBreak + Text;
+  Append(Text);
+end;
+
+class procedure LogBox.AppendLine(Ex: Exception);
+var
+  Text: string;
+begin
+  Text := Ex.ToString(); // Ex.ClassName + ': ' + Ex.Message;
+  AppendLine(Text);
+end;
+
+class procedure LogBox.AppendLine();
+var
+  Text: string;
+begin
+  Text := '-------------------------------------------------------------------';
+  AppendLine(Text);
 end;
 
 

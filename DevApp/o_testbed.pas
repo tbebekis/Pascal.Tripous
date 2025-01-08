@@ -30,6 +30,7 @@ uses
     ,Laz2_DOM, RTTIGrids
     //,laz2_XMLWrite
     ,Rtti
+    ,LCLType
   ;
 
 
@@ -41,6 +42,8 @@ function  TestSchemaInfo(): string;
 procedure TestMetastores();
 
 procedure TestDynArray();
+
+function LoadResourceAsString(ResourceName: string): string;
 
 
 implementation
@@ -250,6 +253,26 @@ begin
   A.RemoveAt(0);
 
   A.Free();
+end;
+
+function LoadResourceAsString(ResourceName: string): string;
+var
+  RS : TResourceStream;
+  SS : TStringStream;
+begin
+  RS := TResourceStream.Create(HInstance, ResourceName, RT_RCDATA);
+  try
+    RS.Position := 0;
+    SS := TStringStream.Create();
+    try
+      SS.LoadFromStream(RS);
+      Result := SS.DataString;
+    finally
+      SS.Free();
+    end;
+  finally
+    RS.Free;
+  end;
 end;
 
 
