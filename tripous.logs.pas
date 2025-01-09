@@ -35,8 +35,8 @@ uses
   3. The TFormLogListener shows a Form in the upper right screen corner
      where it displays log information
   4. The TSqlDbLogListener saves log information in a database.
-     Using the CreateSQLite() it makes it to use a SQLite database,
-     so the property sqlite3.dll should be in the project folder. }
+     Using the CreateSQLite() constructor it makes it to use a SQLite database,
+     so the proper sqlite3.dll should be in the project folder. }
  
 type
   TLogLevel =  (
@@ -278,8 +278,7 @@ type
     FLogRecordList        : TGenObjectList<TLogRecord>;
     FCounter              : Integer;
 
-
-    procedure PrepareSQLite3Connection();
+    procedure CreateSqliteDatabaseIfNotExists();
     procedure ApplyRetainPolicy();
     procedure CallLogProc();
     procedure Log(LogRecord: TLogRecord);
@@ -287,13 +286,15 @@ type
     { CAUTION: ProcessLog() is always called from inside a secondary thread. }
     procedure ProcessLog(const Entry: ILogEntry); override;
   public
-    constructor Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
-    constructor CreateSQLite(DatabaseName: string = 'LogDB.db3');
+    constructor Create(ConnectorType, HostName, DatabaseName: string; UserName: string = ''; Password: string = ''; CharSet: string = ''; Params: TStrings = nil);
+    { Creates the listener and the Sqlite database if not already exists }
+    constructor CreateSqlite(DatabaseName: string = 'LogDB.db3');
     destructor Destroy(); override;
 
     // Returns the "CREATE TABLE" statement for the log table.
-    // The caller has to pass the right text blob type depending on the database. For Firebird is BLOB SUB_TYPE TEXT
-    class function GetCreateTableSql(TextBlobType: string): string;
+    // The caller has to pass the right NVarchar, DateTime and Text Blob types depending on the database.
+    // For Firebird the Text Blob type is BLOB SUB_TYPE TEXT
+    class function GetCreateTableSql(VarcharType: string = 'nvarchar'; DateTimeType: string = 'DateTime'; TextBlobType: string = 'Blob'): string;
   end;
 
   { TLogToMainThreadListener }
@@ -448,7 +449,10 @@ type
     class procedure UnLock();
 
     class procedure DoClear();
-    class procedure DoLog();
+    class procedure DoAppend();
+    class procedure DoAppendLine();
+
+    class procedure ScrollToLastLine();
   public
     class constructor Create();
     class destructor Destroy();
@@ -1647,11 +1651,11 @@ end;
 
 
 { TSqlDbLogListener }
-constructor TSqlDbLogListener.Create(ConnectorType, HostName, DatabaseName, UserName, Password: string);
+constructor TSqlDbLogListener.Create(ConnectorType, HostName, DatabaseName, UserName, Password, CharSet: string; Params: TStrings = nil);
 begin
   inherited Create();
 
-  FLogRecordList := TGenObjectList<TLogRecord>.Create(True);    //     TSafeObjectList.Create(True);
+  FLogRecordList := TGenObjectList<TLogRecord>.Create(True);
 
   Con := TSQLConnector.Create(nil);
 
@@ -1660,19 +1664,23 @@ begin
   Con.DatabaseName  := DatabaseName;
   Con.UserName      := UserName;
   Con.Password      := Password;
+  Con.CharSet       := CharSet;
+
+  if Assigned(Params) then
+    Con.Params.Assign(Params);
 
   Trans := TSQLTransaction.Create(nil);
   Q     := TSQLQuery.Create(nil);
 
   Con.Transaction := Trans;
   Q.DataBase := Con;
-
-  PrepareSQLite3Connection();
 end;
 
-constructor TSqlDbLogListener.CreateSQLite(DatabaseName: string);
+constructor TSqlDbLogListener.CreateSqlite(DatabaseName: string);
 begin
-  Create('SQLite3', 'localhost', DatabaseName, '', '');
+  Create('SQLite3', 'localhost', DatabaseName, '', '', '', nil);
+
+  CreateSqliteDatabaseIfNotExists();
 end;
 
 destructor TSqlDbLogListener.Destroy;
@@ -1682,6 +1690,37 @@ begin
   Con.Free();
   FLogRecordList.Free();
   inherited Destroy();
+end;
+
+procedure TSqlDbLogListener.CreateSqliteDatabaseIfNotExists();
+var
+  SQLite3Con: TSQLite3Connection;
+  SQLiteTrans : TSQLTransaction;
+  SqlText : string;
+begin
+  if (Con.ConnectorType = 'SQLite3') and (not FileExists(Con.DatabaseName)) then
+  begin
+    SQLite3Con := TSQLite3Connection.Create(nil);
+    SQLiteTrans := TSQLTransaction.Create(nil);
+    try
+      SQLite3Con.HostName     := Con.HostName;
+      SQLite3Con.DatabaseName := Con.DatabaseName;
+      SQLite3Con.UserName     := Con.UserName;
+      SQLite3Con.Password     := Con.Password;
+
+      SQLite3Con.Transaction := SQLiteTrans;
+      SQLite3Con.CreateDB();
+
+      SqlText := GetCreateTableSql('nvarchar', 'DateTime', 'text');
+      SQLite3Con.ExecuteDirect(SqlText);
+
+      SQLite3Con.ExecuteDirect('CREATE UNIQUE INDEX AppLogIndex ON AppLog(Id)');
+      SQLiteTrans.Commit();
+    finally
+      SQLiteTrans.Free();
+      SQLite3Con.Free();
+    end;
+  end;
 end;
 
 procedure TSqlDbLogListener.Log(LogRecord: TLogRecord);
@@ -1748,7 +1787,7 @@ begin
 
 end;
 
-class function TSqlDbLogListener.GetCreateTableSql(TextBlobType: string): string;
+class function TSqlDbLogListener.GetCreateTableSql(VarcharType: string; DateTimeType: string; TextBlobType: string): string;
 begin
   Result :=
   'create table AppLog (                   ' +
@@ -1762,42 +1801,13 @@ begin
   '  ,Source     nvarchar(128)             ' +
   '  ,Scope      nvarchar(128)             ' +
   '  ,EventId    nvarchar(128)             ' +
-  '  ,LogText    %s not null               ' +
+  '  ,LogText    Blob not null             ' +
   ')                                       '
   ;
 
-  Result := Format(Result, [TextBlobType]);
-end;
-
-procedure TSqlDbLogListener.PrepareSQLite3Connection();
-var
-  SQLite3Con: TSQLite3Connection;
-  SQLiteTrans : TSQLTransaction;
-  SqlText : string;
-begin
-  if (Con.ConnectorType = 'SQLite3') and (not FileExists(Con.DatabaseName)) then
-  begin
-    SQLite3Con := TSQLite3Connection.Create(nil);
-    SQLiteTrans := TSQLTransaction.Create(nil);
-    try
-      SQLite3Con.HostName     := Con.HostName;
-      SQLite3Con.DatabaseName := Con.DatabaseName;
-      SQLite3Con.UserName     := Con.UserName;
-      SQLite3Con.Password     := Con.Password;
-
-      SQLite3Con.Transaction := SQLiteTrans;
-      SQLite3Con.CreateDB();
-
-      SqlText := GetCreateTableSql('text');
-      SQLite3Con.ExecuteDirect(SqlText);
-
-      SQLite3Con.ExecuteDirect('CREATE UNIQUE INDEX AppLogIndex ON AppLog(Id)');
-      SQLiteTrans.Commit();
-    finally
-      SQLiteTrans.Free();
-      SQLite3Con.Free();
-    end;
-  end;
+  Result := StringReplace(Result, 'nvarchar', VarcharType, [rfIgnoreCase, rfReplaceAll]);
+  Result := StringReplace(Result, 'DateTime', DateTimeType, [rfIgnoreCase, rfReplaceAll]);
+  Result := StringReplace(Result, 'Blob', TextBlobType, [rfIgnoreCase, rfReplaceAll]);
 end;
 
 procedure TSqlDbLogListener.ApplyRetainPolicy();
@@ -2749,7 +2759,10 @@ end;
 class procedure LogBox.Initialize(Memo: TCustomMemo; UseLogListenerToo: Boolean);
 begin
   if not Assigned(mmoLog) then
+  begin
      mmoLog := Memo;
+     mmoLog.ScrollBars := ssAutoVertical;
+  end;
 
   if UseLogListenerToo and not Assigned(LogLineListener) then
     LogLineListener := TLogBoxLineListener.Create(nil);
@@ -2757,23 +2770,25 @@ end;
 
 class procedure LogBox.DoClear();
 begin
-  if Assigned(LogBox.mmoLog) then
+  if Assigned(mmoLog) then
      LogBox.mmoLog.Clear();
 end;
 
-class procedure LogBox.DoLog();
-var
-  Text: string;
+
+
+
+
+class procedure LogBox.ScrollToLastLine();
 begin
-  if Assigned(LogBox.mmoLog) then
-  begin
-    if FLogTextList.Count > 0 then
-    begin
-      Text := FLogTextList[0];
-      FLogTextList.Delete(0);
-      LogBox.mmoLog.Append(Text);
-    end;
-  end;
+  //LogBox.mmoLog.CaretPos := Point(0, LogBox.mmoLog.Lines.Count - 1);
+
+  //mmoLog.SelStart := MaxInt;
+
+  //mmoLog.SelStart  := Length(mmoLog.Lines.Text)-1;
+  //mmoLog.SelLength := 0;
+
+  mmoLog.VertScrollBar.Position := MaxInt;
+  mmoLog.SelStart := MaxInt;
 end;
 
 class procedure LogBox.Clear();
@@ -2786,21 +2801,65 @@ begin
   end;
 end;
 
+class procedure LogBox.DoAppend();
+var
+  Text: string;
+begin
+  if Assigned(mmoLog) then
+  begin
+    if FLogTextList.Count > 0 then
+    begin
+      Text := FLogTextList[0];
+      FLogTextList.Delete(0);
+
+      if mmoLog.Lines.Count > 0 then
+        mmoLog.Lines[LogBox.mmoLog.Lines.Count - 1] := mmoLog.Lines[mmoLog.Lines.Count - 1] + Text
+      else
+        mmoLog.Append(Text);
+
+      ScrollToLastLine();
+    end;
+  end;
+
+end;
+
 class procedure LogBox.Append(Text: string);
 begin
   Lock();
   try
     FLogTextList.Add(Text);
-    TThread.Synchronize(TThread.CurrentThread, DoLog);  // Addr(DoLog)
+    TThread.Synchronize(TThread.CurrentThread, DoAppend);  // Addr(DoAppend)
   finally
     UnLock();
   end;
 end;
 
+class procedure LogBox.DoAppendLine();
+var
+  Text: string;
+begin
+  if Assigned(mmoLog) then
+  begin
+    if FLogTextList.Count > 0 then
+    begin
+      Text := FLogTextList[0];
+      FLogTextList.Delete(0);
+      mmoLog.Append(Text);
+
+      ScrollToLastLine();
+    end;
+  end;
+end;
+
 class procedure LogBox.AppendLine(Text: string);
 begin
-  Text := sLineBreak + Text;
-  Append(Text);
+  Lock();
+  try
+    FLogTextList.Add(Text);
+    TThread.Synchronize(TThread.CurrentThread, DoAppendLine);  // Addr(DoAppendLine)
+  finally
+    UnLock();
+  end;
 end;
 
 class procedure LogBox.AppendLine(Ex: Exception);

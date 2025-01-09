@@ -1,6 +1,6 @@
 unit fr_SqlEditor;
 
-{$mode ObjFPC}{$H+}
+{$MODE DELPHI}{$H+}
 
 interface
 

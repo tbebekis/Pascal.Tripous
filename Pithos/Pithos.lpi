@@ -5,6 +5,7 @@
     <PathDelim Value="\"/>
     <General>
       <SessionStorage Value="InProjectDir"/>
+      <AutoCreateForms Value="False"/>
       <Title Value="Pithos"/>
       <Scaled Value="True"/>
       <ResourceType Value="res"/>
@@ -95,6 +96,13 @@
         <Filename Value="o_app.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="o_App"/>
+      </Unit>
+      <Unit>
+        <Filename Value="f_connectioneditdialog.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ConnectionEditDialog"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="f_ConnectionEditDialog"/>
       </Unit>
     </Units>
   </ProjectOptions>

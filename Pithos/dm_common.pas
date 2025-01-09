@@ -1,6 +1,6 @@
 unit dm_Common;
 
-{$mode ObjFPC}{$H+}
+{$MODE DELPHI}{$H+}
 
 interface
 
@@ -12,7 +12,8 @@ type
   { TdmCommon }
 
   TdmCommon = class(TDataModule)
-    CommonImageList: TImageList;
+    ImageListInspector: TImageList;
+    ImageList24: TImageList;
   private
 
   public

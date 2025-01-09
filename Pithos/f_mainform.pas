@@ -1,6 +1,6 @@
 unit f_MainForm;
 
-{$mode objfpc}{$H+}
+{$MODE DELPHI}{$H+}
 
 interface
 
@@ -15,15 +15,20 @@ uses
   , Menus
   , ExtCtrls
   , StdCtrls
+
+  , Tripous
+  , o_App
   ;
 
 type
   { TMainForm }
   TMainForm = class(TForm)
+    btnConnectionInsert: TToolButton;
     MainMenu: TMainMenu;
     mmoLog: TMemo;
     mnuFile: TMenuItem;
     mnuExit: TMenuItem;
+    pnlLeft: TPanel;
     pnlRight: TPanel;
     pnlBody: TPanel;
     Splitter1: TSplitter;
@@ -31,12 +36,21 @@ type
     StatusBar: TStatusBar;
     ToolBar: TToolBar;
     btnExit: TToolButton;
-    TreeView1: TTreeView;
+    ToolBar1: TToolBar;
+    btnConnectionEdit: TToolButton;
+    btnConnectionDelete: TToolButton;
+    btnConnectionISQL: TToolButton;
+    btnConnectionSelectTable: TToolButton;
+    tv: TTreeView;
   private
-
+    IsInitialized: Boolean;
+    procedure FormInitialize();
+    procedure AnyClick(Sender: TObject);
+    procedure ConnectionInsert();
+    procedure ConnectionEdit();
+    procedure ConnectionDelete();
   protected
-    procedure DoCreate; override;
-    procedure DoDestroy; override;
+    procedure DoShow; override;
   public
 
   end;
@@ -50,21 +64,69 @@ implementation
 
 uses
   Tripous.Logs
+
+  ,FileUtil
+
+  ,f_ConnectionEditDialog
   ;
 
 { TMainForm }
-
-procedure TMainForm.DoCreate;
+procedure TMainForm.DoShow;
 begin
-  inherited DoCreate;
-  LogBox.Initialize(mmoLog, True);
-  LogBox.AppendLine('Hi there');
+  inherited DoShow;
+
+  FormInitialize();
 end;
 
-procedure TMainForm.DoDestroy;
+procedure TMainForm.FormInitialize();
 begin
-  inherited DoDestroy;
+  if not IsInitialized then
+  begin
+    IsInitialized := True;
+
+    LogBox.Initialize(mmoLog, True);
+    Application.ProcessMessages();
+
+    App.AppInitialize();
+
+    btnExit.OnClick  := AnyClick;
+    btnConnectionInsert.OnClick  := AnyClick;
+    btnConnectionEdit.OnClick  := AnyClick;
+    btnConnectionDelete.OnClick  := AnyClick;
+    btnConnectionISQL.OnClick  := AnyClick;
+    btnConnectionSelectTable.OnClick  := AnyClick;
+
+    btnConnectionEdit.Visible:= False;
+  end;
+
 end;
+
+procedure TMainForm.AnyClick(Sender: TObject);
+begin
+  if btnExit = Sender then Close()
+  else if btnConnectionInsert = Sender then ConnectionInsert()
+  else if btnConnectionEdit = Sender then ConnectionEdit()
+  else if btnConnectionDelete = Sender then ConnectionDelete()
+  ;
+end;
+
+procedure TMainForm.ConnectionInsert();
+begin
+  TConnectionEditDialog.ShowDialog(TConInfoProxy.Create());
+end;
+
+procedure TMainForm.ConnectionEdit();
+begin
+
+end;
+
+procedure TMainForm.ConnectionDelete();
+begin
+
+end;
+
+
+
 
 end.
 

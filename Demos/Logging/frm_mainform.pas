@@ -81,12 +81,12 @@ begin
     3. The TFormLogListener shows a Form in the upper right screen corner
        where it displays log information
     4. The TSqlDbLogListener saves log information in a database.
-       Using the CreateSQLite() it makes it to use a SQLite database,
-       so the property sqlite3.dll should be in the project folder. }
+       Using the CreateSQLite() constructor it makes it to use a SQLite database,
+       so the proper sqlite3.dll should be in the project folder. }
   FLogListener     := TLogTextListener.Create(LogProc);
   FFileLogListener := TFileLogListener.Create();
   FFormLogListener := TFormLogListener.Create();
-  FDbLogListener   := TSqlDbLogListener.CreateSQLite();
+  FDbLogListener   := TSqlDbLogListener.CreateSqlite();
 
 
   lblLogFolder.Caption := Format('Error logs are saved at folder: %s ', [Logger.LogFolder]);

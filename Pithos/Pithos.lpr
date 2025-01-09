@@ -11,7 +11,8 @@ uses
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, f_MainForm, Tripous.Crypt, Tripous.Data, Tripous.FilterParser,
-  Tripous.Logs, Tripous.MemTable, Tripous, fr_SqlEditor, dm_Common, o_App;
+  Tripous.Logs, Tripous.MemTable, Tripous, fr_SqlEditor, dm_Common, o_App,
+  f_ConnectionEditDialog;
 
 {$R *.res}
 

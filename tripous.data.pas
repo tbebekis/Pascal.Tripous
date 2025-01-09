@@ -18,6 +18,9 @@ uses
   ,Dialogs
   ;
 
+const
+  SDefaultConnectionName = 'Default';
+
 type
   TMetaNodeType = (
     ntNone,
@@ -702,9 +705,12 @@ type
     FSqlTransaction  : TSQLTransaction;
 
     function GetConnectionName: string;
+    function GetInTransaction: Boolean;
   protected
-    procedure BeginOperation(const SqlText: string; Params: array of const); virtual;
-    procedure EndOperation(); virtual;
+    procedure HandleException(Ex: Exception; SqlText: string; Params: array of const);
+
+    procedure PrepareCommand(const SqlText: string; Params: array of const); virtual;
+    procedure UnPrepareCommand(); virtual;
   public
     constructor Create(ConnectionInfo: TSqlConnectionInfo);
     destructor Destroy(); override;
@@ -739,6 +745,8 @@ type
     property ConnectionInfo: TSqlConnectionInfo read FConnectionInfo;
     property Provider: TSqlProvider read FProvider;
     property SqlQuery: TSQLQuery read FSqlQuery;
+
+    property InTransaction: Boolean read GetInTransaction;
 
   end;
 
@@ -2153,8 +2161,10 @@ begin
 
   if not Sys.IsEmpty(FProvider) then
   begin
-    if Sys.IsSameText(FProvider, 'MsSql') then
+    if Sys.IsSameText(FProvider, SqlProviders.SMsSql) then
       Result := 'MSSQLServer'
+    else if Sys.IsSameText(FProvider, SqlProviders.SSqlite) then
+      Result := 'SQLite3'
   end else
     Result := Provider;
 end;
@@ -2595,6 +2605,11 @@ begin
   inherited Destroy();
 end;
 
+function TSqlStore.GetInTransaction: Boolean;
+begin
+  Result := FSqlConnector.Connected and FSqlTransaction.Active;
+end;
+
 procedure TSqlStore.StartTransaction();
 begin
   if FSqlTransaction.Active then
@@ -2625,12 +2640,10 @@ begin
   FSqlConnector.Connected := False;
 end;
 
-procedure TSqlStore.BeginOperation(const SqlText: string; Params: array of const);
-begin
-  EndOperation();
 
-  FSqlConnector.Connected := True;
-  FSqlTransaction.Active := True;
+procedure TSqlStore.PrepareCommand(const SqlText: string; Params: array of const);
+begin
+  UnPrepareCommand();
 
   if FSqlQuery.SQL.Text <> SqlText then
     FSqlQuery.SQL.Text := SqlText;
@@ -2642,39 +2655,50 @@ begin
      DbSys.AssignParams(FSqlQuery.Params, Params);
 end;
 
-procedure TSqlStore.EndOperation();
+procedure TSqlStore.UnPrepareCommand();
 begin
   FSqlQuery.Active := False;
   if FSqlQuery.Prepared then
      FSqlQuery.UnPrepare();
-  FSqlTransaction.Active := False;
-  FSqlConnector.Connected := False;
+end;
+
+procedure TSqlStore.HandleException(Ex: Exception; SqlText: string; Params: array of const);
+begin
+  // TODO:
 end;
 
 function TSqlStore.Select(const SqlText: string; Params: array of const): TMemTable;
 var
   Table: TMemTable;
+  WasInTransaction: Boolean;
 begin
   Table  := TMemTable.Create(nil);
   Result := Table;
 
-  BeginOperation(SqlText, Params);
   try
-    try
-      FSqlQuery.Active := True;
-      FSqlQuery.First();
+    WasInTransaction := InTransaction;
+    if not WasInTransaction then
+       StartTransaction();
 
-      DbSys.CopyDatasetStructure(FSqlQuery, Table, True, True);
-      Table.CreateDataset();
-      Table.Active := True;
-      DbSys.CopyDataset(FSqlQuery, Table);
-    except
-      on E: Exception do
-      // TODO: handle Exception
-      ;
+    PrepareCommand(SqlText, Params);
+
+    FSqlQuery.Active := True;
+    FSqlQuery.First();
+
+    DbSys.CopyDatasetStructure(FSqlQuery, Table, True, True);
+    Table.CreateDataset();
+    Table.Active := True;
+    DbSys.CopyDataset(FSqlQuery, Table);
+
+    UnPrepareCommand();
+    if not WasInTransaction then
+       Commit();
+  except
+    on E: Exception do
+    begin
+      HandleException(E, SqlText, Params);
+      raise;
     end;
-  finally
-    EndOperation();
   end;
 
 end;
@@ -2685,23 +2709,33 @@ begin
 end;
 
 procedure TSqlStore.SelectTo(Table: TDataset; const SqlText: string; Params: array of const);
+var
+  WasInTransaction: Boolean;
 begin
-  BeginOperation(SqlText, Params);
-  try
-    try
-      FSqlQuery.Active := True;
-      FSqlQuery.First();
 
-      Table.Active := True;
-      DbSys.EmptyDataset(Table);
-      DbSys.CopyDataset(FSqlQuery, Table);
-    except
-      on E: Exception do
-      // TODO: handle Exception
-      ;
+  try
+    WasInTransaction := InTransaction;
+    if not WasInTransaction then
+       StartTransaction();
+
+    PrepareCommand(SqlText, Params);
+
+    FSqlQuery.Active := True;
+    FSqlQuery.First();
+
+    Table.Active := True;
+    DbSys.EmptyDataset(Table);
+    DbSys.CopyDataset(FSqlQuery, Table);
+
+    UnPrepareCommand();
+    if not WasInTransaction then
+       Commit();
+  except
+    on E: Exception do
+    begin
+      HandleException(E, SqlText, Params);
+      raise;
     end;
-  finally
-    EndOperation();
   end;
 
 end;
@@ -2712,24 +2746,33 @@ begin
 end;
 
 function TSqlStore.SelectResults(SqlText: string; const ResultFields: string; const Params: array of const): Variant;
+var
+  WasInTransaction: Boolean;
 begin
   Result := Variants.Null;
 
-  BeginOperation(SqlText, Params);
   try
-    try
-      FSqlQuery.Active := True;
-      FSqlQuery.First();
+    WasInTransaction := InTransaction;
+    if not WasInTransaction then
+       StartTransaction();
 
-      if FSqlQuery.RecordCount > 0 then;
-         Result := DbSys.FieldValuesToVariantArray(FSqlQuery, ResultFields);
-    except
-      on E: Exception do
-      // TODO: handle Exception
-      ;
+    PrepareCommand(SqlText, Params);
+
+    FSqlQuery.Active := True;
+    FSqlQuery.First();
+
+    if FSqlQuery.RecordCount > 0 then;
+       Result := DbSys.FieldValuesToVariantArray(FSqlQuery, ResultFields);
+
+    UnPrepareCommand();
+    if not WasInTransaction then
+      Commit();
+  except
+    on E: Exception do
+    begin
+      HandleException(E, SqlText, Params);
+      raise;
     end;
-  finally
-    EndOperation();
   end;
 
 end;
@@ -2740,24 +2783,33 @@ begin
 end;
 
 function TSqlStore.SelectResult(SqlText: string; Default: Variant; const Params: array of const): Variant;
+var
+  WasInTransaction: Boolean;
 begin
   Result := Default;
 
-  BeginOperation(SqlText, Params);
   try
-    try
-      FSqlQuery.Active := True;
-      FSqlQuery.First();
+    WasInTransaction := InTransaction;
+    if not WasInTransaction then
+       StartTransaction();
 
-      if FSqlQuery.RecordCount > 0 then;
-        Result := FSqlQuery.Fields[0].Value;
-    except
-      on E: Exception do
-      // TODO: handle Exception
-      ;
+    PrepareCommand(SqlText, Params);
+
+    FSqlQuery.Active := True;
+    FSqlQuery.First();
+
+    if FSqlQuery.RecordCount > 0 then;
+      Result := FSqlQuery.Fields[0].Value;
+
+    UnPrepareCommand();
+    if not WasInTransaction then
+       Commit();
+  except
+    on E: Exception do
+    begin
+      HandleException(E, SqlText, Params);
+      raise;
     end;
-  finally
-    EndOperation();
   end;
 end;
 
@@ -2787,18 +2839,28 @@ begin
 end;
 
 procedure TSqlStore.ExecSql(const SqlText: string; Params: array of const);
+var
+  WasInTransaction: Boolean;
 begin
-  BeginOperation(SqlText, Params);
+
   try
-    try
-      FSqlQuery.ExecSQL();
-    except
-      on E: Exception do
-      // TODO: handle Exception
-      ;
+    WasInTransaction := InTransaction;
+    if not WasInTransaction then
+       StartTransaction();
+
+    PrepareCommand(SqlText, Params);
+
+    FSqlQuery.ExecSQL();
+
+    UnPrepareCommand();
+    if not WasInTransaction then
+       Commit();
+  except
+    on E: Exception do
+    begin
+      HandleException(E, SqlText, Params);
+      raise;
     end;
-  finally
-    EndOperation();
   end;
 end;
 
@@ -2869,6 +2931,8 @@ function TSqlStore.GetConnectionName: string;
 begin
   Result := FConnectionInfo.Name;
 end;
+
+
 
 
 

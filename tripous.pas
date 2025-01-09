@@ -893,7 +893,6 @@ type
     class function CreateStringBuilder: IStringBuilder;
     class function IsSameText(A: string; B: string): Boolean;
     class function IsEmpty(const S: string): Boolean;
-    class function PathCombine(A: string; B: string): string;
     class function IsLetter(C: Char): Boolean;
 
     class function  LCopy(const Text: string; const Index: Integer): string;
@@ -910,16 +909,6 @@ type
     class function  StripCRLFs(const S: string): string ;
 
     class function  UnicodeToAnsi(const S: string): AnsiString;
-
-    class function  LoadFromFile(const FileName: string): string;
-    class procedure SaveToFile(const FileName: string; const Data: string);
-    class procedure WriteToFile(const FileName, S: string);
-
-    class function  LoadTextFromStream(Stream: TStream): string;
-    class procedure SaveTextToStream(Stream: TStream; Data: string);
-
-    class function  IsValidFileName(const FileName: string): Boolean;
-    class function  StrToValidFileName(const S: string): string;
     class function  CreateGuid(UseBrackets: Boolean): string;
 
     class function  PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
@@ -976,10 +965,26 @@ type
 
     { file utils }
     class function  CombinePath(const A, B: string): string;
+    class function  CombinePaths(const Paths: array of string): string;
+
     class function  NormalizePath(const Path: string): string;
     class function  DenormalizePath(const Path: string): string;
     class function  EnsureExtension(FileName: string; Extension: string): string;
 
+    class function  LoadFromFile(const FileName: string): string;
+    class procedure SaveToFile(const FileName: string; const Data: string);
+    class procedure WriteToFile(const FileName, S: string);
+
+    class function  LoadTextFromStream(Stream: TStream): string;
+    class procedure SaveTextToStream(Stream: TStream; Data: string);
+
+    class function  IsValidFileName(const FileName: string): Boolean;
+    class function  StrToValidFileName(const S: string): string;
+
+    class function  ExtractFolderPath(const FileOrFolderPath: string): string;
+    class procedure CreateFolders(const FolderPath: string);
+
+    class function  FolderExists(const Folder: string): Boolean;
     class function  FolderDelete(Folder: string): Boolean;
     class function  FolderCopy(Source, Dest: string; Overwrite: Boolean = True): Boolean;
     class function  FolderMove(Source, Dest: string; Overwrite: Boolean = True): Boolean;
@@ -1026,7 +1031,11 @@ type
     class function InMainThread(): Boolean;
     class procedure ProcessMessages();
     class procedure ClearObjectList(List: TList);
-    class function LoadResourceTextFile(ResourceName: string): string;
+
+    class function  LoadResourceTextFile(const ResourceName: string): string;
+    class procedure SaveResourceFile(const ResourceName: string; const FilePath: string);
+
+    class procedure CreateSqliteDatabase(const FilePath: string);
 
     { properties }
     class property InvariantFormatSettings    : TFormatSettings read FInvariantFormatSettings;
@@ -1047,6 +1056,8 @@ type
 
 
 implementation
+
+{$R tripous.rc}
 
 uses
    laz2_XMLRead
@@ -4771,13 +4782,6 @@ begin
   Result := IsEmptyStr(S, [#0..#32]);
 end;
 
-(*----------------------------------------------------------------------------*)
-
-class function Sys.PathCombine(A: string; B: string): string;
-begin
-  Result := ConcatPaths([A, B]);
-end;
-
 class function Sys.IsLetter(C: Char): Boolean;
 begin
   Result := C in SetOfChars;
@@ -5440,6 +5444,11 @@ begin
   Result := ConcatPaths([A, B]);
 end;
 
+class function Sys.CombinePaths(const Paths: array of string): string;
+begin
+  Result := ConcatPaths(Paths);
+end;
+
 {----------------------------------------------------------------------------------
  Description    : if necessary adds an ending '\' and a ':' before Folder
 -----------------------------------------------------------------------------------}
@@ -5473,6 +5482,27 @@ begin
 
   Result := ChangeFileExt(FileName, Extension);
 end;
+
+class function Sys.ExtractFolderPath(const FileOrFolderPath: string): string;
+begin
+  Result := FileOrFolderPath;
+  if Trim(Result) <> '' then
+     Result := ExtractFilePath(ExcludeTrailingPathDelimiter(Result));
+end;
+
+class procedure Sys.CreateFolders(const FolderPath: string);
+begin
+  if FolderPath <> '' then
+     ForceDirectories(FolderPath);
+end;
+
+class function Sys.FolderExists(const Folder: string): Boolean;
+begin
+  Result := False;
+  if Folder <> '' then
+     Result := DirectoryExists(Folder);
+end;
+
 (*----------------------------------------------------------------------------*)
 class function Sys.FolderDelete(Folder: string): Boolean;
 begin
@@ -5938,7 +5968,7 @@ begin
   end;
 end;
 
-class function Sys.LoadResourceTextFile(ResourceName: string): string;
+class function Sys.LoadResourceTextFile(const ResourceName: string): string;
 var
   RS : TResourceStream;
   SS : TStringStream;
@@ -5956,6 +5986,30 @@ begin
   finally
     RS.Free;
   end;
+end;
+
+class procedure Sys.SaveResourceFile(const ResourceName: string; const FilePath: string);
+var
+  RS: TResourceStream;
+  Folder: string;
+begin
+  Folder := ExtractFolderPath(FilePath);
+  if (Folder <> '') and not FolderExists(Folder) then
+     CreateFolders(Folder);
+
+  RS := TResourceStream.Create(HInstance, ResourceName, RT_RCDATA);
+  try
+    RS.Position := 0;
+    RS.SaveToFile(FilePath);
+  finally
+    RS.Free;
+  end;
+end;
+
+class procedure Sys.CreateSqliteDatabase(const FilePath: string);
+begin
+  if not FileExists(FilePath) then
+    SaveResourceFile('SqliteEmptyDb', FilePath);
 end;
 
 
