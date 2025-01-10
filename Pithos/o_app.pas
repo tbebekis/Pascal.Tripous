@@ -1,12 +1,20 @@
 unit o_App;
 
-{$mode ObjFPC}{$H+}
+{$MODE DELPHI}{$H+}
 
 interface
 
 uses
   Classes
   , SysUtils
+  , Forms
+  , Controls
+  , Graphics
+  , Dialogs
+  , ComCtrls
+  , Menus
+  , ExtCtrls
+  , StdCtrls
 
   ,Tripous
   ,Tripous.Data
@@ -16,72 +24,65 @@ uses
 const
   SDatabaseFileName = 'Pithos.db3';
   STableSchema =
-    'create table Datastores (                                            '  +
-    '    Id                  nvarchar(40)          not null primary key   '  +
-    '   ,Name                nvarchar(96)          not null unique        '  +
-    '   ,Provider            nvarchar(40)          not null               '  +
-    '   ,ConStr              text                  not null               '  +
-    ')                                                                    '  +
+    'create table Datastores (                                                   '  +
+    '    Id                  nvarchar(40)          not null primary key          '  +
+    '   ,Name                nvarchar(96)          not null unique               '  +
+    '   ,Provider            nvarchar(40)          not null                      '  +
+    '   ,Server              nvarchar(40)          not null                      '  +
+    '   ,Database            nvarchar(96)          not null                      '  +
+    '   ,UserName            nvarchar(40)          null                          '  +
+    '   ,Password            nvarchar(512)         null                          '  +
+    '   ,Params              text                  null                          '  +
+    ')                                                                           '  +
     ''
-  ;
+    ;
+
 
 type
 
-  { TConInfoProxy }
-  TConInfoProxy = class
-  private
-    FConnectionString: string;
-    FId: string;
-    FName: string;
-    FProvider: string;
-    FTag: TObject;
-  public
-    constructor Create();
 
-    property Id: string read FId write FId;
-    { The main connection must be named 'Default', e.g. ConInfo.Name := 'Default'; }
-    property Name: string read FName write FName;
-    property Provider: string read FProvider write FProvider;
-    { e.g. Server=localhost; Database=MyDb; User=admin; Psw=p@s$W0rD }
-    property ConnectionString: string read FConnectionString write FConnectionString;
-    property Tag: TObject read FTag write FTag;
-  end;
 
   { App }
   App = class
   private class var
     FIsInitialized : Boolean;
+    FMetaDatabases: TMetaDatabases;
     FConnectionInfo: TSqlConnectionInfo;
     FSqlStore : TSqlStore;
-    class procedure EnsureSqlConnection();
-  public
-    class procedure AppInitialize();
 
-    class property IsInitialized                  : Boolean read FIsInitialized;
+    tv: TTreeView;
+    RootNode: TTreeNode;
+    class procedure EnsureSqlConnection();
+    class function  SelectDatastores(): IList<TSqlConInfoProxy>;
+    class procedure AddDatabaseNodes();
+  public
+    class procedure AppInitialize(TreeView: TTreeView);
+
+    class function ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
+
+    class procedure AddDatabaseNode(MetaDatabase: TMetaDatabase);
+
+    class property IsInitialized: Boolean read FIsInitialized;
+    class property MetaDatabases: TMetaDatabases read FMetaDatabases;
     class property SqlStore: TSqlStore read FSqlStore;
   end;
 
 implementation
 
-{ TConInfoProxy }
 
-constructor TConInfoProxy.Create();
-begin
-  inherited Create;
-  FConnectionString := 'Server=?; Database=?; UserId=?; Password=?';
-  FProvider := SqlProviders.SSqlite;
-end;
 
 { App }
-class procedure App.AppInitialize();
-
+class procedure App.AppInitialize(TreeView: TTreeView);
 begin
   if not IsInitialized then
   begin
     FIsInitialized := True;
 
+    FMetaDatabases := TMetaDatabases.Create();
     EnsureSqlConnection();
 
+    tv := TreeView;
+    AddDatabaseNodes();
   end;
 end;
 
@@ -100,6 +101,74 @@ begin
 
     FSqlStore.ExecSql(STableSchema);
   end;
+end;
+
+class function App.SelectDatastores(): IList<TSqlConInfoProxy>;
+var
+  SqlText: string;
+  Table: TMemTable;
+  SqlConInfoProxy: TSqlConInfoProxy;
+begin
+  Result := TGenObjectList<TSqlConInfoProxy>.Create(True, False);
+
+  SqlText := 'select * from Datastores';
+  Table := SqlStore.Select(SqlText);
+  Table.First();
+  while not Table.EOF do
+  begin
+    SqlConInfoProxy := TSqlConInfoProxy.CreateFromTable(Table);
+    Result.Add(SqlConInfoProxy);
+    Table.Next();
+  end;
+end;
+
+class function App.ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
+begin
+  FSqlStore.ExecSql(ConInfoProxy.GetInsertIntoSql(), [ConInfoProxy.ToDictionary()]);
+  Result := MetaDatabases.Add(ConInfoProxy.CreateSqlConnectionInfo());
+end;
+
+class procedure App.AddDatabaseNodes();
+var
+  MetaDatabase: TMetaDatabase;
+
+  List: IList<TSqlConInfoProxy>;
+  Proxy: TSqlConInfoProxy;
+  ConInfo: TSqlConnectionInfo;
+begin
+
+  tv.Items.BeginUpdate();
+  try
+    tv.Items.Clear();
+    MetaDatabases.Clear();
+
+    RootNode := tv.Items.Add(nil,'Databases');
+    RootNode.Data := App.MetaDatabases;
+
+    List := SelectDatastores();
+    for Proxy in List do
+    begin
+      ConInfo := Proxy.CreateSqlConnectionInfo();
+      try
+        MetaDatabase := MetaDatabases.Add(ConInfo);
+        AddDatabaseNode(MetaDatabase);
+      finally
+        ConInfo.Free();
+      end;
+    end;
+  finally
+    tv.Items.EndUpdate();
+  end;
+
+end;
+
+class procedure App.AddDatabaseNode(MetaDatabase: TMetaDatabase);
+var
+  Node: TTreeNode;
+  Text: string;
+begin
+  Text := MetaDatabase.ConnectionInfo.Name + ' (' + MetaDatabase.ConnectionInfo.Provider + ')';
+  Node := tv.Items.AddChild(RootNode, Text);
 end;
 
 end.

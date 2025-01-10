@@ -479,6 +479,8 @@ type
     FValue: TValue;
   public
     constructor Create(AKey: TKey; AValue: TValue);
+    destructor Destroy(); override;
+
     property Key: TKey read FKey;
     property Value: TValue read FValue;
   end;
@@ -910,6 +912,7 @@ type
 
     class function  UnicodeToAnsi(const S: string): AnsiString;
     class function  CreateGuid(UseBrackets: Boolean): string;
+    class function  GenId(UseBrackets: Boolean): string;
 
     class function  PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
 
@@ -2144,6 +2147,11 @@ begin
   FValue := AValue;
 end;
 
+destructor TGenKeyValue<TKey, TValue>.Destroy();
+begin
+  inherited Destroy();
+end;
+
 { TGenDictionaryEnumerator }
 
 constructor TGenDictionaryEnumerator<TKey, TValue>.Create(Length: SizeInt; GetItemAtIndex: TGetItemAtIndexEvent<TGenKeyValue<TKey, TValue>>);
@@ -2196,7 +2204,7 @@ begin
   while (FList.Count > 0) do
   begin
     try
-      TObject(FList[FList.Count - 1]).Free;
+      TObject(FList[FList.Count - 1]).Free();
     except
     end;
     FList.Delete(FList.Count - 1);
@@ -5003,13 +5011,18 @@ begin
    if SysUtils.CreateGUID(Guid) <> 0 then
       raise Exception.Create('Failed to create GUID');
 
-   Result := GUIDToString(Guid);
+   Result := UpperCase(GUIDToString(Guid));    // it's already upper-case, just to be sure
 
    if not UseBrackets then
    begin
      SetLength(Result, Length(Result)-1);
      Delete(Result, 1, 1);
    end;
+end;
+
+class function Sys.GenId(UseBrackets: Boolean): string;
+begin
+  Result := Sys.CreateGuid(UseBrackets);
 end;
 
 (*----------------------------------------------------------------------------

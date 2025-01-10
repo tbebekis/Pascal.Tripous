@@ -17,6 +17,7 @@ uses
   , StdCtrls
 
   , Tripous
+  , Tripous.Data, SQLDB
   , o_App
   ;
 
@@ -33,6 +34,7 @@ type
     pnlBody: TPanel;
     Splitter1: TSplitter;
     Splitter2: TSplitter;
+    SQLConnector1: TSQLConnector;
     StatusBar: TStatusBar;
     ToolBar: TToolBar;
     btnExit: TToolButton;
@@ -44,6 +46,7 @@ type
     tv: TTreeView;
   private
     IsInitialized: Boolean;
+
     procedure FormInitialize();
     procedure AnyClick(Sender: TObject);
     procedure ConnectionInsert();
@@ -87,7 +90,7 @@ begin
     LogBox.Initialize(mmoLog, True);
     Application.ProcessMessages();
 
-    App.AppInitialize();
+    App.AppInitialize(tv);
 
     btnExit.OnClick  := AnyClick;
     btnConnectionInsert.OnClick  := AnyClick;
@@ -97,8 +100,9 @@ begin
     btnConnectionSelectTable.OnClick  := AnyClick;
 
     btnConnectionEdit.Visible:= False;
-  end;
 
+
+  end;
 end;
 
 procedure TMainForm.AnyClick(Sender: TObject);
@@ -111,8 +115,17 @@ begin
 end;
 
 procedure TMainForm.ConnectionInsert();
+var
+  ConInfoProxy: TSqlConInfoProxy;
+  MetaDatabase: TMetaDatabase;
 begin
-  TConnectionEditDialog.ShowDialog(TConInfoProxy.Create());
+  ConInfoProxy := TSqlConInfoProxy.Create();
+  if TConnectionEditDialog.ShowDialog(ConInfoProxy) then
+  begin
+     MetaDatabase := App.ConnectionInsert(ConInfoProxy);
+     App.AddDatabaseNode(MetaDatabase);
+  end;
+
 end;
 
 procedure TMainForm.ConnectionEdit();

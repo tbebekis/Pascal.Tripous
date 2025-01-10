@@ -27,6 +27,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="SQLDBLaz"/>
+      </Item>
+      <Item>
         <PackageName Value="dcpcrypt"/>
       </Item>
       <Item>
@@ -101,6 +104,7 @@
         <Filename Value="f_connectioneditdialog.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="ConnectionEditDialog"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="f_ConnectionEditDialog"/>
       </Unit>

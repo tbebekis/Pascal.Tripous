@@ -10,7 +10,8 @@ uses
   ,Variants
   ,DB
   ,bufdataset
-  ,sqldb
+  ,sqldb, IBConnection
+  ,Types
 
   ,Tripous
   ,Tripous.MemTable
@@ -498,7 +499,7 @@ type
     FAutoCreateGenerators: Boolean;
     FCharSet: string;
     FConnectionString: string;
-    FConnectorType: string;
+    //FConnectorType: string;
     FDatabaseName: string;
     FHostName: string;
     FName: string;
@@ -507,7 +508,6 @@ type
     FUserName: string;
     FParams: TStrings;
     function GetConnectorType: string;
-    function GetProvider: string;
     procedure SetConnectionString(AValue: string);
   public
     constructor Create(ACollection: TCollection = nil); override;
@@ -517,6 +517,7 @@ type
 
     function  GetSqlProvider(): TSqlProvider;
     procedure SetupConnection(SqlConnector: TSQLConnector);
+    function  CanConnect(ThrowIfNot: Boolean = False): Boolean;
 
     property ConnectorType: string read GetConnectorType;
     property DatabaseName: string read FDatabaseName;
@@ -531,7 +532,7 @@ type
     property Name: string read FName write FName;
     { Firebird, MsSql, MySql, Sqlite, PostgreSql, Oracle
       e.g. ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird) }
-    property Provider: string read GetProvider write FProvider;
+    property Provider: string read FProvider write FProvider;
     { e.g. Server=localhost; Database=MyDb; User=admin; Psw=p@s$W0rD }
     property ConnectionString: string read FConnectionString write SetConnectionString;
     property AutoCreateGenerators: Boolean read FAutoCreateGenerators write FAutoCreateGenerators;
@@ -565,6 +566,50 @@ type
     property Count: Integer read GetCount;
   published
     property SqlConnections: TCollection read fSqlConnections write fSqlConnections;
+  end;
+
+  { TSqlConInfoProxy }
+  TSqlConInfoProxy = class(TPersistent)
+  private
+    FDatabase: string;
+    FId: string;
+    FName: string;
+    FParams: TStrings;
+    FPassword: string;
+    FProvider: string;
+    FServer: string;
+    FTag: TObject;
+    FUserName: string;
+  public
+    constructor Create();
+    constructor CreateFromTable(Table: TDataset);
+    destructor Destroy(); override;
+
+    function  CreateSqlParamList(): TStrings;
+    procedure ToSqlParams(SqlParams : TParams); overload;
+    procedure ToSqlParams(Q: TSQLQuery); overload;
+    function  ToDictionary(): IDictionary<string, Variant>;
+    function  GetInsertIntoSql(): string;
+    function  GetUpdateSql(): string;
+
+    function  CreateSqlConnectionInfo(): TSqlConnectionInfo;
+    procedure ToConnectionInfo(SqlConInfo: TSqlConnectionInfo);
+    function  ToConnectionString(): string;
+
+    procedure LoadFromTable(Table: TDataset);
+
+    property Tag: TObject read FTag write FTag;
+  published
+    property Id: string read FId write FId;
+
+    property Name: string read FName write FName;
+    property Provider: string read FProvider write FProvider;
+
+    property Server: string read FServer write FServer;
+    property Database: string read FDatabase write FDatabase;
+    property UserName: string read FUserName write FUserName;
+    property Password: string read FPassword write FPassword;
+    property Params: TStrings read FParams write FParams;
   end;
 
   { SqlProviders }
@@ -620,6 +665,10 @@ type
   public
     constructor Create(); virtual;
     destructor Destroy(); override;
+
+    //public virtual bool CanConnect(string ConnectionString, bool ThrowIfNot = false)
+    function CanConnect(ConnectionString: string; ThrowIfNot: Boolean = False): Boolean; overload;
+    function CanConnect(ConInfo: TSqlConnectionInfo; ThrowIfNot: Boolean = False): Boolean; overload;
 
     property Name: string read FName;
     property ProviderType: TSqlProviderType read FProviderType;
@@ -719,6 +768,8 @@ type
     procedure Commit();
     procedure Rollback();
 
+    function  CanConnect(ThrowIfNot: Boolean = false): Boolean;
+
     function  Select(const SqlText: string; Params: array of const): TMemTable; overload;
     function  Select(const SqlText: string): TMemTable; overload;
 
@@ -806,6 +857,7 @@ type
     class procedure AssignParams(Params: TParams; A: array of const); overload;
     class procedure AssignParams(Params: TParams; tblParams: TDataset); overload;
     class procedure AssignParams(Params: TParams; A: array of Variant); overload;
+    class procedure AssignParams(Params: TParams; const ParamsDic: IDictionary<string, Variant>); overload;
     class procedure AssignStreamToParam(Param: TParam; Stream: TStream);
 
     { properties }
@@ -826,7 +878,8 @@ implementation
 {$R MetadataSqls\Resources.RC}
 
 uses
-   Tripous.Data.Constants
+   Tripous.Logs
+   ,Tripous.Data.Constants
    ;
 
 
@@ -1973,7 +2026,7 @@ function TMetaDatabases.Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
 begin
   Result := TMetaDatabase.Create(Self, ConnectionInfo);
   FList.Add(Result);
-  Result.Load();
+  //Result.Load();
 end;
 
 procedure TMetaDatabases.AddRange(ConnectionInfoList: TSqlConnectionInfoArray);
@@ -2094,7 +2147,6 @@ var
   Key, Value: string;
 begin
 
-  FConnectorType := '';
   FDatabaseName := '';
   FHostName := '';
   FUserName := '';
@@ -2114,9 +2166,8 @@ begin
       Value := Trim(List.Values[Key]);
       Key   := Trim(Key);
 
-      if      Sys.IsSameText(Key, 'Type')
-           or Sys.IsSameText(Key, 'ConnectorType') then
-        FConnectorType := Value
+      if      Sys.IsSameText(Key, 'Provider')  then
+        FProvider := Value
       else if Sys.IsSameText(Key, 'Database')
            or Sys.IsSameText(Key, 'DatabaseName')
            or Sys.IsSameText(Key, 'Database Name')
@@ -2147,26 +2198,20 @@ begin
 
 end;
 
-function TSqlConnectionInfo.GetProvider: string;
-begin
-  if not Sys.IsEmpty(FProvider) then
-     Result := FProvider
-  else
-     Result := FConnectorType;
-end;
+
 
 function TSqlConnectionInfo.GetConnectorType: string;
 begin
-  Result := FConnectorType;
-
   if not Sys.IsEmpty(FProvider) then
   begin
-    if Sys.IsSameText(FProvider, SqlProviders.SMsSql) then
-      Result := 'MSSQLServer'
-    else if Sys.IsSameText(FProvider, SqlProviders.SSqlite) then
-      Result := 'SQLite3'
+         if Sys.IsSameText(FProvider, SqlProviders.SFirebird)    then  Result := 'Firebird'
+    else if Sys.IsSameText(FProvider, SqlProviders.SMsSql)       then  Result := 'MSSQLServer'
+    else if Sys.IsSameText(FProvider, SqlProviders.SMySql)       then  Result := 'MySQL 8.0'
+    else if Sys.IsSameText(FProvider, SqlProviders.SPostgreSql)  then  Result := 'PostgreSQL'
+    else if Sys.IsSameText(FProvider, SqlProviders.SOracle)      then  Result := 'Oracle'
+    else if Sys.IsSameText(FProvider, SqlProviders.SSqlite)      then  Result := 'SQLite3'
   end else
-    Result := Provider;
+    Sys.Error('Invalid Provider: %s', [FProvider]);
 end;
 
 constructor TSqlConnectionInfo.Create(ACollection: TCollection);
@@ -2205,6 +2250,13 @@ begin
   SqlConnector.CharSet := CharSet;
   SqlConnector.Params.Assign(Params);
 end;
+
+function TSqlConnectionInfo.CanConnect(ThrowIfNot: Boolean): Boolean;
+begin
+  Result := SqlProviders.FindSqlProvider(Provider).CanConnect(Self, ThrowIfNot);
+end;
+
+
 
 { TSqlConnectionInfoList }
 
@@ -2292,6 +2344,188 @@ begin
   end;
 end;
 
+
+{ TSqlConInfoProxy }
+
+constructor TSqlConInfoProxy.Create();
+begin
+  inherited Create;
+  FId := Sys.GenId(False);
+  FParams := TStringList.Create();
+  FProvider := SqlProviders.SSqlite;
+end;
+
+constructor TSqlConInfoProxy.CreateFromTable(Table: TDataset);
+begin
+  Create();
+  LoadFromTable(Table);
+end;
+
+destructor TSqlConInfoProxy.Destroy();
+begin
+  FParams.Free();
+  inherited Destroy();
+end;
+
+function TSqlConInfoProxy.CreateSqlParamList(): TStrings;
+var
+  List: TStringList;
+
+  procedure Add(Key, Value: string);
+  begin
+    List.Add(Key + '=' + Value);
+  end;
+
+begin
+  List := TStringList.Create();
+
+  Add('Id', Id);
+
+  Add('Name', Name);
+  Add('Provider', Provider);
+
+  Add('Server', Server);
+  Add('Database', Database);
+  Add('UserName', UserName);
+  Add('Password', Password);
+  Add('Params', Params.Text);
+
+  Result := List;
+end;
+
+procedure TSqlConInfoProxy.ToSqlParams(SqlParams: TParams);
+begin
+  SqlParams.ParamByName('Id'         ).AsString   := Id          ;
+  SqlParams.ParamByName('Name'       ).AsString   := Name        ;
+  SqlParams.ParamByName('Provider'   ).AsString   := Provider    ;
+  SqlParams.ParamByName('Server'     ).AsString   := Server      ;
+  SqlParams.ParamByName('Database'   ).AsString   := Database    ;
+  SqlParams.ParamByName('UserName'   ).AsString   := UserName    ;
+  SqlParams.ParamByName('Password'   ).AsString   := Password    ;
+  SqlParams.ParamByName('Params'     ).AsString   := Params.Text ;
+end;
+
+procedure TSqlConInfoProxy.ToSqlParams(Q: TSQLQuery);
+begin
+  ToSqlParams(Q.Params);
+end;
+
+function TSqlConInfoProxy.ToDictionary(): IDictionary<string, Variant>;
+begin
+  Result := TGenDictionary<string, Variant>.Create();
+
+  Result['Id'      ] := Id          ;
+  Result['Name'    ] := Name        ;
+  Result['Provider'] := Provider    ;
+  Result['Server'  ] := Server      ;
+  Result['Database'] := Database    ;
+  Result['UserName'] := UserName    ;
+  Result['Password'] := Password    ;
+  Result['Params'  ] := Params.Text ;
+end;
+
+function TSqlConInfoProxy.GetInsertIntoSql(): string;
+begin
+  Result :=
+  'insert into Datastores ( ' +
+  ' Id                      ' +
+  ',Name                    ' +
+  ',Provider                ' +
+  ',Server                  ' +
+  ',Database                ' +
+  ',UserName                ' +
+  ',Password                ' +
+  ',Params                  ' +
+  ') values (               ' +
+  ' :Id                     ' +
+  ',:Name                   ' +
+  ',:Provider               ' +
+  ',:Server                 ' +
+  ',:Database               ' +
+  ',:UserName               ' +
+  ',:Password               ' +
+  ',:Params                 ' +
+  ')'
+  ;
+end;
+
+function TSqlConInfoProxy.GetUpdateSql(): string;
+begin
+  Result :=
+  'update Datastores set  ' +
+  ' Name      = :Name     ' +
+  ',Provider  = :Provider ' +
+  ',Server    = :Server   ' +
+  ',Database  = :Database ' +
+  ',UserName  = :UserName ' +
+  ',Password  = :Password ' +
+  ',Params    = :Params   ' +
+  'where                  ' +
+  '  Id       = :Id       ' +
+  ''
+  ;
+end;
+
+function TSqlConInfoProxy.CreateSqlConnectionInfo(): TSqlConnectionInfo;
+begin
+  Result := TSqlConnectionInfo.Create(nil);
+  ToConnectionInfo(Result);
+end;
+
+procedure TSqlConInfoProxy.ToConnectionInfo(SqlConInfo: TSqlConnectionInfo);
+begin
+  SqlConInfo.Name := Name;
+  SqlConInfo.Provider := Provider;
+  SqlConInfo.ConnectionString := ToConnectionString();
+end;
+
+function TSqlConInfoProxy.ToConnectionString(): string;
+var
+  List: TStringList;
+  A : TStringDynArray;
+  S: string;
+
+  procedure Add(Key: string; Value: string);
+  begin
+    if not Sys.IsEmpty(Value) then
+       List.Add(Key + '=' + Value);
+  end;
+
+begin
+  List := TStringList.Create();
+  try
+    Add('Server', Server);
+    Add('Database', Database);
+    Add('UserName', UserName);
+    Add('Password', Password);
+    if Assigned(Params) then
+    begin
+      for S in Params do
+        List.Add(S);
+    end;
+
+    A := List.ToStringArray;
+    Result := string.Join(';', A);
+
+  finally
+    List.Free();
+  end;
+
+end;
+
+procedure TSqlConInfoProxy.LoadFromTable(Table: TDataset);
+begin
+  Id       := Table.FieldByName('Id'      ).AsString;
+  Name     := Table.FieldByName('Name'    ).AsString;
+  Provider := Table.FieldByName('Provider').AsString;
+  Server   := Table.FieldByName('Server'  ).AsString;
+  Database := Table.FieldByName('Database').AsString;
+  UserName := Table.FieldByName('UserName').AsString;
+  Password := Table.FieldByName('Password').AsString;
+  Params.Clear();
+  Params.Text := Table.FieldByName('Params').AsString;
+end;
+
 { SqlProviders }
 
 class constructor SqlProviders.Create();
@@ -2350,6 +2584,33 @@ end;
 destructor TSqlProvider.Destroy();
 begin
   inherited Destroy();
+end;
+
+function TSqlProvider.CanConnect(ConnectionString: string; ThrowIfNot: Boolean): Boolean;
+var
+  ConInfo: TSqlConnectionInfo;
+begin
+  ConInfo:= TSqlConnectionInfo.Create(nil);
+  try
+    ConInfo.Name := 'CanConnect';
+    ConInfo.Provider := Self.Name;
+    ConInfo.ConnectionString := ConnectionString;
+    Result := CanConnect(ConInfo, ThrowIfNot);
+  finally
+    ConInfo.Free();
+  end;
+end;
+
+function TSqlProvider.CanConnect(ConInfo: TSqlConnectionInfo; ThrowIfNot: Boolean): Boolean;
+var
+  SqlStore: TSqlStore;
+begin
+  SqlStore := TSqlStore.Create(ConInfo);
+  try
+    Result := SqlStore.CanConnect(ThrowIfNot);
+  finally
+    SqlStore.Free();
+  end;
 end;
 
 function TSqlProvider.GetTablesSql(): string;
@@ -2638,6 +2899,23 @@ begin
   //FSqlTransaction.Active := False;
   FSqlTransaction.Rollback();
   FSqlConnector.Connected := False;
+end;
+
+function TSqlStore.CanConnect(ThrowIfNot: Boolean): Boolean;
+begin
+  Result := False;
+  try
+    FSqlConnector.Connected := True;
+    FSqlConnector.Connected := False;
+    Result := True;
+  except
+    on Ex: Exception do
+    begin
+      Logger.Error(Ex);
+      if ThrowIfNot then
+        raise;
+    end;
+  end;
 end;
 
 
@@ -3600,6 +3878,8 @@ begin
                        AssignStreamToParam(Params[0],  A[0].VObject as TStream)
                      else if A[0].VObject is TDataset then
                        AssignParams(Params, A[0].VObject as TDataset);
+        vtInterface: //if A[0].VInterface is IDictionary<string, Variant> then
+                       AssignParams(Params, IDictionary<string, Variant>(A[0].VInterface));
         vtVariant  : if VarIsArray(A[0].VVariant^) then
                        AssignParams(Params, A[0].VVariant^);
       end;
@@ -3699,6 +3979,14 @@ begin
     end;
   end;
 
+end;
+
+class procedure DbSys.AssignParams(Params: TParams; const ParamsDic: IDictionary<string, Variant>);
+var
+  Entry: TGenKeyValue<string, Variant>;
+begin
+  for Entry in ParamsDic do
+    Params.ParamByName(Entry.Key).Value := Entry.Value;
 end;
 
 class procedure DbSys.AssignStreamToParam(Param: TParam; Stream: TStream);
