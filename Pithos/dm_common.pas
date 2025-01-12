@@ -12,8 +12,10 @@ type
   { TdmCommon }
 
   TdmCommon = class(TDataModule)
+    ImageListTreeView: TImageList;
     ImageListInspector: TImageList;
     ImageList24: TImageList;
+
   private
 
   public
@@ -26,6 +28,14 @@ var
 implementation
 
 {$R *.lfm}
+
+{ TdmCommon }
+
+
+
+{ TdmCommon }
+
+
 
 initialization
    dmCommon := TdmCommon.Create(nil);

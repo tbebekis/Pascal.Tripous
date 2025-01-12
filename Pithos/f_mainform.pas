@@ -43,12 +43,15 @@ type
     btnConnectionDelete: TToolButton;
     btnConnectionISQL: TToolButton;
     btnConnectionSelectTable: TToolButton;
+    btnCollapse: TToolButton;
+    btnReloadDatabase: TToolButton;
     tv: TTreeView;
   private
     IsInitialized: Boolean;
 
     procedure FormInitialize();
     procedure AnyClick(Sender: TObject);
+    procedure tv_DoubleClick(Sender: TObject);
     procedure ConnectionInsert();
     procedure ConnectionEdit();
     procedure ConnectionDelete();
@@ -98,8 +101,12 @@ begin
     btnConnectionDelete.OnClick  := AnyClick;
     btnConnectionISQL.OnClick  := AnyClick;
     btnConnectionSelectTable.OnClick  := AnyClick;
+    btnCollapse.OnClick  := AnyClick;
+    btnReloadDatabase.OnClick  := AnyClick;
 
     btnConnectionEdit.Visible:= False;
+
+    tv.OnDblClick := tv_DoubleClick;
 
 
   end;
@@ -111,7 +118,14 @@ begin
   else if btnConnectionInsert = Sender then ConnectionInsert()
   else if btnConnectionEdit = Sender then ConnectionEdit()
   else if btnConnectionDelete = Sender then ConnectionDelete()
+  else if btnCollapse = Sender then tv.FullCollapse()
+  else if btnReloadDatabase = Sender then App.ReloadSelectedDatabase()
   ;
+end;
+
+procedure TMainForm.tv_DoubleClick(Sender: TObject);
+begin
+  App.ReloadSelectedDatabase();
 end;
 
 procedure TMainForm.ConnectionInsert();
@@ -125,7 +139,6 @@ begin
      MetaDatabase := App.ConnectionInsert(ConInfoProxy);
      App.AddDatabaseNode(MetaDatabase);
   end;
-
 end;
 
 procedure TMainForm.ConnectionEdit();

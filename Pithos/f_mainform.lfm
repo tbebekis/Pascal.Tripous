@@ -40,20 +40,20 @@ object MainForm: TMainForm
     Panels = <>
   end
   object pnlRight: TPanel
-    Left = 217
+    Left = 246
     Height = 572
     Top = 34
-    Width = 939
+    Width = 910
     Align = alClient
     Caption = 'pnlRight'
     ClientHeight = 572
-    ClientWidth = 939
+    ClientWidth = 910
     TabOrder = 2
     object mmoLog: TMemo
       Left = 1
       Height = 90
       Top = 481
-      Width = 937
+      Width = 908
       Align = alBottom
       Color = clForm
       Font.CharSet = ANSI_CHARSET
@@ -69,7 +69,7 @@ object MainForm: TMainForm
       Left = 1
       Height = 6
       Top = 475
-      Width = 937
+      Width = 908
       Align = alBottom
       Beveled = True
       ResizeAnchor = akBottom
@@ -78,7 +78,7 @@ object MainForm: TMainForm
       Left = 1
       Height = 474
       Top = 1
-      Width = 937
+      Width = 908
       Align = alClient
       TabOrder = 2
     end
@@ -87,26 +87,26 @@ object MainForm: TMainForm
     Left = 0
     Height = 572
     Top = 34
-    Width = 211
+    Width = 240
     Align = alLeft
     Caption = 'pnlLeft'
     ClientHeight = 572
-    ClientWidth = 211
+    ClientWidth = 240
     TabOrder = 3
     object ToolBar1: TToolBar
       Left = 1
       Height = 34
       Top = 1
-      Width = 209
+      Width = 238
       AutoSize = True
       ButtonHeight = 32
       ButtonWidth = 32
       Caption = 'ToolBar1'
       Images = dmCommon.ImageListInspector
       TabOrder = 0
-      Wrapable = False
       object btnConnectionInsert: TToolButton
         Left = 1
+        Hint = 'Insert Database'
         Top = 2
         Caption = 'Exit'
         ImageIndex = 0
@@ -116,40 +116,79 @@ object MainForm: TMainForm
       end
       object btnConnectionEdit: TToolButton
         Left = 33
+        Hint = 'Edit Database'
         Top = 2
         Caption = 'btnConnectionEdit'
         ImageIndex = 1
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
       end
       object btnConnectionDelete: TToolButton
         Left = 65
+        Hint = 'Remove Database'
         Top = 2
         Caption = 'btnConnectionDelete'
         ImageIndex = 2
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
       end
       object btnConnectionISQL: TToolButton
         Left = 97
+        Hint = 'Interactive Sql'
         Top = 2
         Caption = 'btnConnectionISQL'
         ImageIndex = 3
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
       end
       object btnConnectionSelectTable: TToolButton
         Left = 129
+        Hint = 'SELECT table'
         Top = 2
         Caption = 'btnConnectionSelectTable'
         ImageIndex = 4
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
+      end
+      object btnCollapse: TToolButton
+        Left = 161
+        Hint = 'Collapse All'
+        Top = 2
+        Caption = 'btnCollapse'
+        ImageIndex = 5
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
+      end
+      object btnReloadDatabase: TToolButton
+        Left = 193
+        Hint = 'Reload Selected Database'
+        Top = 2
+        Caption = 'btnReloadDatabase'
+        ImageIndex = 6
+        ParentShowHint = False
+        ShowCaption = False
+        ShowHint = True
       end
     end
     object tv: TTreeView
       Left = 1
       Height = 536
       Top = 35
-      Width = 209
+      Width = 238
       Align = alClient
+      Images = dmCommon.ImageListTreeView
+      ReadOnly = True
       TabOrder = 1
+      Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
     end
   end
   object Splitter1: TSplitter
-    Left = 211
+    Left = 240
     Height = 572
     Top = 34
     Width = 6
