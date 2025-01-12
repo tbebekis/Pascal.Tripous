@@ -15,6 +15,7 @@ uses
   , Menus
   , ExtCtrls
   , StdCtrls
+  , LCLType
 
   , Tripous
   , Tripous.Data, SQLDB
@@ -29,6 +30,7 @@ type
     mmoLog: TMemo;
     mnuFile: TMenuItem;
     mnuExit: TMenuItem;
+    Pager: TPageControl;
     pnlLeft: TPanel;
     pnlRight: TPanel;
     pnlBody: TPanel;
@@ -36,13 +38,14 @@ type
     Splitter2: TSplitter;
     SQLConnector1: TSQLConnector;
     StatusBar: TStatusBar;
+    TabSheet1: TTabSheet;
+    TabSheet2: TTabSheet;
     ToolBar: TToolBar;
     btnExit: TToolButton;
     ToolBar1: TToolBar;
     btnConnectionEdit: TToolButton;
     btnConnectionDelete: TToolButton;
-    btnConnectionISQL: TToolButton;
-    btnConnectionSelectTable: TToolButton;
+    btnDatabaseISQL: TToolButton;
     btnCollapse: TToolButton;
     btnReloadDatabase: TToolButton;
     tv: TTreeView;
@@ -57,6 +60,7 @@ type
     procedure ConnectionDelete();
   protected
     procedure DoShow; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
 
   end;
@@ -84,23 +88,38 @@ begin
   FormInitialize();
 end;
 
+procedure TMainForm.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_F5) and (Shift = []) then
+  begin
+     if ActiveControl = tv then
+        btnReloadDatabase.Click();
+  end;
+
+  inherited KeyDown(Key, Shift);
+end;
+
 procedure TMainForm.FormInitialize();
 begin
   if not IsInitialized then
   begin
     IsInitialized := True;
 
+    KeyPreview := True;
+
+    Pager.Clear();
+
     LogBox.Initialize(mmoLog, True);
     Application.ProcessMessages();
 
-    App.AppInitialize(tv);
+    App.AppInitialize(tv, Pager);
 
     btnExit.OnClick  := AnyClick;
     btnConnectionInsert.OnClick  := AnyClick;
     btnConnectionEdit.OnClick  := AnyClick;
     btnConnectionDelete.OnClick  := AnyClick;
-    btnConnectionISQL.OnClick  := AnyClick;
-    btnConnectionSelectTable.OnClick  := AnyClick;
+    btnDatabaseISQL.OnClick  := AnyClick;
+
     btnCollapse.OnClick  := AnyClick;
     btnReloadDatabase.OnClick  := AnyClick;
 
@@ -120,6 +139,8 @@ begin
   else if btnConnectionDelete = Sender then ConnectionDelete()
   else if btnCollapse = Sender then tv.FullCollapse()
   else if btnReloadDatabase = Sender then App.ReloadSelectedDatabase()
+  else if btnDatabaseISQL = Sender then App.AddSqlPage()
+  //else if btnSelectTable = Sender then App.
   ;
 end;
 

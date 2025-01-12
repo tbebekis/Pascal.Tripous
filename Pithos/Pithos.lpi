@@ -27,6 +27,15 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="FCL"/>
+      </Item>
+      <Item>
+        <PackageName Value="SynEditDsgn"/>
+      </Item>
+      <Item>
+        <PackageName Value="SynEdit"/>
+      </Item>
+      <Item>
         <PackageName Value="SQLDBLaz"/>
       </Item>
       <Item>
@@ -80,12 +89,12 @@
         <UnitName Value="Tripous"/>
       </Unit>
       <Unit>
-        <Filename Value="fr_sqleditor.pas"/>
+        <Filename Value="fr_isqlframe.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="SqlEditorFrame"/>
+        <ComponentName Value="ISqlFrame"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
-        <UnitName Value="fr_SqlEditor"/>
+        <UnitName Value="fr_ISqlFrame"/>
       </Unit>
       <Unit>
         <Filename Value="dm_common.pas"/>
@@ -107,6 +116,11 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="f_ConnectionEditDialog"/>
+      </Unit>
+      <Unit>
+        <Filename Value="o_sqlhistory.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="o_SqlHistory"/>
       </Unit>
     </Units>
   </ProjectOptions>

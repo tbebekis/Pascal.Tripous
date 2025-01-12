@@ -14,7 +14,8 @@ uses
   , ComCtrls
   , Menus
   , ExtCtrls
-  , StdCtrls
+  , DB
+  //, StdCtrls
 
   ,Tripous
   ,Tripous.Data
@@ -40,7 +41,97 @@ const
 
 type
 
+  { TSqlPageInfo }
+  TSqlPageInfo = class
+  private
+    FInitialSql: string;
+    FMetaDatabase: TMetaDatabase;
+    FPage: TTabSheet;
+  public
+     constructor Create(MetaDatabase: TMetaDatabase; Page: TTabSheet; InitialSql: string);
 
+     property MetaDatabase: TMetaDatabase read FMetaDatabase;
+     property Page: TTabSheet read FPage;
+     property InitialSql: string read FInitialSql;
+  end;
+
+  ISqlExecInfo = interface
+  ['{9C9399D6-429D-4719-983D-C4978CC2C7CE}']
+  {private}
+    function GetIsSelect: Boolean;
+    function GetSelectCounter: Integer;
+    function GetSqlText: string;
+    function GetStatementCounter: Integer;
+    function  GetTable: TDataset;
+    procedure SetTable(AValue: TDataset);
+    function GetErrorText: string;
+    procedure SetErrorText(AValue: string);
+  {public}
+    property SqlText: string read GetSqlText;
+    property IsSelect: Boolean read GetIsSelect;
+    property StatementCounter: Integer read GetStatementCounter;
+    property SelectCounter: Integer read GetSelectCounter;
+    property Table: TDataset read GetTable write SetTable;
+    property ErrorText: string read GetErrorText write SetErrorText;
+  end;
+
+  { TSqlExecInfo }
+  TSqlExecInfo = class(TInterfacedObject, ISqlExecInfo)
+  private
+    FSqlText: string;
+    FIsSelect: Boolean;
+    FStatementCounter: Integer;
+    FSelectCounter: Integer;
+    FTable: TDataset;
+    FErrorText: string;
+
+    function GetIsSelect: Boolean;
+    function GetSelectCounter: Integer;
+    function GetSqlText: string;
+    function GetStatementCounter: Integer;
+    function  GetTable: TDataset;
+
+    procedure SetTable(AValue: TDataset);
+    function GetErrorText: string;
+    procedure SetErrorText(AValue: string);
+  public
+    constructor Create(SqlText: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
+
+    property SqlText: string read GetSqlText;
+    property IsSelect: Boolean read GetIsSelect;
+    property StatementCounter: Integer read GetStatementCounter;
+    property SelectCounter: Integer read GetSelectCounter;
+    property Table: TDataset read GetTable write SetTable;
+    property ErrorText: string read GetErrorText write SetErrorText;
+  end;
+
+  (*
+  string sText = !string.IsNullOrWhiteSpace(Form.SyntaxEdit.SelectedText) ? Form.SyntaxEdit.SelectedText : Form.SyntaxEdit.Text;
+  Form.History.Parse(sText);
+
+  HistoryItem historyItem = Form.History.Current;
+  if (historyItem != null)
+  {
+      foreach (StatementItem Statement in historyItem.SqlStatements)
+      {
+          Form.StatementCounter++;
+          if (Statement.IsSelect)
+          {
+              Form.SelectCounter++;
+          }
+
+          SafeAsync SA = new SafeAsync();
+          Dictionary<string, object> ArgList = new Dictionary<string, object>();
+          ArgList["SafeAsync"] = SA;
+          ArgList["IsSelect"] = Statement.IsSelect;
+          ArgList["SqlText"] = Statement.SqlText;
+          ArgList["StatementCounter"] = Form.StatementCounter;
+          ArgList["SelectCounter"] = Form.SelectCounter;
+
+          SA.Execute(ExecuteStatement, ArgList);
+      }
+  }
+  *)
 
   { App }
   App = class
@@ -49,23 +140,31 @@ type
     FMetaDatabases: TMetaDatabases;
     FConnectionInfo: TSqlConnectionInfo;
     FSqlStore : TSqlStore;
+    FSqlPageCounter: Integer;
 
     tv: TTreeView;
+    Pager: TPageControl;
     RootNode: TTreeNode;
 
-    class function  GetTreeNodeMetaNode(Node: TTreeNode): TMetaNode;
+    class function  GetTreeNodeMetaNode(Node: TTreeNode = nil): TMetaNode;
+    class function  GetTreeNodeMetaDatabase(Node: TTreeNode = nil): TMetaDatabase;
+
     class function  GetIconIndex(MetaNodeType: TMetaNodeType): Integer;
     class procedure EnsureSqlConnection();
     class function  SelectSqlConnections(): IList<TSqlConInfoProxy>;
     class procedure AddDatabaseNodes();
     class procedure AddChildrenNodes(ParentNode: TTreeNode; ParentMetaNode: TMetaNode);
   public
-    class procedure AppInitialize(TreeView: TTreeView);
+    class procedure AppInitialize(TreeView: TTreeView; Pager: TPageControl);
 
-    class function ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
+    class function  ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
+
+    class procedure AddSqlPage();
 
     class procedure AddDatabaseNode(MetaDatabase: TMetaDatabase);
-    class procedure ReloadSelectedDatabase();
+    class procedure ReloadSelectedDatabase(Node: TTreeNode = nil);
+    class procedure ReloadDatabase(MetaDatabase: TMetaDatabase);
+    class function  NextSqlPageId(): Integer;
 
     class property IsInitialized: Boolean read FIsInitialized;
     class property MetaDatabases: TMetaDatabases read FMetaDatabases;
@@ -76,11 +175,73 @@ implementation
 
 uses
   Tripous.Logs
+  ,fr_ISqlFrame
   ;
+
+{ TSqlPageInfo }
+
+constructor TSqlPageInfo.Create(MetaDatabase: TMetaDatabase; Page: TTabSheet; InitialSql: string);
+begin
+  inherited Create();
+  FMetaDatabase := MetaDatabase;
+  FPage := Page;
+  FInitialSql := InitialSql;
+end;
+
+{ TSqlExecInfo }
+constructor TSqlExecInfo.Create(SqlText: string; IsSelect: Boolean;  StatementCounter: Integer; SelectCounter: Integer);
+begin
+  inherited Create();
+  FSqlText := SqlText;
+  FIsSelect := IsSelect;
+  FStatementCounter := StatementCounter;
+  FSelectCounter := SelectCounter;
+end;
+function TSqlExecInfo.GetIsSelect: Boolean;
+begin
+  Result := FIsSelect;
+end;
+
+function TSqlExecInfo.GetErrorText: string;
+begin
+
+end;
+
+function TSqlExecInfo.GetSelectCounter: Integer;
+begin
+   Result := FSelectCounter;
+end;
+
+function TSqlExecInfo.GetSqlText: string;
+begin
+   Result := FSqlText;
+end;
+
+function TSqlExecInfo.GetStatementCounter: Integer;
+begin
+  Result := FStatementCounter;
+end;
+
+function TSqlExecInfo.GetTable: TDataset;
+begin
+  Result := FTable;
+end;
+
+procedure TSqlExecInfo.SetErrorText(AValue: string);
+begin
+
+end;
+
+procedure TSqlExecInfo.SetTable(AValue: TDataset);
+begin
+  FTable := AValue;
+end;
+
+
 
 
 { App }
-class procedure App.AppInitialize(TreeView: TTreeView);
+class procedure App.AppInitialize(TreeView: TTreeView; Pager: TPageControl);
 begin
   if not IsInitialized then
   begin
@@ -90,6 +251,7 @@ begin
     EnsureSqlConnection();
 
     tv := TreeView;
+    App.Pager := Pager;
     AddDatabaseNodes();
   end;
 end;
@@ -170,6 +332,34 @@ begin
   Result := MetaDatabases.Add(ConInfoProxy.CreateSqlConnectionInfo());
 end;
 
+class procedure App.AddSqlPage();
+var
+  MetaDatabase: TMetaDatabase;
+  Page: TTabSheet;
+  InitialSql: string;
+  MetaNode : TMetaNode;
+begin
+  MetaDatabase := GetTreeNodeMetaDatabase(nil);
+  if Assigned(MetaDatabase) then
+  begin
+    if not MetaDatabase.Loaded then
+       ReloadDatabase(MetaDatabase)
+    else begin
+      MetaNode := GetTreeNodeMetaNode(tv.Selected);
+      if Assigned(MetaNode) and ((MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView)) then
+        InitialSql := 'select * from ' + MetaNode.Name;
+    end;
+
+    Application.ProcessMessages();
+
+    Page  := Pager.AddTabSheet();
+    TISqlFrame.Create(Page, MetaDatabase, InitialSql);
+
+    Pager.ActivePage := Page;
+  end;
+
+end;
+
 class procedure App.AddDatabaseNodes();
 var
   MetaDatabase: TMetaDatabase;
@@ -185,6 +375,7 @@ begin
 
     RootNode := tv.Items.Add(nil,'Databases');
     RootNode.Data := App.MetaDatabases;
+    App.MetaDatabases.Tag := RootNode;
     RootNode.ImageIndex := GetIconIndex(App.MetaDatabases.NodeType);
     RootNode.SelectedIndex := RootNode.ImageIndex;
 
@@ -218,6 +409,7 @@ begin
     begin
       Node := tv.Items.AddChild(ParentNode, MetaNode.DisplayText);
       Node.Data := MetaNode;
+      MetaNode.Tag := Node;
       Node.ImageIndex := GetIconIndex(MetaNode.NodeType);
       Node.SelectedIndex := Node.ImageIndex;
       AddChildrenNodes(Node, MetaNode);
@@ -233,6 +425,7 @@ begin
   try
     Node := tv.Items.AddChild(RootNode, MetaDatabase.DisplayText);
     Node.Data := MetaDatabase;
+    MetaDatabase.Tag := Node;
     Node.ImageIndex := GetIconIndex(MetaDatabase.NodeType);
     Node.SelectedIndex := Node.ImageIndex;
     //AddChildrenNodes(Node, MetaDatabase);
@@ -244,36 +437,68 @@ end;
 class function  App.GetTreeNodeMetaNode(Node: TTreeNode): TMetaNode;
 begin
   try
-    Result := TMetaNode(Node.Data);
+    if not Assigned(Node) then
+      Node := tv.Selected;
+
+    if Assigned(Node) then
+       Result := TMetaNode(Node.Data);
   except
     Result := nil;
   end;
 end;
 
-class procedure App.ReloadSelectedDatabase();
+class function App.GetTreeNodeMetaDatabase(Node: TTreeNode): TMetaDatabase;
 var
-  MetaDatabase: TMetaDatabase;
   MetaNode: TMetaNode;
 begin
-  if Assigned(tv.Selected) then
-  begin
-    Screen.Cursor := crHourGlass;
-    try
-      MetaNode := GetTreeNodeMetaNode(tv.Selected);
-      if MetaNode is TMetaDatabase then
-      begin
-        MetaDatabase := MetaNode as TMetaDatabase;
+  Result := nil;
+  if not Assigned(Node) then
+     Node := tv.Selected;
 
+  if Assigned(Node) then
+  begin
+    MetaNode := GetTreeNodeMetaNode(Node);
+    if Assigned(MetaNode) then
+       Result := MetaNode.Database;
+  end;
+end;
+
+class procedure App.ReloadSelectedDatabase(Node: TTreeNode);
+var
+  MetaDatabase: TMetaDatabase;
+begin
+  if not Assigned(Node) then
+     Node := tv.Selected;
+
+  if Assigned(Node) then
+  begin
+     MetaDatabase := GetTreeNodeMetaDatabase(Node);
+     ReloadDatabase(MetaDatabase);
+  end;
+end;
+
+class procedure App.ReloadDatabase(MetaDatabase: TMetaDatabase);
+var
+  Node: TTreeNode;
+begin
+  if Assigned(MetaDatabase) then
+  begin
+    Node := MetaDatabase.Tag as TTreeNode;
+
+    if Assigned(Node) then
+    begin
+      Screen.Cursor := crHourGlass;
+      try
         LogBox.AppendLine('Loading Database: ' + MetaDatabase.DisplayText + '. Please wait...');
 
         if MetaDatabase.Loaded then
         begin
           MetaDatabase.Clear();
-          if tv.Selected.Count > 0 then
+          if Node.Count > 0 then
           begin
             tv.BeginUpdate();
             try
-              tv.Selected.DeleteChildren();
+              Node.DeleteChildren();
             finally
               tv.EndUpdate();
             end;
@@ -285,16 +510,24 @@ begin
 
         tv.BeginUpdate();
         try
-          AddChildrenNodes(tv.Selected, MetaDatabase);
+          AddChildrenNodes(Node, MetaDatabase);
+          Node.Expand(False);
           LogBox.Append('DONE');
         finally
           tv.EndUpdate();
         end;
+      finally
+        Screen.Cursor := crDefault;
       end;
-    finally
-      Screen.Cursor := crDefault;
     end;
   end;
+
+end;
+
+class function App.NextSqlPageId(): Integer;
+begin
+  Inc(FSqlPageCounter);
+  Result := FSqlPageCounter;
 end;
 
 

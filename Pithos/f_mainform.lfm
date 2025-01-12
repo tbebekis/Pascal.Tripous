@@ -80,7 +80,25 @@ object MainForm: TMainForm
       Top = 1
       Width = 908
       Align = alClient
+      ClientHeight = 474
+      ClientWidth = 908
       TabOrder = 2
+      object Pager: TPageControl
+        Left = 1
+        Height = 472
+        Top = 1
+        Width = 906
+        ActivePage = TabSheet1
+        Align = alClient
+        TabIndex = 0
+        TabOrder = 0
+        object TabSheet1: TTabSheet
+          Caption = 'TabSheet1'
+        end
+        object TabSheet2: TTabSheet
+          Caption = 'TabSheet2'
+        end
+      end
     end
   end
   object pnlLeft: TPanel
@@ -134,28 +152,18 @@ object MainForm: TMainForm
         ShowCaption = False
         ShowHint = True
       end
-      object btnConnectionISQL: TToolButton
+      object btnDatabaseISQL: TToolButton
         Left = 97
         Hint = 'Interactive Sql'
         Top = 2
-        Caption = 'btnConnectionISQL'
+        Caption = 'btnDatabaseISQL'
         ImageIndex = 3
         ParentShowHint = False
         ShowCaption = False
         ShowHint = True
       end
-      object btnConnectionSelectTable: TToolButton
-        Left = 129
-        Hint = 'SELECT table'
-        Top = 2
-        Caption = 'btnConnectionSelectTable'
-        ImageIndex = 4
-        ParentShowHint = False
-        ShowCaption = False
-        ShowHint = True
-      end
       object btnCollapse: TToolButton
-        Left = 161
+        Left = 129
         Hint = 'Collapse All'
         Top = 2
         Caption = 'btnCollapse'
@@ -165,7 +173,7 @@ object MainForm: TMainForm
         ShowHint = True
       end
       object btnReloadDatabase: TToolButton
-        Left = 193
+        Left = 161
         Hint = 'Reload Selected Database'
         Top = 2
         Caption = 'btnReloadDatabase'
