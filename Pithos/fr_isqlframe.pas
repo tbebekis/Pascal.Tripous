@@ -218,6 +218,8 @@ begin
         SqlExecInfo  := TSqlExecInfo.Create(SqlStatementItem.SqlText, SqlStatementItem.IsSelect, FStatementCounter, FSelectCounter);
 
         Sys.SafeAsyncExecute(SqlExecInfo, OnSafeAsyncExecute, OnSafeAsyncCompleted);
+
+        Application.ProcessMessages();
       end;
     end;
   end;
@@ -227,13 +229,19 @@ end;
 procedure TISqlFrame.OnSafeAsyncExecute(const Info: IInterface);
 var
   SqlExecInfo  : ISqlExecInfo;
+  SqlStore     : TSqlStore;
 begin
   SqlExecInfo := Info as ISqlExecInfo;
   try
-    if SqlExecInfo.IsSelect then
-       SqlExecInfo.Table := MetaDatabase.SqlStore.Select(SqlExecInfo.SqlText)
-    else
-       MetaDatabase.SqlStore.ExecSql(SqlExecInfo.SqlText);
+    SqlStore := TSqlStore.Create(MetaDatabase.SqlStore.ConnectionInfo);
+    try
+      if SqlExecInfo.IsSelect then
+         SqlExecInfo.Table := MetaDatabase.SqlStore.Select(SqlExecInfo.SqlText)
+      else
+         MetaDatabase.SqlStore.ExecSql(SqlExecInfo.SqlText);
+    finally
+      SqlStore.Free();
+    end;
   except
     on E: Exception do
     begin

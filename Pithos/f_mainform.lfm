@@ -226,4 +226,9 @@ object MainForm: TMainForm
     Left = 426
     Top = 169
   end
+  object SQLDBLibraryLoader1: TSQLDBLibraryLoader
+    Enabled = False
+    Left = 534
+    Top = 148
+  end
 end

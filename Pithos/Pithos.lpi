@@ -122,6 +122,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="o_SqlHistory"/>
       </Unit>
+      <Unit>
+        <Filename Value="o_temp.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="o_Temp"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

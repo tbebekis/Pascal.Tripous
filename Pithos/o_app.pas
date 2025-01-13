@@ -204,7 +204,7 @@ end;
 
 function TSqlExecInfo.GetErrorText: string;
 begin
-
+  Result := FErrorText;
 end;
 
 function TSqlExecInfo.GetSelectCounter: Integer;
@@ -229,7 +229,7 @@ end;
 
 procedure TSqlExecInfo.SetErrorText(AValue: string);
 begin
-
+  FErrorText:= AValue;
 end;
 
 procedure TSqlExecInfo.SetTable(AValue: TDataset);

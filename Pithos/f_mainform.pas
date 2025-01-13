@@ -18,7 +18,7 @@ uses
   , LCLType
 
   , Tripous
-  , Tripous.Data, SQLDB
+  , Tripous.Data, SQLDB, SQLDBLib
   , o_App
   ;
 
@@ -37,6 +37,7 @@ type
     Splitter1: TSplitter;
     Splitter2: TSplitter;
     SQLConnector1: TSQLConnector;
+    SQLDBLibraryLoader1: TSQLDBLibraryLoader;
     StatusBar: TStatusBar;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
