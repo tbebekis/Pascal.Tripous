@@ -18,12 +18,14 @@ type
   TSqlStatementItem = class
   private
     FSqlText: string;
+    FStatementName: string;
     function GetIsSelect: Boolean;
   public
     constructor Create(SqlText: string);
 
     property SqlText: string read FSqlText;
     property IsSelect: Boolean read GetIsSelect;
+    property StatementName: string read FStatementName;
   end;
 
   { TSqlHistoryItem }
@@ -80,16 +82,28 @@ type
 
 implementation
 
+var
+  StatementNames : array of string = ['select', 'execute', 'exec', 'insert', 'update', 'delete', 'create', 'alter', 'drop', 'truncate'];
+
 { TSqlStatementItem }
 function TSqlStatementItem.GetIsSelect: Boolean;
 begin
-  Result := FSqlText.Trim().StartsWith('select', True);
+  Result := FStatementName = 'select';
 end;
 
 constructor TSqlStatementItem.Create(SqlText: string);
+var
+  sSqlText, Item: string;
 begin
   inherited Create();
   FSqlText := SqlText;
+  sSqlText := SqlText.Trim();
+  for Item in StatementNames do
+    if sSqlText.StartsWith(Item, True) then
+    begin
+      FStatementName := Item;
+      break;
+    end;
 end;
 
 { TSqlHistoryItem }
@@ -103,10 +117,41 @@ var
   TextList : IList<string>;
   SqlList  : IList<string>;
   LastLine : string;
-  S        : string;
+  //S        : string;
   S2       : string;
   i        : Integer;
 
+
+  StatementName: string;
+
+  // -----------------------------------------------------------------------
+  function GetStatementName(sLine: string): string;
+  var
+    sName: string;
+  begin
+    Result := '';
+
+    sLine := sLine.Trim();
+    if not Sys.IsEmpty(sLine) then
+    begin
+      for sName in StatementNames do
+      begin
+        if sLine.StartsWith(sName, True) then
+        begin
+          if sName = 'select' then
+          begin
+            if not ((Length(LastLine) > 0) and (LastLine[LastLine.Length - 1] = '('))  then
+              Result := sName;
+            break;
+          end else begin
+            Result := sName;
+            break;
+          end;
+        end;
+      end;
+    end;
+  end;
+  // -----------------------------------------------------------------------
   procedure AddText(List: IList<string>; Text: string; StripEmptyLines: Boolean);
   var
     SplitOptions: TStringSplitOptions;
@@ -122,10 +167,15 @@ var
 
         Lines2 := Text.Split([sLineBreak], SplitOptions);
         for Item in Lines2 do
+        begin
+          if not (Item.Trim().StartsWith('--')
+               or Item.Trim().StartsWith('##')
+               or Item.Trim().StartsWith('//')) then
           List.Add(Item);
+        end;
     end;
   end;
-
+  // -----------------------------------------------------------------------
 begin
   inherited Create();
   FSqlText := SqlText;
@@ -135,6 +185,7 @@ begin
   // strip empty lines
   SB := TStrBuilder.Create();
   Lines := SqlText.Trim().Split([sLineBreak], TStringSplitOptions.ExcludeEmpty);
+
   for Line in Lines do
   begin
     if not Sys.IsEmpty(Line) then
@@ -152,7 +203,24 @@ begin
 
   for i := 0 to TextList.Count - 1 do
   begin
-    S := TextList[i].Trim();
+    Line := TextList[i].Trim();
+
+    if not Sys.IsEmpty(Line) then
+    begin
+      StatementName := GetStatementName(Line);
+      if not Sys.IsEmpty(StatementName) then
+      begin
+        S2 := Sys.ToText(SqlList);
+        if not Sys.IsEmpty(S2) then
+           SqlStatements.Add(TSqlStatementItem.Create(S2));
+        SqlList.Clear();
+      end;
+
+      LastLine := Line;
+      SqlList.Add(TextList[i]);
+    end;
+
+    {
     if not Sys.IsEmpty(S) then
     begin
       if (S.StartsWith('select', True) and not ((Length(LastLine) > 0) and (LastLine[LastLine.Length - 1] = '(')))
@@ -175,6 +243,7 @@ begin
       LastLine := S;
       SqlList.Add(TextList[i]);
     end;
+    }
   end;
 
   S2 := Sys.ToText(SqlList);

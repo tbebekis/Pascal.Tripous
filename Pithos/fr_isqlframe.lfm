@@ -71,10 +71,10 @@ object ISqlFrame: TISqlFrame
   end
   inline edtSql: TSynEdit
     Left = 0
-    Height = 420
+    Height = 438
     Top = 34
     Width = 860
-    Align = alTop
+    Align = alClient
     Font.Height = -13
     Font.Name = 'Courier New'
     Font.Pitch = fpFixed
@@ -515,6 +515,7 @@ object ISqlFrame: TISqlFrame
       ''
     )
     VisibleSpecialChars = [vscSpace, vscTabAtLast]
+    RightEdge = 1024
     SelectedColor.BackPriority = 50
     SelectedColor.ForePriority = 50
     SelectedColor.FramePriority = 50
@@ -575,18 +576,18 @@ object ISqlFrame: TISqlFrame
     Cursor = crVSplit
     Left = 0
     Height = 6
-    Top = 454
+    Top = 472
     Width = 860
-    Align = alTop
+    Align = alBottom
     Beveled = True
-    ResizeAnchor = akTop
+    ResizeAnchor = akBottom
   end
   object pagerGrids: TPageControl
     Left = 0
-    Height = 147
-    Top = 460
+    Height = 129
+    Top = 478
     Width = 860
-    Align = alClient
+    Align = alBottom
     TabOrder = 3
   end
   object SynSQLSyn1: TSynSQLSyn

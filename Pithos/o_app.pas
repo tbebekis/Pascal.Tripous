@@ -59,15 +59,17 @@ type
   ['{9C9399D6-429D-4719-983D-C4978CC2C7CE}']
   {private}
     function GetIsSelect: Boolean;
+    function GetStatementName: string;
     function GetSelectCounter: Integer;
     function GetSqlText: string;
     function GetStatementCounter: Integer;
     function  GetTable: TDataset;
     procedure SetTable(AValue: TDataset);
-    function GetErrorText: string;
+    function  GetErrorText: string;
     procedure SetErrorText(AValue: string);
   {public}
     property SqlText: string read GetSqlText;
+    property StatementName: string read GetStatementName;
     property IsSelect: Boolean read GetIsSelect;
     property StatementCounter: Integer read GetStatementCounter;
     property SelectCounter: Integer read GetSelectCounter;
@@ -82,6 +84,7 @@ type
     FIsSelect: Boolean;
     FStatementCounter: Integer;
     FSelectCounter: Integer;
+    FStatementName: string;
     FTable: TDataset;
     FErrorText: string;
 
@@ -89,15 +92,17 @@ type
     function GetSelectCounter: Integer;
     function GetSqlText: string;
     function GetStatementCounter: Integer;
+    function GetStatementName: string;
     function  GetTable: TDataset;
 
     procedure SetTable(AValue: TDataset);
     function GetErrorText: string;
     procedure SetErrorText(AValue: string);
   public
-    constructor Create(SqlText: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
+    constructor Create(SqlText: string; StatementName: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
 
     property SqlText: string read GetSqlText;
+    property StatementName: string read GetStatementName;
     property IsSelect: Boolean read GetIsSelect;
     property StatementCounter: Integer read GetStatementCounter;
     property SelectCounter: Integer read GetSelectCounter;
@@ -189,10 +194,11 @@ begin
 end;
 
 { TSqlExecInfo }
-constructor TSqlExecInfo.Create(SqlText: string; IsSelect: Boolean;  StatementCounter: Integer; SelectCounter: Integer);
+constructor TSqlExecInfo.Create(SqlText: string; StatementName: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
 begin
   inherited Create();
   FSqlText := SqlText;
+  FStatementName := StatementName;
   FIsSelect := IsSelect;
   FStatementCounter := StatementCounter;
   FSelectCounter := SelectCounter;
@@ -220,6 +226,11 @@ end;
 function TSqlExecInfo.GetStatementCounter: Integer;
 begin
   Result := FStatementCounter;
+end;
+
+function TSqlExecInfo.GetStatementName: string;
+begin
+  Result := FStatementName;
 end;
 
 function TSqlExecInfo.GetTable: TDataset;

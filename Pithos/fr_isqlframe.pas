@@ -1,7 +1,8 @@
 unit fr_ISqlFrame;
 
 {$MODE DELPHI}{$H+}
-
+{$WARN 4104 off : Implicit string type conversion from "$1" to "$2"}
+{$WARN 4105 off : Implicit string type conversion with potential data loss from "$1" to "$2"}
 interface
 
 uses
@@ -19,7 +20,7 @@ uses
   , Tripous
   , Tripous.Data
   , Tripous.Logs
-  //,o_App
+  ,o_App
 
   ,o_SqlHistory
   ;
@@ -41,6 +42,9 @@ type
     btnNext: TToolButton;
     btnExec: TToolButton;
     btnShowIdColumns: TToolButton;
+  private class var
+    FStatementCounter: Integer;
+    FSelectCounter: Integer;
   private
     FId: Integer;
 
@@ -49,19 +53,15 @@ type
     FPage: TTabSheet;
     FSqlHistory: TSqlHistory;
 
-    FStatementCounter: Integer;
-    FSelectCounter: Integer;
-
     procedure AnyClick(Sender: TObject);
     procedure SqlHistory_CurrentSqlTextChanged(Sender: TObject);
     procedure ToggleShowIdColumns();
     procedure EnableCommands();
     procedure ExecSql();
 
-    { executed inside a secondary thread }
-    procedure OnSafeAsyncExecute(const Info: IInterface);
-    { execute inside the main thread }
-    procedure OnSafeAsyncCompleted(const Info: IInterface);
+
+    procedure DoExecute(const Info: ISqlExecInfo);
+    procedure DoCompleted(const Info: ISqlExecInfo);
   public
     constructor Create(Page: TTabSheet; MetaDatabase: TMetaDatabase; InitialSql: string); overload;
     destructor Destroy(); override;
@@ -76,9 +76,7 @@ implementation
 
 {$R *.lfm}
 
-uses
-  o_App
-  ;
+
 
 
 type
@@ -192,6 +190,7 @@ var
   SqlExecInfo  : ISqlExecInfo;
 begin
   pagerGrids.Clear();
+  Application.ProcessMessages();
 
   SqlText := '';
   if not Sys.IsEmpty(edtSql.SelText) then
@@ -215,58 +214,73 @@ begin
         if SqlStatementItem.IsSelect then
            Inc(FSelectCounter);
 
-        SqlExecInfo  := TSqlExecInfo.Create(SqlStatementItem.SqlText, SqlStatementItem.IsSelect, FStatementCounter, FSelectCounter);
+        SqlExecInfo  := TSqlExecInfo.Create(SqlStatementItem.SqlText, SqlStatementItem.StatementName, SqlStatementItem.IsSelect, FStatementCounter, FSelectCounter);
 
-        Sys.SafeAsyncExecute(SqlExecInfo, OnSafeAsyncExecute, OnSafeAsyncCompleted);
+        DoExecute(SqlExecInfo);
+        DoCompleted(SqlExecInfo);
+        //Sys.SafeAsyncExecute(SqlExecInfo, DoExecute, DoCompleted);
 
         Application.ProcessMessages();
+        //Application.QueueAsyncCall
+        // https://wiki.lazarus.freepascal.org/Asynchronous_Calls
+        // https://forum.lazarus.freepascal.org/index.php?topic=47603.0
       end;
     end;
   end;
 
 end;
 
-procedure TISqlFrame.OnSafeAsyncExecute(const Info: IInterface);
+procedure TISqlFrame.DoExecute(const Info: ISqlExecInfo);
 var
-  SqlExecInfo  : ISqlExecInfo;
   SqlStore     : TSqlStore;
 begin
-  SqlExecInfo := Info as ISqlExecInfo;
   try
     SqlStore := TSqlStore.Create(MetaDatabase.SqlStore.ConnectionInfo);
     try
-      if SqlExecInfo.IsSelect then
-         SqlExecInfo.Table := MetaDatabase.SqlStore.Select(SqlExecInfo.SqlText)
+      if Info.IsSelect then
+         Info.Table := MetaDatabase.SqlStore.Select(Info.SqlText)
       else
-         MetaDatabase.SqlStore.ExecSql(SqlExecInfo.SqlText);
+         MetaDatabase.SqlStore.ExecSql(Info.SqlText);
     finally
       SqlStore.Free();
     end;
   except
     on E: Exception do
     begin
-      SqlExecInfo.ErrorText := E.ToString();
+      Info.ErrorText := E.ToString();
     end;
   end;
 end;
 
-procedure TISqlFrame.OnSafeAsyncCompleted(const Info: IInterface);
+procedure TISqlFrame.DoCompleted(const Info: ISqlExecInfo);
 var
-  SqlExecInfo  : ISqlExecInfo;
-  GridPage: TGridPage;
+  GridPage     : TGridPage;
+  SB           : IStringBuilder;
 begin
-  SqlExecInfo := Info as ISqlExecInfo;
-  if not Sys.IsEmpty(SqlExecInfo.ErrorText) then
+  if not Sys.IsEmpty(Info.ErrorText) then
   begin
-    LogBox.AppendLine('ERROR: ' + SqlExecInfo.ErrorText);
+    LogBox.AppendLine('ERROR: ' + Info.ErrorText);
     LogBox.AppendLine('in the following statement: ');
-    LogBox.AppendLine(SqlExecInfo.SqlText);
+    LogBox.AppendLine(Info.SqlText);
   end else begin
-    if SqlExecInfo.IsSelect then
+    if Info.IsSelect then
     begin
-      GridPage := TGridPage.CreatePage(pagerGrids, SqlExecInfo.Table);
-      GridPage.Caption := IntToStr(SqlExecInfo.SelectCounter);
+      GridPage := TGridPage.CreatePage(pagerGrids, Info.Table);
+      GridPage.Caption := IntToStr(Info.SelectCounter);
+      Application.ProcessMessages();
     end;
+
+    SB := TStrBuilder.Create();
+    SB.Append(FormatDateTime('[yyyy-mm-dd hh:nn:ss] ', Now));
+    SB.Append('[' + IntToStr(Info.StatementCounter) + '] ');
+    SB.Append(Info.StatementName + ' is executed.');
+    if Assigned(Info.Table) then
+       SB.Append(' Rows: ' + IntToStr(Info.Table.RecordCount));
+    SB.AppendLine();
+    SB.AppendLine(Info.SqlText);
+
+    LogBox.AppendLine(SB.ToString());
+    Application.ProcessMessages();
   end;
 end;
 
