@@ -55,89 +55,6 @@ type
      property InitialSql: string read FInitialSql;
   end;
 
-  ISqlExecInfo = interface
-  ['{9C9399D6-429D-4719-983D-C4978CC2C7CE}']
-  {private}
-    function GetIsSelect: Boolean;
-    function GetStatementName: string;
-    function GetSelectCounter: Integer;
-    function GetSqlText: string;
-    function GetStatementCounter: Integer;
-    function  GetTable: TDataset;
-    procedure SetTable(AValue: TDataset);
-    function  GetErrorText: string;
-    procedure SetErrorText(AValue: string);
-  {public}
-    property SqlText: string read GetSqlText;
-    property StatementName: string read GetStatementName;
-    property IsSelect: Boolean read GetIsSelect;
-    property StatementCounter: Integer read GetStatementCounter;
-    property SelectCounter: Integer read GetSelectCounter;
-    property Table: TDataset read GetTable write SetTable;
-    property ErrorText: string read GetErrorText write SetErrorText;
-  end;
-
-  { TSqlExecInfo }
-  TSqlExecInfo = class(TInterfacedObject, ISqlExecInfo)
-  private
-    FSqlText: string;
-    FIsSelect: Boolean;
-    FStatementCounter: Integer;
-    FSelectCounter: Integer;
-    FStatementName: string;
-    FTable: TDataset;
-    FErrorText: string;
-
-    function GetIsSelect: Boolean;
-    function GetSelectCounter: Integer;
-    function GetSqlText: string;
-    function GetStatementCounter: Integer;
-    function GetStatementName: string;
-    function  GetTable: TDataset;
-
-    procedure SetTable(AValue: TDataset);
-    function GetErrorText: string;
-    procedure SetErrorText(AValue: string);
-  public
-    constructor Create(SqlText: string; StatementName: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
-
-    property SqlText: string read GetSqlText;
-    property StatementName: string read GetStatementName;
-    property IsSelect: Boolean read GetIsSelect;
-    property StatementCounter: Integer read GetStatementCounter;
-    property SelectCounter: Integer read GetSelectCounter;
-    property Table: TDataset read GetTable write SetTable;
-    property ErrorText: string read GetErrorText write SetErrorText;
-  end;
-
-  (*
-  string sText = !string.IsNullOrWhiteSpace(Form.SyntaxEdit.SelectedText) ? Form.SyntaxEdit.SelectedText : Form.SyntaxEdit.Text;
-  Form.History.Parse(sText);
-
-  HistoryItem historyItem = Form.History.Current;
-  if (historyItem != null)
-  {
-      foreach (StatementItem Statement in historyItem.SqlStatements)
-      {
-          Form.StatementCounter++;
-          if (Statement.IsSelect)
-          {
-              Form.SelectCounter++;
-          }
-
-          SafeAsync SA = new SafeAsync();
-          Dictionary<string, object> ArgList = new Dictionary<string, object>();
-          ArgList["SafeAsync"] = SA;
-          ArgList["IsSelect"] = Statement.IsSelect;
-          ArgList["SqlText"] = Statement.SqlText;
-          ArgList["StatementCounter"] = Form.StatementCounter;
-          ArgList["SelectCounter"] = Form.SelectCounter;
-
-          SA.Execute(ExecuteStatement, ArgList);
-      }
-  }
-  *)
-
   { App }
   App = class
   private class var
@@ -146,6 +63,7 @@ type
     FConnectionInfo: TSqlConnectionInfo;
     FSqlStore : TSqlStore;
     FSqlPageCounter: Integer;
+    FTextPageCounter: Integer;
 
     tv: TTreeView;
     Pager: TPageControl;
@@ -164,12 +82,19 @@ type
 
     class function  ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
 
-    class procedure AddSqlPage();
+    class procedure AddSqlPage(InitialSql: string = '');
+    class procedure AddFieldListPage();
+    class procedure AddMetadataPage();
 
     class procedure AddDatabaseNode(MetaDatabase: TMetaDatabase);
     class procedure ReloadSelectedDatabase(Node: TTreeNode = nil);
     class procedure ReloadDatabase(MetaDatabase: TMetaDatabase);
     class function  NextSqlPageId(): Integer;
+    class function  NextTextPageId(): Integer;
+
+    class procedure SelectTableOrView();
+
+
 
     class property IsInitialized: Boolean read FIsInitialized;
     class property MetaDatabases: TMetaDatabases read FMetaDatabases;
@@ -181,6 +106,7 @@ implementation
 uses
   Tripous.Logs
   ,fr_ISqlFrame
+  ,fr_TextEditorFrame
   ;
 
 { TSqlPageInfo }
@@ -193,60 +119,6 @@ begin
   FInitialSql := InitialSql;
 end;
 
-{ TSqlExecInfo }
-constructor TSqlExecInfo.Create(SqlText: string; StatementName: string; IsSelect: Boolean; StatementCounter: Integer; SelectCounter: Integer);
-begin
-  inherited Create();
-  FSqlText := SqlText;
-  FStatementName := StatementName;
-  FIsSelect := IsSelect;
-  FStatementCounter := StatementCounter;
-  FSelectCounter := SelectCounter;
-end;
-function TSqlExecInfo.GetIsSelect: Boolean;
-begin
-  Result := FIsSelect;
-end;
-
-function TSqlExecInfo.GetErrorText: string;
-begin
-  Result := FErrorText;
-end;
-
-function TSqlExecInfo.GetSelectCounter: Integer;
-begin
-   Result := FSelectCounter;
-end;
-
-function TSqlExecInfo.GetSqlText: string;
-begin
-   Result := FSqlText;
-end;
-
-function TSqlExecInfo.GetStatementCounter: Integer;
-begin
-  Result := FStatementCounter;
-end;
-
-function TSqlExecInfo.GetStatementName: string;
-begin
-  Result := FStatementName;
-end;
-
-function TSqlExecInfo.GetTable: TDataset;
-begin
-  Result := FTable;
-end;
-
-procedure TSqlExecInfo.SetErrorText(AValue: string);
-begin
-  FErrorText:= AValue;
-end;
-
-procedure TSqlExecInfo.SetTable(AValue: TDataset);
-begin
-  FTable := AValue;
-end;
 
 
 
@@ -343,23 +215,16 @@ begin
   Result := MetaDatabases.Add(ConInfoProxy.CreateSqlConnectionInfo());
 end;
 
-class procedure App.AddSqlPage();
+class procedure App.AddSqlPage(InitialSql: string);
 var
   MetaDatabase: TMetaDatabase;
   Page: TTabSheet;
-  InitialSql: string;
-  MetaNode : TMetaNode;
 begin
   MetaDatabase := GetTreeNodeMetaDatabase(nil);
   if Assigned(MetaDatabase) then
   begin
     if not MetaDatabase.Loaded then
-       ReloadDatabase(MetaDatabase)
-    else begin
-      MetaNode := GetTreeNodeMetaNode(tv.Selected);
-      if Assigned(MetaNode) and ((MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView)) then
-        InitialSql := 'select * from ' + MetaNode.Name;
-    end;
+       ReloadDatabase(MetaDatabase);
 
     Application.ProcessMessages();
 
@@ -370,6 +235,8 @@ begin
   end;
 
 end;
+
+
 
 class procedure App.AddDatabaseNodes();
 var
@@ -477,7 +344,16 @@ end;
 class procedure App.ReloadSelectedDatabase(Node: TTreeNode);
 var
   MetaDatabase: TMetaDatabase;
+  MetaNode: TMetaNode;
 begin
+  MetaNode := GetTreeNodeMetaNode(Node);
+  if Assigned(MetaNode) and (MetaNode.NodeType = ntDatabase) then
+  begin
+    MetaDatabase := MetaNode as TMetaDatabase;
+    ReloadDatabase(MetaDatabase);
+  end;
+
+  {
   if not Assigned(Node) then
      Node := tv.Selected;
 
@@ -486,6 +362,7 @@ begin
      MetaDatabase := GetTreeNodeMetaDatabase(Node);
      ReloadDatabase(MetaDatabase);
   end;
+  }
 end;
 
 class procedure App.ReloadDatabase(MetaDatabase: TMetaDatabase);
@@ -539,6 +416,75 @@ class function App.NextSqlPageId(): Integer;
 begin
   Inc(FSqlPageCounter);
   Result := FSqlPageCounter;
+end;
+
+class function App.NextTextPageId(): Integer;
+begin
+  Inc(FTextPageCounter);
+  Result := FTextPageCounter;
+end;
+
+class procedure App.SelectTableOrView();
+var
+  MetaNode: TMetaNode;
+  SqlText: string;
+begin
+  MetaNode := GetTreeNodeMetaNode();
+  if Assigned(MetaNode) then
+     if (MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView) then
+     begin
+       SqlText := MetaNode.Database.SqlStore.Provider.SelectTop(MetaNode.Name);
+       AddSqlPage(SqlText);
+     end;
+end;
+
+
+
+class procedure App.AddFieldListPage();
+var
+  MetaNode: TMetaNode;
+  InitialText: string;
+  Title: string;
+  Page: TTabSheet;
+begin
+  MetaNode := GetTreeNodeMetaNode();
+  if Assigned(MetaNode) then
+     if (MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView) then
+     begin
+       Title := MetaNode.Name + ' Fields';
+       if (MetaNode.NodeType = ntTable) then
+          InitialText := TMetaTable(MetaNode).Fields.GetFieldListText(False)
+       else
+          InitialText := TMetaView(MetaNode).Fields.GetFieldListText(False);
+
+       Page  := Pager.AddTabSheet();
+       TTTextEditorFrame.Create(Page, Title, InitialText);
+       Pager.ActivePage := Page;
+     end;
+
+end;
+
+class procedure App.AddMetadataPage();
+var
+  MetaNode: TMetaNode;
+  InitialText: string;
+  Title: string;
+  Page: TTabSheet;
+begin
+  MetaNode := GetTreeNodeMetaNode();
+  if Assigned(MetaNode) then
+  begin
+    Title := MetaNode.Name + ' Definition';
+
+    InitialText := MetaNode.GetDefinition();
+    if not Sys.IsEmpty(InitialText) then
+    begin
+      Page  := Pager.AddTabSheet();
+      TTTextEditorFrame.Create(Page, Title, InitialText);
+      Pager.ActivePage := Page;
+    end;
+  end;
+
 end;
 
 

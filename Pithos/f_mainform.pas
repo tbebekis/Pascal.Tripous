@@ -1,7 +1,7 @@
 unit f_MainForm;
 
 {$MODE DELPHI}{$H+}
-
+{$WARN 5024 off : Parameter "$1" not used}
 interface
 
 uses
@@ -18,15 +18,31 @@ uses
   , LCLType
 
   , Tripous
-  , Tripous.Data, SQLDB, SQLDBLib
+  , Tripous.Data
   , o_App
   ;
 
 type
   { TMainForm }
   TMainForm = class(TForm)
-    btnConnectionInsert: TToolButton;
+    btnInsertDatabase: TToolButton;
+    ImageListMainForm: TImageList;
+    ImageListInspector: TImageList;
+    ImageListTreeView: TImageList;
     MainMenu: TMainMenu;
+    mnuCollapseAll: TMenuItem;
+    mnuSelectTableOrView: TMenuItem;
+    mnuInsertDatabase: TMenuItem;
+    mnuRemoveDatabase: TMenuItem;
+    mnuReloadDatabase: TMenuItem;
+    mnuISql: TMenuItem;
+    mnuShowFieldList: TMenuItem;
+    mnuShowMetadata: TMenuItem;
+    Separator5: TMenuItem;
+    Separator4: TMenuItem;
+    Separator3: TMenuItem;
+    Separator2: TMenuItem;
+    Separator1: TMenuItem;
     mmoLog: TMemo;
     mnuFile: TMenuItem;
     mnuExit: TMenuItem;
@@ -34,21 +50,21 @@ type
     pnlLeft: TPanel;
     pnlRight: TPanel;
     pnlBody: TPanel;
+    mnuTV: TPopupMenu;
     Splitter1: TSplitter;
     Splitter2: TSplitter;
-    SQLConnector1: TSQLConnector;
-    SQLDBLibraryLoader1: TSQLDBLibraryLoader;
     StatusBar: TStatusBar;
     TabSheet1: TTabSheet;
     TabSheet2: TTabSheet;
     ToolBar: TToolBar;
     btnExit: TToolButton;
     ToolBar1: TToolBar;
-    btnConnectionEdit: TToolButton;
-    btnConnectionDelete: TToolButton;
-    btnDatabaseISQL: TToolButton;
-    btnCollapse: TToolButton;
+    btnEditDatabase: TToolButton;
+    btnRemoveDatabase: TToolButton;
+    btnISql: TToolButton;
+    btnCollapseAll: TToolButton;
     btnReloadDatabase: TToolButton;
+    ToolButton1: TToolButton;
     tv: TTreeView;
   private
     IsInitialized: Boolean;
@@ -56,9 +72,10 @@ type
     procedure FormInitialize();
     procedure AnyClick(Sender: TObject);
     procedure tv_DoubleClick(Sender: TObject);
-    procedure ConnectionInsert();
-    procedure ConnectionEdit();
-    procedure ConnectionDelete();
+    procedure Pager_MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure InsertDatabase();
+    procedure EditDatabase();
+    procedure RemoveDatabase();
   protected
     procedure DoShow; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -115,33 +132,45 @@ begin
 
     App.AppInitialize(tv, Pager);
 
+    // buttons
     btnExit.OnClick  := AnyClick;
-    btnConnectionInsert.OnClick  := AnyClick;
-    btnConnectionEdit.OnClick  := AnyClick;
-    btnConnectionDelete.OnClick  := AnyClick;
-    btnDatabaseISQL.OnClick  := AnyClick;
-
-    btnCollapse.OnClick  := AnyClick;
+    btnISql.OnClick  := AnyClick;
+    btnInsertDatabase.OnClick  := AnyClick;
+    btnEditDatabase.OnClick  := AnyClick;
+    btnRemoveDatabase.OnClick  := AnyClick;
     btnReloadDatabase.OnClick  := AnyClick;
+    btnCollapseAll.OnClick  := AnyClick;
 
-    btnConnectionEdit.Visible:= False;
+    // menus
+    mnuISql.OnClick  := AnyClick;
+    mnuInsertDatabase.OnClick  := AnyClick;
+    mnuRemoveDatabase.OnClick  := AnyClick;
+    mnuReloadDatabase.OnClick  := AnyClick;
+    mnuCollapseAll.OnClick  := AnyClick;
+    mnuSelectTableOrView.OnClick  := AnyClick;
+    mnuShowFieldList.OnClick  := AnyClick;
+    mnuShowMetadata.OnClick  := AnyClick;
+
+    btnEditDatabase.Visible:= False;
+    btnCollapseAll.Visible:= False;
 
     tv.OnDblClick := tv_DoubleClick;
-
-
+    Pager.OnMouseDown := Pager_MouseDown;
   end;
 end;
 
 procedure TMainForm.AnyClick(Sender: TObject);
 begin
   if btnExit = Sender then Close()
-  else if btnConnectionInsert = Sender then ConnectionInsert()
-  else if btnConnectionEdit = Sender then ConnectionEdit()
-  else if btnConnectionDelete = Sender then ConnectionDelete()
-  else if btnCollapse = Sender then tv.FullCollapse()
-  else if btnReloadDatabase = Sender then App.ReloadSelectedDatabase()
-  else if btnDatabaseISQL = Sender then App.AddSqlPage()
-  //else if btnSelectTable = Sender then App.
+  else if (btnInsertDatabase = Sender) or (mnuInsertDatabase = Sender) then InsertDatabase()
+  else if (btnEditDatabase = Sender) then EditDatabase()
+  else if (btnRemoveDatabase = Sender) or (mnuRemoveDatabase = Sender)  then RemoveDatabase()
+  else if (btnCollapseAll = Sender) or (mnuCollapseAll = Sender) then tv.FullCollapse()
+  else if (btnReloadDatabase = Sender) or (mnuReloadDatabase = Sender) then App.ReloadSelectedDatabase()
+  else if (btnISql = Sender) or (mnuISql = Sender) then App.AddSqlPage()
+  else if mnuSelectTableOrView = Sender then App.SelectTableOrView()
+  else if mnuShowFieldList = Sender then App.AddFieldListPage()
+  else if mnuShowMetadata = Sender then App.AddMetadataPage()
   ;
 end;
 
@@ -150,7 +179,24 @@ begin
   App.ReloadSelectedDatabase();
 end;
 
-procedure TMainForm.ConnectionInsert();
+procedure TMainForm.Pager_MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  Index : Integer;
+  R     : TRect;
+  P     : TPoint;
+begin
+  if (Button = mbMiddle) and Assigned(Pager.ActivePage) then
+  begin
+    P.X := X;
+    P.Y := Y;
+    Index := Pager.ActivePage.PageIndex;
+    R     := Pager.TabRect(Index);
+    if R.Contains(P) then
+      Pager.ActivePage.Free();
+  end;
+end;
+
+procedure TMainForm.InsertDatabase();
 var
   ConInfoProxy: TSqlConInfoProxy;
   MetaDatabase: TMetaDatabase;
@@ -163,14 +209,12 @@ begin
   end;
 end;
 
-procedure TMainForm.ConnectionEdit();
+procedure TMainForm.EditDatabase();
 begin
-
 end;
 
-procedure TMainForm.ConnectionDelete();
+procedure TMainForm.RemoveDatabase();
 begin
-
 end;
 
 

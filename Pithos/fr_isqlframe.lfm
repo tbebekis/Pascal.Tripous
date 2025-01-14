@@ -75,10 +75,11 @@ object ISqlFrame: TISqlFrame
     Top = 34
     Width = 860
     Align = alClient
+    Font.CharSet = ANSI_CHARSET
     Font.Height = -13
-    Font.Name = 'Courier New'
-    Font.Pitch = fpFixed
-    Font.Quality = fqNonAntialiased
+    Font.Name = 'Cascadia Code'
+    Font.Pitch = fpVariable
+    Font.Quality = fqCleartype
     ParentColor = False
     ParentFont = False
     TabOrder = 1

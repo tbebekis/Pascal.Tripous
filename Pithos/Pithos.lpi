@@ -97,14 +97,6 @@
         <UnitName Value="fr_ISqlFrame"/>
       </Unit>
       <Unit>
-        <Filename Value="dm_common.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="dmCommon"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="DataModule"/>
-        <UnitName Value="dm_Common"/>
-      </Unit>
-      <Unit>
         <Filename Value="o_app.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="o_App"/>
@@ -126,6 +118,13 @@
         <Filename Value="o_temp.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="o_Temp"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fr_texteditorframe.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TTextEditorFrame"/>
+        <ResourceBaseClass Value="Frame"/>
+        <UnitName Value="fr_TextEditorFrame"/>
       </Unit>
     </Units>
   </ProjectOptions>

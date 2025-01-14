@@ -28,7 +28,6 @@ uses
 type
 
   { TISqlFrame }
-
   TISqlFrame = class(TFrame)
     DS: TDataSource;
     edtSql: TSynEdit;
@@ -45,6 +44,16 @@ type
   private class var
     FStatementCounter: Integer;
     FSelectCounter: Integer;
+  private type
+    TSqlExecInfo = class
+      SqlText: string;
+      StatementName: string;
+      IsSelect: Boolean;
+      StatementCounter: Integer;
+      SelectCounter: Integer;
+      Table: TDataset;
+      ErrorText: string;
+    end;
   private
     FId: Integer;
 
@@ -59,9 +68,8 @@ type
     procedure EnableCommands();
     procedure ExecSql();
 
-
-    procedure DoExecute(const Info: ISqlExecInfo);
-    procedure DoCompleted(const Info: ISqlExecInfo);
+    procedure DoExecute(Param: TObject);
+    procedure DoCompleted(Data: PtrInt);
   public
     constructor Create(Page: TTabSheet; MetaDatabase: TMetaDatabase; InitialSql: string); overload;
     destructor Destroy(); override;
@@ -92,7 +100,6 @@ type
   end;
 
 { TGridPage }
-
 constructor TGridPage.CreatePage(AParent: TPageControl; Table: TDataset);
 begin
   inherited Create(AParent);
@@ -104,7 +111,13 @@ begin
   Grid.Align := alClient;
   Grid.ReadOnly := True;
   DS.DataSet := Table;
-  Grid.DataSource := DS;
+  Grid.BeginUpdate();
+  try
+    Grid.DataSource := DS;
+  finally
+    Grid.EndUpdate();
+  end;
+
 end;
 
 destructor TGridPage.Destroy();
@@ -115,8 +128,13 @@ end;
 
 
 
-{ TISqlFrame }
 
+
+
+
+
+
+{ TISqlFrame }
 constructor TISqlFrame.Create(Page: TTabSheet; MetaDatabase: TMetaDatabase; InitialSql: string);
 begin
   inherited Create(Page);
@@ -138,15 +156,18 @@ begin
   btnExec.OnClick := AnyClick;
   btnShowIdColumns.OnClick := AnyClick;
 
-  if not Sys.IsEmpty(InitialSql) then
-    edtSql.Text := InitialSql;
-
   EnableCommands();
+
+  if not Sys.IsEmpty(InitialSql) then
+  begin
+    edtSql.Text := InitialSql;
+    btnExec.Click();
+  end;
+
 end;
 
 destructor TISqlFrame.Destroy();
 begin
-
   inherited Destroy();
 end;
 
@@ -187,7 +208,7 @@ var
   SqlText: string;
   SqlHistoryItem: TSqlHistoryItem;
   SqlStatementItem : TSqlStatementItem;
-  SqlExecInfo  : ISqlExecInfo;
+  SqlExecInfo  : TSqlExecInfo;
 begin
   pagerGrids.Clear();
   Application.ProcessMessages();
@@ -212,28 +233,34 @@ begin
         Inc(FStatementCounter);
 
         if SqlStatementItem.IsSelect then
-           Inc(FSelectCounter);
+          Inc(FSelectCounter);
 
-        SqlExecInfo  := TSqlExecInfo.Create(SqlStatementItem.SqlText, SqlStatementItem.StatementName, SqlStatementItem.IsSelect, FStatementCounter, FSelectCounter);
+        SqlExecInfo := TSqlExecInfo.Create();
+        SqlExecInfo.SqlText := SqlStatementItem.SqlText;
+        SqlExecInfo.StatementName := SqlStatementItem.StatementName;
+        SqlExecInfo.IsSelect := SqlStatementItem.IsSelect;
+        SqlExecInfo.StatementCounter := FStatementCounter;
+        SqlExecInfo.SelectCounter := FSelectCounter;
+        SqlExecInfo.Table := nil;
+        SqlExecInfo.ErrorText :='';
 
-        DoExecute(SqlExecInfo);
-        DoCompleted(SqlExecInfo);
-        //Sys.SafeAsyncExecute(SqlExecInfo, DoExecute, DoCompleted);
+        TAsync.Run(SqlExecInfo, DoExecute);
 
         Application.ProcessMessages();
-        //Application.QueueAsyncCall
-        // https://wiki.lazarus.freepascal.org/Asynchronous_Calls
-        // https://forum.lazarus.freepascal.org/index.php?topic=47603.0
+
+
       end;
     end;
   end;
 
 end;
 
-procedure TISqlFrame.DoExecute(const Info: ISqlExecInfo);
+procedure TISqlFrame.DoExecute(Param: TObject);
 var
   SqlStore     : TSqlStore;
+  Info         : TSqlExecInfo;
 begin
+  Info := TSqlExecInfo(Param);
   try
     SqlStore := TSqlStore.Create(MetaDatabase.SqlStore.ConnectionInfo);
     try
@@ -241,6 +268,11 @@ begin
          Info.Table := MetaDatabase.SqlStore.Select(Info.SqlText)
       else
          MetaDatabase.SqlStore.ExecSql(Info.SqlText);
+
+      // Application.QueueAsyncCall
+      // https://wiki.lazarus.freepascal.org/Asynchronous_Calls
+      // https://forum.lazarus.freepascal.org/index.php?topic=47603.0
+      Application.QueueAsyncCall(DoCompleted, PtrInt(Info));
     finally
       SqlStore.Free();
     end;
@@ -252,36 +284,45 @@ begin
   end;
 end;
 
-procedure TISqlFrame.DoCompleted(const Info: ISqlExecInfo);
+procedure TISqlFrame.DoCompleted(Data: PtrInt);
 var
   GridPage     : TGridPage;
   SB           : IStringBuilder;
+  Info         : TSqlExecInfo ;
 begin
-  if not Sys.IsEmpty(Info.ErrorText) then
-  begin
-    LogBox.AppendLine('ERROR: ' + Info.ErrorText);
-    LogBox.AppendLine('in the following statement: ');
-    LogBox.AppendLine(Info.SqlText);
-  end else begin
-    if Info.IsSelect then
+  Info := TSqlExecInfo(Data);
+  try
+    if not Sys.IsEmpty(Info.ErrorText) then
     begin
-      GridPage := TGridPage.CreatePage(pagerGrids, Info.Table);
-      GridPage.Caption := IntToStr(Info.SelectCounter);
-      Application.ProcessMessages();
+      LogBox.AppendLine('ERROR: ' + Info.ErrorText);
+      LogBox.AppendLine('in the following statement: ');
+      LogBox.AppendLine(Info.SqlText);
+    end else begin
+      if Info.IsSelect then
+      begin
+        GridPage := TGridPage.CreatePage(pagerGrids, Info.Table);
+        GridPage.Caption := IntToStr(Info.SelectCounter);
+        //Application.ProcessMessages();
+      end;
+
+      SB := TStrBuilder.Create();
+      SB.Append(FormatDateTime('[yyyy-mm-dd hh:nn:ss] ', Now));
+      SB.Append('[' + IntToStr(Info.StatementCounter) + '] ');
+      SB.Append(Info.StatementName + ' is executed.');
+      if Assigned(Info.Table) then
+         SB.Append(' Rows: ' + IntToStr(Info.Table.RecordCount));
+      SB.AppendLine();
+      SB.AppendLine(Info.SqlText);
+
+      LogBox.AppendLine(SB.ToString());
+      //Application.ProcessMessages();
     end;
-
-    SB := TStrBuilder.Create();
-    SB.Append(FormatDateTime('[yyyy-mm-dd hh:nn:ss] ', Now));
-    SB.Append('[' + IntToStr(Info.StatementCounter) + '] ');
-    SB.Append(Info.StatementName + ' is executed.');
-    if Assigned(Info.Table) then
-       SB.Append(' Rows: ' + IntToStr(Info.Table.RecordCount));
-    SB.AppendLine();
-    SB.AppendLine(Info.SqlText);
-
-    LogBox.AppendLine(SB.ToString());
-    Application.ProcessMessages();
+  finally
+    Info.Free();
   end;
+
+
+
 end;
 
 end.
