@@ -73,9 +73,7 @@ type
     procedure AnyClick(Sender: TObject);
     procedure tv_DoubleClick(Sender: TObject);
     procedure Pager_MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure InsertDatabase();
-    procedure EditDatabase();
-    procedure RemoveDatabase();
+
   protected
     procedure DoShow; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -94,8 +92,6 @@ uses
   Tripous.Logs
 
   ,FileUtil
-
-  ,f_ConnectionEditDialog
   ;
 
 { TMainForm }
@@ -151,7 +147,7 @@ begin
     mnuShowFieldList.OnClick  := AnyClick;
     mnuShowMetadata.OnClick  := AnyClick;
 
-    btnEditDatabase.Visible:= False;
+
     btnCollapseAll.Visible:= False;
 
     tv.OnDblClick := tv_DoubleClick;
@@ -162,12 +158,12 @@ end;
 procedure TMainForm.AnyClick(Sender: TObject);
 begin
   if btnExit = Sender then Close()
-  else if (btnInsertDatabase = Sender) or (mnuInsertDatabase = Sender) then InsertDatabase()
-  else if (btnEditDatabase = Sender) then EditDatabase()
-  else if (btnRemoveDatabase = Sender) or (mnuRemoveDatabase = Sender)  then RemoveDatabase()
+  else if (btnInsertDatabase = Sender) or (mnuInsertDatabase = Sender) then App.InsertDatabase()
+  else if (btnEditDatabase = Sender) then App.EditDatabase()
+  else if (btnRemoveDatabase = Sender) or (mnuRemoveDatabase = Sender)  then App.RemoveDatabase()
   else if (btnCollapseAll = Sender) or (mnuCollapseAll = Sender) then tv.FullCollapse()
   else if (btnReloadDatabase = Sender) or (mnuReloadDatabase = Sender) then App.ReloadSelectedDatabase()
-  else if (btnISql = Sender) or (mnuISql = Sender) then App.AddSqlPage()
+  else if (btnISql = Sender) or (mnuISql = Sender) then App.AddISqlPage()
   else if mnuSelectTableOrView = Sender then App.SelectTableOrView()
   else if mnuShowFieldList = Sender then App.AddFieldListPage()
   else if mnuShowMetadata = Sender then App.AddMetadataPage()
@@ -196,26 +192,9 @@ begin
   end;
 end;
 
-procedure TMainForm.InsertDatabase();
-var
-  ConInfoProxy: TSqlConInfoProxy;
-  MetaDatabase: TMetaDatabase;
-begin
-  ConInfoProxy := TSqlConInfoProxy.Create();
-  if TConnectionEditDialog.ShowDialog(ConInfoProxy) then
-  begin
-     MetaDatabase := App.ConnectionInsert(ConInfoProxy);
-     App.AddDatabaseNode(MetaDatabase);
-  end;
-end;
 
-procedure TMainForm.EditDatabase();
-begin
-end;
 
-procedure TMainForm.RemoveDatabase();
-begin
-end;
+
 
 
 

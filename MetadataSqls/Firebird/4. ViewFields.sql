@@ -1,7 +1,7 @@
 select                                                                                   
   t.RDB$OWNER_NAME                                as SchemaName,                          
   tf.RDB$RELATION_NAME                            as TableName,  
-  coalesce(t.RDB$VIEW_SOURCE, '')                 as Definition                        
+  coalesce(t.RDB$VIEW_SOURCE, '')                 as Definition,                        
   tf.RDB$FIELD_NAME                               as FieldName,                          
   case f.RDB$FIELD_TYPE                                                                  
     when 7   then 'SMALLINT'                                                             

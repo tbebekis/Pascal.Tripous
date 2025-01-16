@@ -11,7 +11,6 @@ object ConnectionEditDialog: TConnectionEditDialog
   DefaultMonitor = dmMainForm
   Position = poMainFormCenter
   ShowInTaskBar = stNever
-  LCLVersion = '4.0.0.2'
   object edtName: TEdit
     Left = 121
     Height = 23

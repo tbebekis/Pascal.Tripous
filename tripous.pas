@@ -78,7 +78,6 @@ const
 
 
 type
-
  TMatchObjectProc = function (Item: TObject): Boolean;
 
  TArrayOfVariant   = array of Variant;
@@ -86,7 +85,9 @@ type
  TArrayOfPointer   = array of Pointer;
  TArrayOfString    = array of string;
 
- TProcedureMethod  = procedure of object;
+ TProcedureMethod    = procedure of object;
+ TParamProc          = procedure(Param: TObject);
+ TParamEvent         = procedure(Param: TObject) of object;
 
  SBChar = UnicodeChar;
  PSBChar = ^SBChar;
@@ -104,92 +105,148 @@ type
  TCompareFunc<T> = function(constref A, B: T): Integer;
 
 
- ISyncObject = interface(IInterface)
-   ['{B2411903-F6D1-4FF3-9DA6-E7FDCFE3A702}']
- { public }
-   procedure Lock;
-   procedure UnLock;
- end;
 
- { TSyncObject }
- TSyncObject = class(TInterfacedObject, ISyncObject)
- private
-   FLock   : SyncObjs.TCriticalSection;
- public
-   constructor Create;
-   destructor Destroy; override;
 
-   procedure Lock;
-   procedure UnLock;
- end;
+  ISyncObject = interface(IInterface)
+    ['{B2411903-F6D1-4FF3-9DA6-E7FDCFE3A702}']
+  { public }
+    procedure Lock;
+    procedure UnLock;
+  end;
 
- IStringBuilder = interface
- ['{A7B65A46-98FB-4A7F-ADCA-A1266084AA95}']
- {private}
-   function  GetCapacity(): Integer;
-   function  GetMaxCapacity(): Integer;
-   procedure SetCapacity(AValue: Integer);
-   function  GetC(Index: Integer): SBChar;
-   procedure SetC(Index: Integer; AValue: SBChar);
-   function  GetLength: Integer; inline;
-   procedure SetLength(AValue: Integer);
- {public}
-   procedure Append(const AValue: Boolean); overload;
-   procedure Append(const AValue: Byte); overload;
-   procedure Append(const AValue: SBChar); overload;
-   procedure Append(const AValue: Currency); overload;
-   procedure Append(const AValue: Double); overload;
-   procedure Append(const AValue: Smallint); overload;
-   procedure Append(const AValue: LongInt); overload;
-   procedure Append(const AValue: Int64); overload;
-   procedure Append(const AValue: TObject); overload;
-   procedure Append(const AValue: Shortint); overload;
-   procedure Append(const AValue: Single); overload;
-   procedure Append(const AValue: UInt64); overload;
-   procedure Append(const AValue: Word); overload;
-   procedure Append(const AValue: SBString); overload;
-   procedure Append(const AValue: SBChar; RepeatCount: Integer); overload;
-   procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
+  { TSyncObject }
+  TSyncObject = class(TInterfacedObject, ISyncObject)
+  private
+    FLock   : SyncObjs.TCriticalSection;
+  public
+    constructor Create;
+    destructor Destroy; override;
 
-   procedure Append(const Fmt: SBString; const Args: array of const); overload;
-   procedure AppendFormat(const Fmt: SBString; const Args: array of const);
+    procedure Lock;
+    procedure UnLock;
+  end;
 
-   procedure AppendLine(const Value: SBString); overload;
-   procedure AppendLine(); overload;
+  { TAsync }
+  { The static Run() method of this TThread can be used in order to
+    execute a method of another class asynchronously, passing it a TObject parameter.
+    The method must have the signature of a TParamEvent,
+    i.e. procedure MyExecute(Param: TObject).
 
-   procedure Clear();
-   procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
-   function EnsureCapacity(aCapacity: Integer): Integer;
+     ● Synchronization with the main thread.
+    If there is a need to synchronize the call with the main thread,
+    then from inside the MyExecute(Param: TObject)
+    use the Application.QueueAsyncCall().
 
-   procedure Insert(Index: Integer; const AValue: Boolean); overload;
-   procedure Insert(Index: Integer; const AValue: Byte); overload;
-   procedure Insert(Index: Integer; const AValue: SBChar); overload;
-   procedure Insert(Index: Integer; const AValue: Currency); overload;
-   procedure Insert(Index: Integer; const AValue: Double); overload;
-   procedure Insert(Index: Integer; const AValue: Smallint); overload;
-   procedure Insert(Index: Integer; const AValue: LongInt); overload;
-   procedure Insert(Index: Integer; const AValue: Int64); overload;
-   procedure Insert(Index: Integer; const AValue: TObject); overload;
-   procedure Insert(Index: Integer; const AValue: Shortint); overload;
-   procedure Insert(Index: Integer; const AValue: Single); overload;
-   procedure Insert(Index: Integer; const AValue: SBString); overload;
-   procedure Insert(Index: Integer; const AValue: Word); overload;
-   procedure Insert(Index: Integer; const AValue: Cardinal); overload;
-   procedure Insert(Index: Integer; const AValue: UInt64); overload;
-   procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
+    Example:
 
-   procedure Remove(StartIndex: Integer; RemLength: Integer);
-   procedure Replace(const OldChar, NewChar: SBChar); overload;
-   procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
+    // this method is executed in a secondary thread.
+    procedure MyClass.MyExecute(Param: TObject);
+    var
+      Info: TInfo;
+    begin
+      Info := TInfo(Param);
 
-   function ToString(): SBString;  overload;  reintroduce;
-   function ToString(aStartIndex: Integer; aLength: Integer): SBString;  overload;   reintroduce;
+      // ... the rest of the code
 
-   property Chars[index: Integer]: SBChar read GetC write SetC; default;
-   property Length: Integer read GetLength write SetLength;
-   property Capacity: Integer read GetCapacity write SetCapacity;
-   property MaxCapacity: Integer read GetMaxCapacity;
- end;
+      // the following queues the the execution of MyCompleted() in the main thread.
+      Application.QueueAsyncCall(MyCompleted, PtrInt(Info));
+    end;
+
+    // this method is executed in the main thread
+    procedure MyClass.MyCompleted(Data: PtrInt);
+    var
+      Info: TInfo;
+    begin
+
+      Info := TInfo(Data);
+
+      // ... the rest of the code
+    end;
+
+    ...
+
+    TAsync.Run(Info, MyExecute);
+    }
+  TAsync = class(TThread)
+  protected
+    FParam: TObject;
+    FOnExecute: TParamEvent;
+    procedure Execute(); override;
+  public
+    { do NOT use the constructor directly. Use the static Run() method instead. }
+    constructor Create(Param: TObject; OnExecute: TParamEvent);
+
+    class procedure Run(Param: TObject; OnExecute: TParamEvent);
+  end;
+
+
+  IStringBuilder = interface
+  ['{A7B65A46-98FB-4A7F-ADCA-A1266084AA95}']
+  {private}
+    function  GetCapacity(): Integer;
+    function  GetMaxCapacity(): Integer;
+    procedure SetCapacity(AValue: Integer);
+    function  GetC(Index: Integer): SBChar;
+    procedure SetC(Index: Integer; AValue: SBChar);
+    function  GetLength: Integer; inline;
+    procedure SetLength(AValue: Integer);
+  {public}
+    procedure Append(const AValue: Boolean); overload;
+    procedure Append(const AValue: Byte); overload;
+    procedure Append(const AValue: SBChar); overload;
+    procedure Append(const AValue: Currency); overload;
+    procedure Append(const AValue: Double); overload;
+    procedure Append(const AValue: Smallint); overload;
+    procedure Append(const AValue: LongInt); overload;
+    procedure Append(const AValue: Int64); overload;
+    procedure Append(const AValue: TObject); overload;
+    procedure Append(const AValue: Shortint); overload;
+    procedure Append(const AValue: Single); overload;
+    procedure Append(const AValue: UInt64); overload;
+    procedure Append(const AValue: Word); overload;
+    procedure Append(const AValue: SBString); overload;
+    procedure Append(const AValue: SBChar; RepeatCount: Integer); overload;
+    procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
+
+    procedure Append(const Fmt: SBString; const Args: array of const); overload;
+    procedure AppendFormat(const Fmt: SBString; const Args: array of const);
+
+    procedure AppendLine(const Value: SBString); overload;
+    procedure AppendLine(); overload;
+
+    procedure Clear();
+    procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
+    function EnsureCapacity(aCapacity: Integer): Integer;
+
+    procedure Insert(Index: Integer; const AValue: Boolean); overload;
+    procedure Insert(Index: Integer; const AValue: Byte); overload;
+    procedure Insert(Index: Integer; const AValue: SBChar); overload;
+    procedure Insert(Index: Integer; const AValue: Currency); overload;
+    procedure Insert(Index: Integer; const AValue: Double); overload;
+    procedure Insert(Index: Integer; const AValue: Smallint); overload;
+    procedure Insert(Index: Integer; const AValue: LongInt); overload;
+    procedure Insert(Index: Integer; const AValue: Int64); overload;
+    procedure Insert(Index: Integer; const AValue: TObject); overload;
+    procedure Insert(Index: Integer; const AValue: Shortint); overload;
+    procedure Insert(Index: Integer; const AValue: Single); overload;
+    procedure Insert(Index: Integer; const AValue: SBString); overload;
+    procedure Insert(Index: Integer; const AValue: Word); overload;
+    procedure Insert(Index: Integer; const AValue: Cardinal); overload;
+    procedure Insert(Index: Integer; const AValue: UInt64); overload;
+    procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
+
+    procedure Remove(StartIndex: Integer; RemLength: Integer);
+    procedure Replace(const OldChar, NewChar: SBChar); overload;
+    procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
+
+    function ToString(): SBString;  overload;  reintroduce;
+    function ToString(aStartIndex: Integer; aLength: Integer): SBString;  overload;   reintroduce;
+
+    property Chars[index: Integer]: SBChar read GetC write SetC; default;
+    property Length: Integer read GetLength write SetLength;
+    property Capacity: Integer read GetCapacity write SetCapacity;
+    property MaxCapacity: Integer read GetMaxCapacity;
+  end;
 
  { TStrBuilder }
  TStrBuilder = class(TInterfacedObject, IStringBuilder)
@@ -461,7 +518,6 @@ type
   end;
 
   { TGenObjectList }
-
   TGenObjectList<T: class> = class(TGenList<T>)
   protected
     FOwnsObjects : Boolean;
@@ -912,9 +968,11 @@ type
 
     class function  UnicodeToAnsi(const S: string): AnsiString;
     class function  CreateGuid(UseBrackets: Boolean): string;
-    class function  GenId(UseBrackets: Boolean): string;
+    class function  GenId(UseBrackets: Boolean = False): string;
 
     class function  PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
+
+    class function  ToText(const List: IList<string>): string;
 
     { double to string convertions }
     class function  DoubleToStr(Value: Extended; Digits: integer): string;
@@ -1102,6 +1160,43 @@ procedure TSyncObject.UnLock;
 begin
   FLock.Leave();
 end;
+
+
+{ TAsync }
+constructor TAsync.Create(Param: TObject; OnExecute: TParamEvent);
+begin
+  { for a TThread instance to work properly we have to
+    1. pass True to constructor in order to create it suspended,
+       so we have to call Start() in order for the Execute() to be called
+    2. set the TThread instance to free itself or free it explicitly }
+  inherited Create(True);                       // initially suspended, so we have to call Start()
+  FreeOnTerminate := False;                      // controls thread's termination
+
+  FParam := Param;
+  FOnExecute := OnExecute;
+end;
+
+procedure TAsync.Execute();
+begin
+  FOnExecute(FParam);
+end;
+
+class procedure TAsync.Run(Param: TObject; OnExecute: TParamEvent);
+var
+  T: TAsync;
+begin
+  T := TAsync.Create(Param, OnExecute);
+  try
+    T.Start();
+    T.WaitFor();
+  finally
+    T.Free();
+  end;
+end;
+
+
+
+
 
 
 
@@ -4840,6 +4935,17 @@ end;
 (*----------------------------------------------------------------------------*)
 class procedure  Sys.Split(S: string; Delim: Char; List: TStringList);
 var
+  A: TStringArray;
+  Item: string;
+begin
+  A := S.Split([Delim], TStringSplitOptions.ExcludeEmpty);
+  for Item in A do
+    List.Add(Item);
+end;
+
+{
+class procedure  Sys.Split(S: string; Delim: Char; List: TStringList);
+var
   i    : integer;
   Temp : string;
 begin
@@ -4857,6 +4963,7 @@ begin
   if Length(Temp) > 0 then
     List.Add(Temp);
 end;
+}
 (*----------------------------------------------------------------------------
  Splits S into LeftArg and RightArg based on the first occurence of Delim
  ----------------------------------------------------------------------------*)
@@ -5061,6 +5168,17 @@ begin
     end;
     Result := 0;
   end;
+end;
+
+class function Sys.ToText(const List: IList<string>): string;
+var
+  SB: IStringBuilder;
+  Item: string;
+begin
+  SB := TStrBuilder.Create();
+  for Item in List do
+    SB.AppendLine(Item);
+  Result := SB.ToString();
 end;
 
 (*----------------------------------------------------------------------------*)
@@ -6024,6 +6142,9 @@ begin
   if not FileExists(FilePath) then
     SaveResourceFile('SqliteEmptyDb', FilePath);
 end;
+
+
+
 
 
 

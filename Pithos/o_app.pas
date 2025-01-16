@@ -59,6 +59,7 @@ type
   App = class
   private class var
     FIsInitialized : Boolean;
+    FConInfoProxyList: IList<TSqlConInfoProxy>;
     FMetaDatabases: TMetaDatabases;
     FConnectionInfo: TSqlConnectionInfo;
     FSqlStore : TSqlStore;
@@ -72,17 +73,22 @@ type
     class function  GetTreeNodeMetaNode(Node: TTreeNode = nil): TMetaNode;
     class function  GetTreeNodeMetaDatabase(Node: TTreeNode = nil): TMetaDatabase;
 
+    class function  FindConInfoProxy(MetaDatabase: TMetaDatabase): TSqlConInfoProxy;
+
     class function  GetIconIndex(MetaNodeType: TMetaNodeType): Integer;
-    class procedure EnsureSqlConnection();
-    class function  SelectSqlConnections(): IList<TSqlConInfoProxy>;
+    class procedure EnsureOwnDatabaseConnection();
+    class procedure SelectDatabases();
     class procedure AddDatabaseNodes();
     class procedure AddChildrenNodes(ParentNode: TTreeNode; ParentMetaNode: TMetaNode);
   public
     class procedure AppInitialize(TreeView: TTreeView; Pager: TPageControl);
 
-    class function  ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
+    class procedure InsertDatabase();
+    class procedure EditDatabase();
+    class procedure RemoveDatabase();
+    class procedure CreateDatabase();
 
-    class procedure AddSqlPage(InitialSql: string = '');
+    class procedure AddISqlPage(InitialSql: string = '');
     class procedure AddFieldListPage();
     class procedure AddMetadataPage();
 
@@ -94,8 +100,6 @@ type
 
     class procedure SelectTableOrView();
 
-
-
     class property IsInitialized: Boolean read FIsInitialized;
     class property MetaDatabases: TMetaDatabases read FMetaDatabases;
     class property SqlStore: TSqlStore read FSqlStore;
@@ -105,6 +109,7 @@ implementation
 
 uses
   Tripous.Logs
+  ,f_ConnectionEditDialog
   ,fr_ISqlFrame
   ,fr_TextEditorFrame
   ;
@@ -130,8 +135,10 @@ begin
   begin
     FIsInitialized := True;
 
+    FConInfoProxyList := TGenObjectList<TSqlConInfoProxy>.Create(True, False);
+
     FMetaDatabases := TMetaDatabases.Create(False);
-    EnsureSqlConnection();
+    EnsureOwnDatabaseConnection();
 
     tv := TreeView;
     App.Pager := Pager;
@@ -139,41 +146,7 @@ begin
   end;
 end;
 
-
-
-class function App.GetIconIndex(MetaNodeType: TMetaNodeType): Integer;
-begin
-  case MetaNodeType of
-    ntDatabases : Result := 0;
-    ntDatabase  : Result := 1;
-    ntTables,
-    ntFields,
-    ntIndexes,
-    ntPrimaryKeys,
-    ntForeignKeys,
-    ntConstraints,
-    ntViews,
-    ntTriggers,
-    ntProcedures,
-    ntSequences  : Result := 0;
-
-    ntTable      : Result := 2;
-    ntView       : Result := 3;
-    ntField,
-    ntIndex,
-    ntPrimaryKey,
-    ntForeignKey,
-    ntConstraint,
-
-    ntTrigger,
-    ntProcedure,
-    ntSequence   : Result := -1;
-  else
-    Result := -1;
-  end;
-end;
-
-class procedure App.EnsureSqlConnection();
+class procedure App.EnsureOwnDatabaseConnection();
 begin
   FConnectionInfo := TSqlConnectionInfo.Create();
   FConnectionInfo.Name := SDefaultConnectionName;
@@ -190,13 +163,13 @@ begin
   end;
 end;
 
-class function App.SelectSqlConnections(): IList<TSqlConInfoProxy>;
+class procedure App.SelectDatabases();
 var
   SqlText: string;
   Table: TMemTable;
   SqlConInfoProxy: TSqlConInfoProxy;
 begin
-  Result := TGenObjectList<TSqlConInfoProxy>.Create(True, False);
+  FConInfoProxyList.Clear();
 
   SqlText := 'select * from Datastores';
   Table := SqlStore.Select(SqlText);
@@ -204,45 +177,15 @@ begin
   while not Table.EOF do
   begin
     SqlConInfoProxy := TSqlConInfoProxy.CreateFromTable(Table);
-    Result.Add(SqlConInfoProxy);
+    FConInfoProxyList.Add(SqlConInfoProxy);
     Table.Next();
   end;
 end;
-
-class function App.ConnectionInsert(ConInfoProxy: TSqlConInfoProxy): TMetaDatabase;
-begin
-  FSqlStore.ExecSql(ConInfoProxy.GetInsertIntoSql(), [ConInfoProxy.ToDictionary()]);
-  Result := MetaDatabases.Add(ConInfoProxy.CreateSqlConnectionInfo());
-end;
-
-class procedure App.AddSqlPage(InitialSql: string);
-var
-  MetaDatabase: TMetaDatabase;
-  Page: TTabSheet;
-begin
-  MetaDatabase := GetTreeNodeMetaDatabase(nil);
-  if Assigned(MetaDatabase) then
-  begin
-    if not MetaDatabase.Loaded then
-       ReloadDatabase(MetaDatabase);
-
-    Application.ProcessMessages();
-
-    Page  := Pager.AddTabSheet();
-    TISqlFrame.Create(Page, MetaDatabase, InitialSql);
-
-    Pager.ActivePage := Page;
-  end;
-
-end;
-
-
 
 class procedure App.AddDatabaseNodes();
 var
   MetaDatabase: TMetaDatabase;
 
-  List: IList<TSqlConInfoProxy>;
   Proxy: TSqlConInfoProxy;
   ConInfo: TSqlConnectionInfo;
 begin
@@ -257,12 +200,13 @@ begin
     RootNode.ImageIndex := GetIconIndex(App.MetaDatabases.NodeType);
     RootNode.SelectedIndex := RootNode.ImageIndex;
 
-    List := SelectSqlConnections();
-    for Proxy in List do
+    SelectDatabases();
+    for Proxy in FConInfoProxyList do
     begin
       ConInfo := Proxy.CreateSqlConnectionInfo();
       try
         MetaDatabase := MetaDatabases.Add(ConInfo);
+        Proxy.Tag := MetaDatabase;
         AddDatabaseNode(MetaDatabase);
       finally
         ConInfo.Free();
@@ -272,6 +216,25 @@ begin
     tv.Items.EndUpdate();
   end;
 
+  if Assigned(RootNode) and (RootNode.Count > 0) then
+     RootNode.Expand(False);
+
+end;
+
+class procedure App.AddDatabaseNode(MetaDatabase: TMetaDatabase);
+var
+  Node: TTreeNode;
+begin
+  tv.Items.BeginUpdate();
+  try
+    Node := tv.Items.AddChild(RootNode, MetaDatabase.DisplayText);
+    Node.Data := MetaDatabase;
+    MetaDatabase.Tag := Node;
+    Node.ImageIndex := GetIconIndex(MetaDatabase.NodeType);
+    Node.SelectedIndex := Node.ImageIndex;
+  finally
+    tv.Items.EndUpdate();
+  end;
 end;
 
 class procedure App.AddChildrenNodes(ParentNode: TTreeNode; ParentMetaNode: TMetaNode);
@@ -295,74 +258,58 @@ begin
   end;
 end;
 
-class procedure App.AddDatabaseNode(MetaDatabase: TMetaDatabase);
+
+class procedure App.InsertDatabase();
 var
-  Node: TTreeNode;
+  ConInfoProxy: TSqlConInfoProxy;
+  MetaDatabase: TMetaDatabase;
 begin
-  tv.Items.BeginUpdate();
-  try
-    Node := tv.Items.AddChild(RootNode, MetaDatabase.DisplayText);
-    Node.Data := MetaDatabase;
-    MetaDatabase.Tag := Node;
-    Node.ImageIndex := GetIconIndex(MetaDatabase.NodeType);
-    Node.SelectedIndex := Node.ImageIndex;
-    //AddChildrenNodes(Node, MetaDatabase);
-  finally
-    tv.Items.EndUpdate();
-  end;
-end;
-
-class function  App.GetTreeNodeMetaNode(Node: TTreeNode): TMetaNode;
-begin
-  try
-    if not Assigned(Node) then
-      Node := tv.Selected;
-
-    if Assigned(Node) then
-       Result := TMetaNode(Node.Data);
-  except
-    Result := nil;
-  end;
-end;
-
-class function App.GetTreeNodeMetaDatabase(Node: TTreeNode): TMetaDatabase;
-var
-  MetaNode: TMetaNode;
-begin
-  Result := nil;
-  if not Assigned(Node) then
-     Node := tv.Selected;
-
-  if Assigned(Node) then
+  ConInfoProxy := TSqlConInfoProxy.Create();
+  if TConnectionEditDialog.ShowDialog(ConInfoProxy, cdmInsert) then
   begin
-    MetaNode := GetTreeNodeMetaNode(Node);
-    if Assigned(MetaNode) then
-       Result := MetaNode.Database;
+     FSqlStore.ExecSql(ConInfoProxy.GetInsertIntoSql(), [ConInfoProxy.ToDictionary()]);
+     MetaDatabase := MetaDatabases.Add(ConInfoProxy.CreateSqlConnectionInfo());
+     ConInfoProxy.Tag := MetaDatabase;
+     FConInfoProxyList.Add(ConInfoProxy);
+     App.AddDatabaseNode(MetaDatabase);
   end;
+
 end;
 
-class procedure App.ReloadSelectedDatabase(Node: TTreeNode);
+class procedure App.EditDatabase();
 var
   MetaDatabase: TMetaDatabase;
-  MetaNode: TMetaNode;
+  ConInfoProxy: TSqlConInfoProxy;
+  Node: TTreeNode;
 begin
-  MetaNode := GetTreeNodeMetaNode(Node);
-  if Assigned(MetaNode) and (MetaNode.NodeType = ntDatabase) then
+  MetaDatabase := GetTreeNodeMetaDatabase();
+  if Assigned(MetaDatabase) then
   begin
-    MetaDatabase := MetaNode as TMetaDatabase;
-    ReloadDatabase(MetaDatabase);
-  end;
+    ConInfoProxy := FindConInfoProxy(MetaDatabase);
+    if Assigned(ConInfoProxy) then
+    begin
+      if TConnectionEditDialog.ShowDialog(ConInfoProxy, cdmEdit) then
+      begin
+        FSqlStore.ExecSql(ConInfoProxy.GetUpdateSql(), [ConInfoProxy.ToDictionary()]);
+        ReloadDatabase(MetaDatabase);
+        Node := TTreeNode(MetaDatabase.Tag);
 
-  {
-  if not Assigned(Node) then
-     Node := tv.Selected;
-
-  if Assigned(Node) then
-  begin
-     MetaDatabase := GetTreeNodeMetaDatabase(Node);
-     ReloadDatabase(MetaDatabase);
+        MetaDatabase.ConnectionInfo.Name := ConInfoProxy.Name;
+        Node.Text := MetaDatabase.DisplayText;
+        Node.Update();
+      end;
+    end;
   end;
-  }
+end;
+
+class procedure App.RemoveDatabase();
+begin
+
+end;
+
+class procedure App.CreateDatabase();
+begin
+
 end;
 
 class procedure App.ReloadDatabase(MetaDatabase: TMetaDatabase);
@@ -412,33 +359,79 @@ begin
 
 end;
 
-class function App.NextSqlPageId(): Integer;
+class procedure App.ReloadSelectedDatabase(Node: TTreeNode);
+var
+  MetaDatabase: TMetaDatabase;
+  MetaNode: TMetaNode;
 begin
-  Inc(FSqlPageCounter);
-  Result := FSqlPageCounter;
+  MetaNode := GetTreeNodeMetaNode(Node);
+  if Assigned(MetaNode) and (MetaNode.NodeType = ntDatabase) then
+  begin
+    MetaDatabase := MetaNode as TMetaDatabase;
+    ReloadDatabase(MetaDatabase);
+  end;
+
+  {
+  if not Assigned(Node) then
+     Node := tv.Selected;
+
+  if Assigned(Node) then
+  begin
+     MetaDatabase := GetTreeNodeMetaDatabase(Node);
+     ReloadDatabase(MetaDatabase);
+  end;
+  }
 end;
 
-class function App.NextTextPageId(): Integer;
+class function  App.GetTreeNodeMetaNode(Node: TTreeNode): TMetaNode;
 begin
-  Inc(FTextPageCounter);
-  Result := FTextPageCounter;
+  try
+    if not Assigned(Node) then
+      Node := tv.Selected;
+
+    if Assigned(Node) then
+       Result := TMetaNode(Node.Data);
+  except
+    Result := nil;
+  end;
 end;
 
-class procedure App.SelectTableOrView();
+class function App.GetTreeNodeMetaDatabase(Node: TTreeNode): TMetaDatabase;
 var
   MetaNode: TMetaNode;
-  SqlText: string;
 begin
-  MetaNode := GetTreeNodeMetaNode();
-  if Assigned(MetaNode) then
-     if (MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView) then
-     begin
-       SqlText := MetaNode.Database.SqlStore.Provider.SelectTop(MetaNode.Name);
-       AddSqlPage(SqlText);
-     end;
+  Result := nil;
+  if not Assigned(Node) then
+     Node := tv.Selected;
+
+  if Assigned(Node) then
+  begin
+    MetaNode := GetTreeNodeMetaNode(Node);
+    if Assigned(MetaNode) then
+       Result := MetaNode.Database;
+  end;
 end;
 
+class procedure App.AddISqlPage(InitialSql: string);
+var
+  MetaDatabase: TMetaDatabase;
+  Page: TTabSheet;
+begin
+  MetaDatabase := GetTreeNodeMetaDatabase(nil);
+  if Assigned(MetaDatabase) then
+  begin
+    if not MetaDatabase.Loaded then
+       ReloadDatabase(MetaDatabase);
 
+    Application.ProcessMessages();
+
+    Page  := Pager.AddTabSheet();
+    TISqlFrame.Create(Page, MetaDatabase, InitialSql);
+
+    Pager.ActivePage := Page;
+  end;
+
+end;
 
 class procedure App.AddFieldListPage();
 var
@@ -485,6 +478,75 @@ begin
     end;
   end;
 
+end;
+
+class function App.NextSqlPageId(): Integer;
+begin
+  Inc(FSqlPageCounter);
+  Result := FSqlPageCounter;
+end;
+
+class function App.NextTextPageId(): Integer;
+begin
+  Inc(FTextPageCounter);
+  Result := FTextPageCounter;
+end;
+
+class function App.GetIconIndex(MetaNodeType: TMetaNodeType): Integer;
+begin
+  case MetaNodeType of
+    ntDatabases : Result := 0;
+    ntDatabase  : Result := 1;
+    ntTables,
+    ntFields,
+    ntIndexes,
+    ntPrimaryKeys,
+    ntForeignKeys,
+    ntConstraints,
+    ntViews,
+    ntTriggers,
+    ntProcedures,
+    ntSequences  : Result := 0;
+
+    ntTable      : Result := 2;
+    ntView       : Result := 3;
+    ntField,
+    ntIndex,
+    ntPrimaryKey,
+    ntForeignKey,
+    ntConstraint,
+
+    ntTrigger,
+    ntProcedure,
+    ntSequence   : Result := -1;
+  else
+    Result := -1;
+  end;
+end;
+
+class procedure App.SelectTableOrView();
+var
+  MetaNode: TMetaNode;
+  SqlText: string;
+begin
+  MetaNode := GetTreeNodeMetaNode();
+  if Assigned(MetaNode) then
+     if (MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView) then
+     begin
+       SqlText := MetaNode.Database.SqlStore.Provider.SelectTop(MetaNode.Name);
+       AddISqlPage(SqlText);
+     end;
+end;
+
+class function App.FindConInfoProxy(MetaDatabase: TMetaDatabase): TSqlConInfoProxy;
+var
+  Item: TSqlConInfoProxy;
+begin
+  for Item in FConInfoProxyList do
+    if Item.Tag = MetaDatabase then
+       Exit(Item);
+
+  Result := nil;
 end;
 
 

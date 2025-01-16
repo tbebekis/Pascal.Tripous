@@ -442,7 +442,7 @@ type
     FLockCount              : Integer;
 
     mmoLog: TCustomMemo;
-    LogLineListener: TLogLineListener;
+    LogListener   : TLogToMainThreadListener;
     FLogTextList  : TStringList;
 
     class procedure Lock();
@@ -897,15 +897,10 @@ end;
 
 { TLogInfo }
 constructor TLogEntry.Create(Source, ScopeId, EventId: string; Level: TLogLevel; Exception_: Exception; Text: string; const Params: IDictionary<string, Variant>);
-var
-  Guid: TGuid;
 begin
    inherited Create;
 
-  if SysUtils.CreateGUID(Guid) <> 0 then
-     raise Exception.Create('Failed to create GUID');
-
-   FId   := GUIDToString(Guid);
+   FId   := Sys.GenId(False);
 
    FHost := Logger.GetHostName();
    FUser := SysUtils.GetEnvironmentVariable('USERNAME');
@@ -937,8 +932,6 @@ begin
       FText := Logger.FormatParams(FText, FProperties)
    else
      FProperties := TGenDictionary<string, Variant>.Create(); // TVariantDictionary.Create();
-
-
 
   FAsList := Logger.GetAsList(Self);
   FAsLine := Logger.GetAsLine(Self);
@@ -2009,7 +2002,7 @@ begin
   FLock      := SyncObjs.TCriticalSection.Create();
   FListeners := TList.Create();
   Active     := True ;
-  FLogJobList  := TGenObjectList<TLogJob>.Create(False); // TSafeObjectList.Create(False);
+  FLogJobList  := TGenObjectList<TLogJob>.Create(False, True); // TSafeObjectList.Create(False);
 
   // prepare the FLengths table
   FLineLengths := TGenDictionary<string, Word>.Create(); // TLogPropLengthDictionary.Create();
@@ -2703,22 +2696,22 @@ end;
 
 type
 
-  { TLogBoxLineListener }
+  { TLogBoxListener }
 
-  TLogBoxLineListener = class(TLogLineListener)
+  TLogBoxListener = class(TLogTextListener)
   private
      procedure LogProc(LogText: string);
   public
     constructor Create(LogLineProc: TLogTextProc); override;
   end;
 
-{ TLogBoxLineListener }
-constructor TLogBoxLineListener.Create(LogLineProc: TLogTextProc);
+{ TLogBoxListener }
+constructor TLogBoxListener.Create(LogLineProc: TLogTextProc);
 begin
   inherited Create(LogProc);
 end;
 
-procedure TLogBoxLineListener.LogProc(LogText: string);
+procedure TLogBoxListener.LogProc(LogText: string);
 begin
   if Assigned(LogBox.mmoLog) then
      LogBox.mmoLog.Append(Trim(LogText) + sLineBreak);
@@ -2764,8 +2757,8 @@ begin
      mmoLog.ScrollBars := ssAutoVertical;
   end;
 
-  if UseLogListenerToo and not Assigned(LogLineListener) then
-    LogLineListener := TLogBoxLineListener.Create(nil);
+  if UseLogListenerToo and not Assigned(LogListener) then
+    LogListener := TLogBoxListener.Create(nil);
 end;
 
 class procedure LogBox.DoClear();
@@ -2773,10 +2766,6 @@ begin
   if Assigned(mmoLog) then
      LogBox.mmoLog.Clear();
 end;
-
-
-
-
 
 class procedure LogBox.ScrollToLastLine();
 begin

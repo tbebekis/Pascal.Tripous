@@ -222,12 +222,14 @@ object MainForm: TMainForm
     end
   end
   object mnuTV: TPopupMenu
-    Images = dmCommon.ImageListInspector
     Left = 32
     Top = 376
     object mnuISql: TMenuItem
       Caption = 'ISql'
       ImageIndex = 3
+    end
+    object mnuSelectTableOrView: TMenuItem
+      Caption = 'Select Table/View'
     end
     object Separator1: TMenuItem
       Caption = '-'
@@ -249,9 +251,6 @@ object MainForm: TMainForm
     end
     object Separator3: TMenuItem
       Caption = '-'
-    end
-    object mnuSelectTableOrView: TMenuItem
-      Caption = 'Select Table/View'
     end
     object mnuShowFieldList: TMenuItem
       Caption = 'Show Field List'

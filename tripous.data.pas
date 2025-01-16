@@ -2,6 +2,9 @@ unit Tripous.Data;
 
 {$MODE DELPHI}{$H+}
 {$WARN 5024 off : Parameter "$1" not used}
+{$WARN 4104 off : Implicit string type conversion from "$1" to "$2"}
+{$WARN 4105 off : Implicit string type conversion with potential data loss from "$1" to "$2"}
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses
@@ -9,8 +12,19 @@ uses
   ,SysUtils
   ,Variants
   ,DB
+  ,SQLDBLib
+  ,sqldb
+
   ,bufdataset
-  ,sqldb, IBConnection
+
+  ,IBConnection
+  ,mssqlconn
+  ,mysql80conn
+  ,pqconnection
+  ,sqlite3conn
+  ,oracleconnection
+  ,odbcconn
+
   ,Types
 
   ,Tripous
@@ -33,6 +47,10 @@ type
     ntField,
     ntIndexes,
     ntIndex,
+    ntPrimaryKeys,
+    ntPrimaryKey,
+    ntForeignKeys,
+    ntForeignKey,
     ntConstraints,
     ntConstraint,
     ntViews,
@@ -46,12 +64,12 @@ type
   );
 
   TConstraintType = (
-    Unknown = 0,
-    PrimaryKey = 1,
-    ForeignKey = 2,
-    Unique = 3,
-    Check = 4,
-    NotNull = 5
+    ctUnknown = 0,
+    ctPrimaryKey = 1,
+    ctForeignKey = 2,
+    ctUnique = 3,
+    ctCheck = 4,
+    ctNotNull = 5
   );
 
 
@@ -102,7 +120,9 @@ type
     function  UnQuote(const S: string): string;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string; ANodeType: TMetaNodeType);
-    destructor Destroy(); override;
+
+    function GetDefinition(): string; virtual;
+    function GetParentTableOrView(): TMetaNode; virtual;
 
     property Database: TMetaDatabase read FDatabase;
     property NodeType: TMetaNodeType read FNodeType;
@@ -118,7 +138,6 @@ type
   end;
 
   { TMetaField }
-
   TMetaField = class(TMetaNode)
   private
     FDataSubType: string;
@@ -131,9 +150,13 @@ type
     FScale: Integer;
     FSizeInBytes: Integer;
     FSizeInChars: Integer;
+  protected
+    function GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
-    destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
+    function GetText(NameOnly: Boolean): string;
 
     property DataType: string read FDataType;
     property DataSubType: string read FDataSubType;
@@ -148,7 +171,6 @@ type
   end;
 
   { TMetaFields }
-
   TMetaFields = class(TMetaNode)
   private
     FList: TGenObjectList<TMetaField>;
@@ -161,21 +183,25 @@ type
     constructor Create(AParentNode: TMetaNode);
     destructor Destroy(); override;
 
+    function GetFieldListText(NamesOnly: Boolean): string;
+
     function Find(const AName: string; const ASchemaName: string): TMetaField;
 
     property List: TGenObjectList<TMetaField> read FList;
   end;
 
   { TMetaIndex }
-
   TMetaIndex = class(TMetaNode)
   private
     FFields: string;
     FIndexType: string;
     FIsUnique: Boolean;
+  protected
+    function GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
-    destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
 
     property IndexType: string read FIndexType;
     property IsUnique: Boolean read FIsUnique;
@@ -183,7 +209,6 @@ type
   end;
 
   { TMetaIndexes }
-
   TMetaIndexes = class(TMetaNode)
   private
     FList: TGenObjectList<TMetaIndex>;
@@ -202,15 +227,17 @@ type
   end;
 
   { TMetaTrigger }
-
   TMetaTrigger = class(TMetaNode)
   private
     FDefinition: string;
     FTableName: string;
     FTriggerType: string;
+  protected
+    function GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
-    destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
 
     property TriggerType: string read FTriggerType;
     property TableName: string read FTableName;
@@ -218,7 +245,6 @@ type
   end;
 
   { TMetaTriggers }
-
   TMetaTriggers = class(TMetaNode)
   private
     FList: TGenObjectList<TMetaTrigger>;
@@ -237,31 +263,24 @@ type
   end;
 
   { TMetaConstraint }
-
   TMetaConstraint = class(TMetaNode)
   private
     FConstraintType: TConstraintType;
     FConstraintTypeText: string;
-    FDeleteRule: string;
     FFields: string;
-    FForeignFields: string;
-    FForeignTable: string;
-    FUpdateRule: string;
+  protected
+    function GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
-    destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
 
     property ConstraintTypeText: string read FConstraintTypeText;
     property ConstraintType: TConstraintType read FConstraintType;
     property Fields: string read FFields;
-    property ForeignTable: string read FForeignTable;
-    property ForeignFields: string read FForeignFields;
-    property UpdateRule: string read FUpdateRule;
-    property DeleteRule: string read FDeleteRule;
   end;
 
   { TMetaConstraints }
-
   TMetaConstraints = class(TMetaNode)
   private
     FList: TGenObjectList<TMetaConstraint>;
@@ -279,25 +298,96 @@ type
     property List: TGenObjectList<TMetaConstraint> read FList;
   end;
 
+  { TMetaPrimaryKey }
+  TMetaPrimaryKey = class(TMetaConstraint)
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
+
+    function GetDefinition(): string; override;
+
+  end;
+
+  { TMetaPrimaryKeys }
+  TMetaPrimaryKeys = class(TMetaNode)
+  private
+    FList: TGenObjectList<TMetaPrimaryKey>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+
+    function Add(AName: string; const ASchemaName: string): TMetaPrimaryKey;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const AName: string; const ASchemaName: string): TMetaPrimaryKey;
+
+    property List: TGenObjectList<TMetaPrimaryKey> read FList;
+  end;
+
+  { TMetaForeignKey }
+  TMetaForeignKey = class(TMetaConstraint)
+  private
+    FForeignFields: string;
+    FForeignTable: string;
+    FUpdateRule: string;
+    FDeleteRule: string;
+  protected
+    function GetDisplayText: string; override;
+  public
+    constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
+
+    function GetDefinition(): string; override;
+
+    property ForeignTable: string read FForeignTable;
+    property ForeignFields: string read FForeignFields;
+    property UpdateRule: string read FUpdateRule;
+    property DeleteRule: string read FDeleteRule;
+  end;
+
+  { TMetaForeignKeys }
+  TMetaForeignKeys = class(TMetaNode)
+  private
+    FList: TGenObjectList<TMetaForeignKey>;
+  protected
+    function GetNodes: TMetaNodeArray;  override;
+    procedure DoClear(); override;
+
+    function Add(AName: string; const ASchemaName: string): TMetaForeignKey;
+  public
+    constructor Create(AParentNode: TMetaNode);
+    destructor Destroy(); override;
+
+    function Find(const AName: string; const ASchemaName: string): TMetaForeignKey;
+
+    property List: TGenObjectList<TMetaForeignKey> read FList;
+  end;
+
 
   { TMetaTable }
-
   TMetaTable = class(TMetaNode)
   private
     FConstraints: TMetaConstraints;
     FFields: TMetaFields;
+    FForeignKeys: TMetaForeignKeys;
     FIndexes: TMetaIndexes;
+    FPrimaryKeys: TMetaPrimaryKeys;
     FTriggers: TMetaTriggers;
   protected
     procedure DoClear(); override;
+    function GetNodes: TMetaNodeArray;  override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
     destructor Destroy(); override;
 
+    function GetDefinition(): string; override;
+
     property Fields: TMetaFields read FFields;
+    property PrimaryKeys: TMetaPrimaryKeys read FPrimaryKeys;
+    property ForeignKeys: TMetaForeignKeys read FForeignKeys;
+    property Constraints: TMetaConstraints read FConstraints;
     property Indexes: TMetaIndexes read FIndexes;
     property Triggers: TMetaTriggers read FTriggers;
-    property Constraints: TMetaConstraints read FConstraints;
   end;
 
   { TMetaTables }
@@ -318,23 +408,24 @@ type
   end;
 
   { TMetaView }
-
   TMetaView = class(TMetaNode)
   private
     FDefinition: string;
     FFields: TMetaFields;
   protected
     procedure DoClear(); override;
+    function GetNodes: TMetaNodeArray;  override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
     destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
 
     property Fields: TMetaFields read FFields;
     property Definition: string read FDefinition;
   end;
 
   { TMetaViews }
-
   TMetaViews = class(TMetaNode)
   private
      FList: TGenObjectList<TMetaView>;
@@ -352,16 +443,18 @@ type
   end;
 
   { TMetaProcedure }
-
   TMetaProcedure = class(TMetaNode)
   private
     FDefinition: string;
     FProcedureType: string;
   protected
     procedure DoClear(); override;
+    function  GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
     destructor Destroy(); override;
+
+    function GetDefinition(): string; override;
 
     property ProcedureType: string read FProcedureType;
     property Definition: string read FDefinition;
@@ -387,7 +480,6 @@ type
 
 
   { TMetaSequence }
-
   TMetaSequence = class(TMetaNode)
   private
     FCurrentValue: Integer;
@@ -399,13 +491,14 @@ type
     constructor Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
     destructor Destroy(); override;
 
+    function GetDefinition(): string; override;
+
     property CurrentValue: Integer read FCurrentValue;
     property InitialValue: Integer read FInitialValue;
     property IncrementBy: Integer read FIncrementBy;
   end;
 
   { TMetaSequences }
-
   TMetaSequences = class(TMetaNode)
   private
      FList: TGenObjectList<TMetaSequence>;
@@ -450,6 +543,7 @@ type
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
+    function GetDisplayText: string; override;
   public
     constructor Create(AParentNode: TMetaNode; ConnectionInfo: TSqlConnectionInfo);
     destructor Destroy(); override;
@@ -476,10 +570,11 @@ type
   TMetaDatabases = class(TMetaNode)
   private
     FList: TGenObjectList<TMetaDatabase>;
+    FIsAutoLoad: Boolean;
   protected
     function GetNodes: TMetaNodeArray;  override;
   public
-    constructor Create();
+    constructor Create(AutoLoad: Boolean);
     destructor Destroy(); override;
 
     procedure Clear();
@@ -490,18 +585,22 @@ type
     procedure Remove(ADatabase: TMetaDatabase);
 
     property List: TGenObjectList<TMetaDatabase> read FList;
+    property IsAutoLoad: Boolean read FIsAutoLoad;
   end;
 
 
   { TSqlConnectionInfo }
   TSqlConnectionInfo = class(TCollectionItem)
+  private class var
+    FCounter: LargeUint;
   private
     FAutoCreateGenerators: Boolean;
     FCharSet: string;
     FConnectionString: string;
     //FConnectorType: string;
-    FDatabaseName: string;
-    FHostName: string;
+    FDatabase: string;
+    FServer: string;
+    FId: LargeUint;
     FName: string;
     FPassword: string;
     FProvider: string;
@@ -519,9 +618,11 @@ type
     procedure SetupConnection(SqlConnector: TSQLConnector);
     function  CanConnect(ThrowIfNot: Boolean = False): Boolean;
 
+    property Id : LargeUint read FId;
+
     property ConnectorType: string read GetConnectorType;
-    property DatabaseName: string read FDatabaseName;
-    property HostName: string read FHostName;
+    property Database: string read FDatabase;
+    property Server: string read FServer;
     property UserName: string read FUserName;
     property Password: string read FPassword;
     property CharSet: string read FCharSet;
@@ -533,7 +634,8 @@ type
     { Firebird, MsSql, MySql, Sqlite, PostgreSql, Oracle
       e.g. ConInfo.Provider := SqlProviders.ProviderTypeToString(ptFirebird) }
     property Provider: string read FProvider write FProvider;
-    { e.g. Server=localhost; Database=MyDb; User=admin; Psw=p@s$W0rD }
+    { e.g. Server=localhost; Database=C:\Path\To\DB.FDB; User=SYSDBA; Psw=masterkey; Charset=UTF8
+      e.g. Server=localhost; Database=AdventureWorksLT2012; User=sa; Psw=p@$W03d; TrustServerCertificate=true }
     property ConnectionString: string read FConnectionString write SetConnectionString;
     property AutoCreateGenerators: Boolean read FAutoCreateGenerators write FAutoCreateGenerators;
   end;
@@ -592,10 +694,12 @@ type
     function  GetInsertIntoSql(): string;
     function  GetUpdateSql(): string;
 
-    function  CreateSqlConnectionInfo(): TSqlConnectionInfo;
+    procedure FromConnectionInfo(SqlConInfo: TSqlConnectionInfo);
     procedure ToConnectionInfo(SqlConInfo: TSqlConnectionInfo);
-    function  ToConnectionString(): string;
 
+    function  CreateSqlConnectionInfo(): TSqlConnectionInfo;
+
+    function  ToConnectionString(): string;
     procedure LoadFromTable(Table: TDataset);
 
     property Tag: TObject read FTag write FTag;
@@ -616,7 +720,7 @@ type
 
   SqlProviders = class
   private class var
-    Providers : TList;
+    Providers : IList<TSqlProvider>;
   public
     const SFirebird = 'Firebird';
     const SSqlite = 'Sqlite';
@@ -639,9 +743,11 @@ type
 
   { TSqlProvider }
   TSqlProvider = class
-  protected
+  private
     FName: string;
     FProviderType: TSqlProviderType;
+  protected
+    FLibraryLoader : TSQLDBLibraryLoader;
 
     FTablesSql: string;
     FViewsSql: string;
@@ -653,6 +759,8 @@ type
     FProceduresSql: string;
     FSequencesSql: string;
 
+    function GetConnectorType: string; virtual;
+
     function GetTablesSql(): string; virtual;
     function GetViewsSql(): string; virtual;
     function GetTableFieldsSql(): string; virtual;
@@ -663,8 +771,18 @@ type
     function GetProceduresSql(): string; virtual;
     function GetSequencesSql(): string; virtual;
   public
-    constructor Create(); virtual;
+    constructor Create(ProviderType: TSqlProviderType);
     destructor Destroy(); override;
+
+    class function ProviderTypeToProviderName(ProviderType: TSqlProviderType): string;
+    class function ProviderTypeToConnectorType(ProviderType: TSqlProviderType): string;
+
+    class function ProviderNameToProviderType(ProviderName: string): TSqlProviderType;
+    class function ProviderNameToConnectorType(ProviderName: string): string;
+
+    procedure ActivateLibraryLoader(); virtual;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; virtual; abstract;
 
     //public virtual bool CanConnect(string ConnectionString, bool ThrowIfNot = false)
     function CanConnect(ConnectionString: string; ThrowIfNot: Boolean = False): Boolean; overload;
@@ -683,21 +801,27 @@ type
     property ConstraintsSql: string read GetConstraintsSql;
     property ProceduresSql:  string read GetProceduresSql;
     property SequencesSql:   string read GetSequencesSql;
+
+    property ConnectorType:  string read GetConnectorType;
   end;
 
   { TSqlProviderFirebird - 'User = SYSDBA; Psw = password; Database = C:\Program Files\Firebird\Firebird_5_0\examples\empbuild\EMPLOYEE.FDB';  }
   TSqlProviderFirebird = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
   { TSqlProviderSqlite }
 
   TSqlProviderSqlite = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
   { TSqlProviderMsSql
@@ -715,32 +839,69 @@ type
   SEE: https://wiki.freepascal.org/mssqlconn }
   TSqlProviderMsSql = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
   { TSqlProviderMySql }
 
   TSqlProviderMySql = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
   { TSqlProviderPostgreSql }
 
   TSqlProviderPostgreSql = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
   { TSqlProviderOracle }
 
   TSqlProviderOracle = class(TSqlProvider)
   public
-    constructor Create(); override;
+    constructor Create();
     destructor Destroy(); override;
+
+    function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
+  end;
+
+  { TSqlExec }
+  TSqlExec = class(TComponent)
+  private
+    FConnectionInfo : TSqlConnectionInfo;
+    FSqlConnector: TSQLConnector;
+    FSqlProvider: TSqlProvider;
+    FSqlQuery: TSQLQuery;
+    FSqlTransaction: TSQLTransaction;
+    function GetInTransaction: Boolean;
+  public
+    constructor Create(ProviderType: TSqlProviderType; ConnectionString: string; AOwner: TComponent = nil); overload;
+    destructor Destroy(); override;
+
+    procedure StartTransaction();
+    procedure Commit();
+    procedure Rollback();
+
+    property SqlConnector: TSQLConnector read FSqlConnector;
+    property SqlTransaction: TSQLTransaction read FSqlTransaction;
+    property SqlQuery: TSQLQuery read FSqlQuery;
+
+    property InTransaction: Boolean read GetInTransaction;
+    property SqlProvider: TSqlProvider read FSqlProvider;
+
+    { e.g. Server=localhost; Database=C:\Path\To\DB.FDB; User=SYSDBA; Psw=masterkey; Charset=UTF8
+      e.g. Server=localhost; Database=AdventureWorksLT2012; User=sa; Psw=p@$W03d; TrustServerCertificate=true }
+    property ConnectionInfo : TSqlConnectionInfo read FConnectionInfo;
   end;
 
   { TSqlStore }
@@ -756,7 +917,10 @@ type
     function GetConnectionName: string;
     function GetInTransaction: Boolean;
   protected
-    procedure HandleException(Ex: Exception; SqlText: string; Params: array of const);
+    procedure HandleException(Ex: Exception; SqlText: string);
+
+    procedure CreateConnection();
+    procedure FreeConnection();
 
     procedure PrepareCommand(const SqlText: string; Params: array of const); virtual;
     procedure UnPrepareCommand(); virtual;
@@ -879,7 +1043,7 @@ implementation
 
 uses
    Tripous.Logs
-   ,Tripous.Data.Constants
+   //,Tripous.Data.Constants
    ;
 
 
@@ -915,9 +1079,26 @@ begin
   FIsContainer := not (FNodeType in [ntField, ntIndex, ntConstraint, ntTrigger, ntSequence]);
 end;
 
-destructor TMetaNode.Destroy();
+function TMetaNode.GetDefinition(): string;
 begin
-  inherited Destroy();
+  Result := '';
+end;
+
+function TMetaNode.GetParentTableOrView(): TMetaNode;
+var
+  Parent : TMetaNode;
+begin
+  Parent := FParentNode;
+  while Assigned(Parent) do
+  begin
+    if (Parent is TMetaTable) or (Parent is TMetaView) then
+    begin
+      Result := Parent;
+      break;
+    end;
+
+    Parent := Parent.FParentNode;
+  end;
 end;
 
 function TMetaNode.GetNodes: TMetaNodeArray;
@@ -957,16 +1138,58 @@ end;
 
 
 { TMetaField }
-
 constructor TMetaField.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
 begin
   inherited Create(AParentNode, AName, ASchemaName, ntField);
 end;
 
-destructor TMetaField.Destroy();
+function TMetaField.GetDefinition(): string;
 begin
-  inherited Destroy();
+  Result := Name + ' ' + DataType;
+  if not Sys.IsEmpty(DataSubType) then
+     Result := Result + ' ' + DataSubType;
+
+  if SizeInChars > 0 then
+     Result := Result + '(' + IntToStr(SizeInChars) + ')';
+
+  if (Precision > 0) and (Scale > 0) then
+     Result := Result + '(' + IntToStr(Precision) + ', ' + IntToStr(Scale) + ')';
+
+  if IsNullable then
+     Result := Result + ' null'
+  else
+     Result := Result + ' not null';
 end;
+
+function TMetaField.GetText(NameOnly: Boolean): string;
+begin
+  if NameOnly then
+    Result := Name
+  else
+    Result := DisplayText;
+end;
+
+function TMetaField.GetDisplayText: string;
+begin
+
+  Result := Name + ' (' + DataType;
+
+  if not Sys.IsEmpty(DataSubType) then
+     Result := Result + ' - ' + DataSubType;
+
+  if SizeInChars > 0 then
+     Result := Result + '(' + IntToStr(SizeInChars) + ')';
+
+  if (Precision > 0) and (Scale > 0) then
+     Result := Result + '(' + IntToStr(Precision) + ', ' + IntToStr(Scale) + ')';
+
+  if IsNullable then
+     Result := Result + ', null)'
+  else
+     Result := Result + ', not null)';
+
+end;
+
 
 { TMetaFields }
 
@@ -980,6 +1203,18 @@ destructor TMetaFields.Destroy();
 begin
   FList.Free();
   inherited Destroy();
+end;
+
+function TMetaFields.GetFieldListText(NamesOnly: Boolean): string;
+var
+  SB: IStringBuilder;
+  Item : TMetaField;
+begin
+  SB := TStrBuilder.Create();
+  for Item in FList do
+     SB.AppendLine(Item.GetText(NamesOnly));
+
+  Result := SB.ToString();
 end;
 
 procedure TMetaFields.DoClear();
@@ -1016,16 +1251,52 @@ begin
 end;
 
 { TMetaIndex }
-
 constructor TMetaIndex.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
 begin
   inherited Create(AParentNode, AName, ASchemaName, ntIndex);
 end;
 
-destructor TMetaIndex.Destroy();
+function TMetaIndex.GetDefinition(): string;
+var
+  MetaNode: TMetaNode;
+  List: TStringList;
+  FieldList: string;
+  Unique : string;
 begin
-  inherited Destroy();
+  Result := '';
+  MetaNode := GetParentTableOrView();
+  if Assigned(MetaNode) and (MetaNode is TMetaTable) then
+  begin
+    List := Sys.Split(Fields, ';');
+    try
+      FieldList := List.CommaText;
+    finally
+      List.Free();
+    end;
+
+    Unique := '';
+    if IsUnique then
+       Unique := 'unique';
+
+    // create [unique] index INDEX_NAME on TABLE_NAME  (FIELD_LIST);
+    Result := Format('create %s index %s on %s (%s)', [Unique, Name, MetaNode.Name, FieldList]);
+  end;
+
 end;
+
+function TMetaIndex.GetDisplayText: string;
+begin
+  Result := Name;
+  if not Sys.IsEmpty(Fields) then
+     Result := Result + ' (' + Fields + ')';
+
+  if not Sys.IsEmpty(IndexType) then
+      Result := Result + ' ' + IndexType
+  else if IsUnique then
+      Result := Result + ' Unique';
+
+end;
+
 
 
 { TMetaIndexes }
@@ -1082,10 +1353,18 @@ begin
    inherited Create(AParentNode, AName, ASchemaName, ntTrigger);
 end;
 
-destructor TMetaTrigger.Destroy();
+function TMetaTrigger.GetDefinition(): string;
 begin
-  inherited Destroy();
+  Result := Definition;
 end;
+
+function TMetaTrigger.GetDisplayText: string;
+begin
+  Result := Name;
+  if not Sys.IsEmpty(TriggerType) then
+     Result := Result + ' (' + TriggerType + ')';
+end;
+
 
 { TMetaTriggers }
 
@@ -1135,15 +1414,23 @@ begin
 end;
 
 { TMetaConstraint }
-
 constructor TMetaConstraint.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
 begin
   inherited Create(AParentNode, AName, ASchemaName, ntConstraint);
 end;
 
-destructor TMetaConstraint.Destroy();
+function TMetaConstraint.GetDefinition(): string;
 begin
-  inherited Destroy();
+  Result := '';
+end;
+
+function TMetaConstraint.GetDisplayText: string;
+begin
+  Result := Name;
+  if not Sys.IsEmpty(Fields) then
+     Result := Result + ' (' + Fields + ')';
+  if not Sys.IsEmpty(ConstraintTypeText) then
+     Result := Result + ' ' + ConstraintTypeText;
 end;
 
 { TMetaConstraints }
@@ -1195,15 +1482,200 @@ begin
 
 end;
 
+{ TMetaPrimaryKey }
+
+constructor TMetaPrimaryKey.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
+begin
+  inherited Create(AParentNode, AName, ASchemaName);
+  FNodeType := ntPrimaryKey;
+end;
+
+function TMetaPrimaryKey.GetDefinition(): string;
+var
+  MetaNode: TMetaNode;
+  List: TStringList;
+  FieldList: string;
+begin
+  Result := '';
+  MetaNode := GetParentTableOrView();
+  if Assigned(MetaNode) and (MetaNode is TMetaTable) then
+  begin
+    List := Sys.Split(Fields, ';');
+    try
+      FieldList := List.CommaText;
+    finally
+      List.Free();
+    end;
+
+    Result := Format('alter table %s add constraint %s primary key (%s)', [MetaNode.Name, Name, FieldList]);
+  end;
+
+end;
+
+
+{ TMetaPrimaryKeys }
+constructor TMetaPrimaryKeys.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'PrimaryKeys', '', ntPrimaryKeys);
+  FList := TGenObjectList<TMetaPrimaryKey>.Create(True, True);
+end;
+
+destructor TMetaPrimaryKeys.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaPrimaryKeys.DoClear();
+begin
+  FList.Clear();
+  inherited DoClear();
+end;
+
+function TMetaPrimaryKeys.Add(AName: string; const ASchemaName: string): TMetaPrimaryKey;
+begin
+  Result := TMetaPrimaryKey.Create(Self, AName, ASchemaName);
+  FList.Add(Result);
+end;
+
+function TMetaPrimaryKeys.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaPrimaryKeys.Find(const AName: string; const ASchemaName: string): TMetaPrimaryKey;
+var
+  Item : TMetaPrimaryKey;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(AName, Item.Name) and Sys.IsSameText(ASchemaName, Item.SchemaName) then
+      Exit(Item);
+  end;
+
+end;
+
+
+
+{ TMetaForeignKey }
+constructor TMetaForeignKey.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
+begin
+  inherited Create(AParentNode, AName, ASchemaName);
+  FNodeType := ntForeignKey;
+end;
+
+function TMetaForeignKey.GetDefinition(): string;
+var
+  MetaNode: TMetaNode;
+  List: TStringList;
+  FieldList: string;
+  ForeignFieldList: string;
+begin
+  Result := '';
+
+  MetaNode := GetParentTableOrView();
+  if Assigned(MetaNode) and (MetaNode is TMetaTable) then
+  begin
+
+    List := Sys.Split(Fields, ';');
+    try
+      FieldList := List.CommaText;
+    finally
+      List.Free();
+    end;
+
+     List := Sys.Split(ForeignFields, ';');
+    try
+      ForeignFieldList := List.CommaText;
+    finally
+      List.Free();
+    end;
+
+    // alter table TABLE_NAME add constraint CONSTRAINT_NAME foreign key (FIELD_LIST) references FOREIGN_TABLE(FOREIGN_FIELD_LIST);
+    Result := Format('alter table %s add constraint %s foreign key (%s) references %s(%s)',
+                     [MetaNode.Name, Name, FieldList, ForeignTable, ForeignFieldList]);
+  end;
+
+end;
+
+function TMetaForeignKey.GetDisplayText: string;
+begin
+  Result := Name;
+  if not Sys.IsEmpty(Fields) then
+     Result := Result + ' (' + Fields + ')';
+  if not Sys.IsEmpty(ForeignTable) then
+  begin
+     Result := Result + ' references ' + ForeignTable;
+     if not Sys.IsEmpty(ForeignFields) then
+       Result := Result + ' (' + ForeignFields + ')';
+  end;
+end;
+
+{ TMetaForeignKeys }
+constructor TMetaForeignKeys.Create(AParentNode: TMetaNode);
+begin
+  inherited Create(AParentNode, 'ForeignKeys', '', ntForeignKeys);
+  FList := TGenObjectList<TMetaForeignKey>.Create(True, True);
+end;
+
+destructor TMetaForeignKeys.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+procedure TMetaForeignKeys.DoClear();
+begin
+  FList.Clear();
+  inherited DoClear();
+end;
+
+function TMetaForeignKeys.Add(AName: string; const ASchemaName: string): TMetaForeignKey;
+begin
+  Result := TMetaForeignKey.Create(Self, AName, ASchemaName);
+  FList.Add(Result);
+end;
+
+function TMetaForeignKeys.GetNodes: TMetaNodeArray;
+var
+  i : Integer;
+begin
+  Result := [];
+  SetLength(Result, FList.Count);
+  for i := 0 to FList.Count - 1 do
+      Result[i] := FList[i];
+end;
+
+function TMetaForeignKeys.Find(const AName: string; const ASchemaName: string): TMetaForeignKey;
+var
+  Item : TMetaForeignKey;
+begin
+  Result := nil;
+  for Item in FList do
+  begin
+    if Sys.IsSameText(AName, Item.Name) and Sys.IsSameText(ASchemaName, Item.SchemaName) then
+      Exit(Item);
+  end;
+
+end;
+
 
 { TMetaTable }
 constructor TMetaTable.Create(AParentNode: TMetaNode; const AName: string; const ASchemaName: string);
 begin
   inherited Create(AParentNode, AName, ASchemaName, ntTable);
-  FFields := TMetaFields.Create(Self);
-  FIndexes := TMetaIndexes.Create(Self);
-  FTriggers := TMetaTriggers.Create(Self);
-  FConstraints := TMetaConstraints.Create(Self);
+  FFields             := TMetaFields.Create(Self);
+  FPrimaryKeys        := TMetaPrimaryKeys.Create(Self);
+  FForeignKeys        := TMetaForeignKeys.Create(Self);
+  FIndexes            := TMetaIndexes.Create(Self);
+  FTriggers           := TMetaTriggers.Create(Self);
+  FConstraints        := TMetaConstraints.Create(Self);
 end;
 
 destructor TMetaTable.Destroy();
@@ -1211,8 +1683,31 @@ begin
   FConstraints.Free();
   FTriggers.Free();
   FIndexes.Free();
+  FForeignKeys.Free();
+  FPrimaryKeys.Free();
   FFields.Free();
   inherited Destroy();
+end;
+
+function TMetaTable.GetDefinition(): string;
+var
+  SB: IStringBuilder;
+  i : Integer;
+  S : string;
+begin
+  SB := TStrBuilder.Create();
+
+  SB.AppendLine(Format('create table %s (', [Name]));
+  for i := 0 to Fields.List.Count - 1 do
+  begin
+    S := Fields.List[i].GetDefinition();
+    if i <> Fields.List.Count - 1 then
+      S := S + ', ';
+    SB.AppendLine('  ' + S);
+  end;
+  SB.AppendLine(')');
+
+  Result := SB.ToString();
 end;
 
 procedure TMetaTable.DoClear();
@@ -1220,7 +1715,21 @@ begin
   FConstraints.DoClear();
   FTriggers.DoClear();
   FIndexes.DoClear();
+  FForeignKeys.DoClear();
+  FPrimaryKeys.DoClear();
   FFields.DoClear();
+end;
+
+function TMetaTable.GetNodes: TMetaNodeArray;
+begin
+  Result := [];
+  SetLength(Result, 6);
+  Result[0] := Fields;
+  Result[1] := PrimaryKeys;
+  Result[2] := ForeignKeys;
+  Result[3] := Constraints;
+  Result[4] := Indexes;
+  Result[5] := Triggers;
 end;
 
 { TMetaTables }
@@ -1288,9 +1797,21 @@ begin
   inherited Destroy();
 end;
 
+function TMetaView.GetDefinition(): string;
+begin
+  Result := Definition;
+end;
+
 procedure TMetaView.DoClear();
 begin
   FFields.DoClear();
+end;
+
+function TMetaView.GetNodes: TMetaNodeArray;
+begin
+  Result := [];
+  SetLength(Result, 1);
+  Result[0] := Fields;
 end;
 
 
@@ -1352,8 +1873,20 @@ begin
   inherited Destroy();
 end;
 
+function TMetaProcedure.GetDefinition(): string;
+begin
+  Result := Definition;
+end;
+
 procedure TMetaProcedure.DoClear();
 begin
+end;
+
+function TMetaProcedure.GetDisplayText: string;
+begin
+  Result := Name;
+  if not Sys.IsEmpty(ProcedureType) then
+     Result := Result + ' (' + ProcedureType + ')';
 end;
 
 { TMetaProcedures }
@@ -1414,6 +1947,11 @@ end;
 destructor TMetaSequence.Destroy();
 begin
   inherited Destroy();
+end;
+
+function TMetaSequence.GetDefinition(): string;
+begin
+  Result := '';
 end;
 
 procedure TMetaSequence.DoClear();
@@ -1501,6 +2039,11 @@ begin
   FProcedures.DoClear();
   FViews.DoClear();
   FTables.DoClear();
+end;
+
+function TMetaDatabase.GetDisplayText: string;
+begin
+  Result := ConnectionInfo.Name + ' (' + ConnectionInfo.Provider + ')';
 end;
 
 procedure TMetaDatabase.Clear();
@@ -1846,6 +2389,9 @@ var
   ConstraintName: string;
   MetaTable: TMetaTable;
   MetaConstraint: TMetaConstraint;
+  MetaForeignKey: TMetaForeignKey;
+
+  ConstraintType: TConstraintType;
   FieldName: string;
   ForeignField: string;
 begin
@@ -1856,6 +2402,7 @@ begin
 
   tblSql := FDatabase.SqlStore.Select(SqlText);
   try
+
     tblSql.First();
     while not tblSql.Eof do
     begin
@@ -1865,33 +2412,67 @@ begin
       TableName := UnQuote(TableName);
 
       MetaTable := Tables.Find(TableName, Schema);
+
       if Assigned(MetaTable) then
       begin
         ConstraintName := tblSql.FieldByName('ConstraintName').AsString.Trim();
         ConstraintName := UnQuote(ConstraintName);
 
-        FieldName    := tblSql.FieldByName('FieldName').AsString.Trim();
-        ForeignField := tblSql.FieldByName('ForeignField').AsString.Trim();
+        ConstraintType :=  TConstraintType(tblSql.FieldByName('ConstraintType').AsInteger);
+        case ConstraintType of
+           ctPrimaryKey: MetaConstraint := MetaTable.PrimaryKeys.Find(ConstraintName, Schema);
+           ctForeignKey: MetaConstraint := MetaTable.ForeignKeys.Find(ConstraintName, Schema);
+        else
+           MetaConstraint := MetaTable.Constraints.Find(ConstraintName, Schema);
+        end;
 
-        MetaConstraint := MetaTable.Constraints.Find(ConstraintName, Schema);
         if not Assigned(MetaConstraint) then
         begin
-          MetaConstraint := MetaTable.Constraints.Add(ConstraintName, Schema);
+          case ConstraintType of
+             ctPrimaryKey: MetaConstraint := MetaTable.PrimaryKeys.Add(ConstraintName, Schema);
+             ctForeignKey: MetaConstraint := MetaTable.ForeignKeys.Add(ConstraintName, Schema);
+          else
+             MetaConstraint := MetaTable.Constraints.Add(ConstraintName, Schema);
+          end;
+
           MetaConstraint.FConstraintTypeText := tblSql.FieldByName('ConstraintTypeText').AsString.Trim();
           MetaConstraint.FConstraintType     := TConstraintType(tblSql.FieldByName('ConstraintType').AsInteger);
-          MetaConstraint.FFields             := FieldName;
-          MetaConstraint.FForeignTable       := tblSql.FieldByName('ForeignTable').AsString.Trim();
-          MetaConstraint.FForeignFields      := ForeignField;
-          MetaConstraint.FUpdateRule         := tblSql.FieldByName('UpdateRule').AsString.Trim();
-          MetaConstraint.FDeleteRule         := tblSql.FieldByName('DeleteRule').AsString.Trim();
-        end else begin
-          if FieldName <> '' then
-             MetaConstraint.FFields  := MetaConstraint.FFields + ';' + FieldName;
+          MetaConstraint.FFields             := tblSql.FieldByName('FieldName').AsString.Trim();
 
-          if ForeignField <> '' then
-             MetaConstraint.FForeignFields := MetaConstraint.FForeignFields + ';' + ForeignField;
+          if ConstraintType = ctForeignKey then
+          begin
+            MetaForeignKey := TMetaForeignKey(MetaConstraint);
+            MetaForeignKey.FForeignTable  := tblSql.FieldByName('ForeignTable').AsString.Trim();
+            MetaForeignKey.FForeignFields := tblSql.FieldByName('ForeignField').AsString.Trim();
+          end;
+        end else begin
+          FieldName    := tblSql.FieldByName('FieldName').AsString.Trim();
+
+          if not Sys.IsEmpty(FieldName) then
+          begin
+            if Sys.IsEmpty(MetaConstraint.FFields) then
+               MetaConstraint.FFields := FieldName
+            else
+               MetaConstraint.FFields := MetaConstraint.FFields + ';' + FieldName;
+          end;
+
+            if ConstraintType = ctForeignKey then
+            begin
+              MetaForeignKey := TMetaForeignKey(MetaConstraint);
+
+              ForeignField := tblSql.FieldByName('ForeignField').AsString.Trim();
+              if not Sys.IsEmpty(ForeignField) then
+              begin
+                if Sys.IsEmpty(MetaForeignKey.ForeignFields) then
+                   MetaForeignKey.FForeignFields := ForeignField
+                else
+                   MetaForeignKey.FForeignFields := MetaForeignKey.FForeignFields + ';' + ForeignField;
+              end;
+            end;
+
         end;
       end;
+
       tblSql.Next();
     end;
   finally
@@ -1988,9 +2569,10 @@ end;
 
 { TMetaDatabases }
 
-constructor TMetaDatabases.Create();
+constructor TMetaDatabases.Create(AutoLoad: Boolean);
 begin
   inherited Create(nil, 'Databases', '', ntDatabases);
+  FIsAutoLoad := AutoLoad;
   FList := TGenObjectList<TMetaDatabase>.Create(True, True);
 end;
 
@@ -2026,7 +2608,8 @@ function TMetaDatabases.Add(ConnectionInfo: TSqlConnectionInfo): TMetaDatabase;
 begin
   Result := TMetaDatabase.Create(Self, ConnectionInfo);
   FList.Add(Result);
-  //Result.Load();
+  if IsAutoLoad then
+     Result.Load();
 end;
 
 procedure TMetaDatabases.AddRange(ConnectionInfoList: TSqlConnectionInfoArray);
@@ -2139,6 +2722,61 @@ end;
 
 
 { TSqlConnectionInfo }
+constructor TSqlConnectionInfo.Create(ACollection: TCollection);
+begin
+  inherited Create(ACollection);
+  Inc(FCounter);
+  FId := FCounter;
+  FParams := TStringList.Create();
+end;
+
+destructor TSqlConnectionInfo.Destroy();
+begin
+  FParams.Free();
+  inherited Destroy();
+end;
+
+function TSqlConnectionInfo.Clone(): TSqlConnectionInfo;
+//var
+//  JsonText: string;
+begin
+  Result := TSqlConnectionInfo.Create();
+  Result.Name     := Name;
+  Result.Provider := Provider;
+  Result.AutoCreateGenerators := AutoCreateGenerators;
+  Result.ConnectionString := ConnectionString;
+(*
+
+*)
+  //JsonText := Json.Serialize(Self);
+  //Json.Deserialize(Result, JsonText);
+end;
+
+function TSqlConnectionInfo.GetSqlProvider(): TSqlProvider;
+begin
+  Result := SqlProviders.FindSqlProvider(Provider);
+end;
+
+function TSqlConnectionInfo.GetConnectorType: string;
+begin
+  Result := GetSqlProvider().ConnectorType;
+end;
+
+procedure TSqlConnectionInfo.SetupConnection(SqlConnector: TSQLConnector);
+var
+  SqlProvider : TSqlProvider;
+begin
+  SqlProvider := GetSqlProvider();
+  SqlProvider.ActivateLibraryLoader();
+
+  SqlConnector.ConnectorType := ConnectorType;
+  SqlConnector.HostName := Server;
+  SqlConnector.DatabaseName := Database;
+  SqlConnector.UserName := UserName;
+  SqlConnector.Password := Password;
+  SqlConnector.CharSet := CharSet;
+  SqlConnector.Params.Assign(Params);
+end;
 
 procedure TSqlConnectionInfo.SetConnectionString(AValue: string);
 var
@@ -2147,8 +2785,8 @@ var
   Key, Value: string;
 begin
 
-  FDatabaseName := '';
-  FHostName := '';
+  FDatabase := '';
+  FServer := '';
   FUserName := '';
   FPassword := '';
   FCharSet  := '';
@@ -2172,13 +2810,13 @@ begin
            or Sys.IsSameText(Key, 'DatabaseName')
            or Sys.IsSameText(Key, 'Database Name')
            or Sys.IsSameText(Key, 'Initial Catalog')  then
-        FDatabaseName := Value
+        FDatabase := Value
       else if Sys.IsSameText(Key, 'Host')
            or Sys.IsSameText(Key, 'HostName')
            or Sys.IsSameText(Key, 'Server')
            or Sys.IsSameText(Key, 'DataSource')
            or Sys.IsSameText(Key, 'Data Source') then
-        FHostName := Value
+        FServer := Value
       else if Sys.IsSameText(Key, 'User')
            or Sys.IsSameText(Key, 'UserName')
            or Sys.IsSameText(Key, 'User Name')
@@ -2198,62 +2836,9 @@ begin
 
 end;
 
-
-
-function TSqlConnectionInfo.GetConnectorType: string;
-begin
-  if not Sys.IsEmpty(FProvider) then
-  begin
-         if Sys.IsSameText(FProvider, SqlProviders.SFirebird)    then  Result := 'Firebird'
-    else if Sys.IsSameText(FProvider, SqlProviders.SMsSql)       then  Result := 'MSSQLServer'
-    else if Sys.IsSameText(FProvider, SqlProviders.SMySql)       then  Result := 'MySQL 8.0'
-    else if Sys.IsSameText(FProvider, SqlProviders.SPostgreSql)  then  Result := 'PostgreSQL'
-    else if Sys.IsSameText(FProvider, SqlProviders.SOracle)      then  Result := 'Oracle'
-    else if Sys.IsSameText(FProvider, SqlProviders.SSqlite)      then  Result := 'SQLite3'
-  end else
-    Sys.Error('Invalid Provider: %s', [FProvider]);
-end;
-
-constructor TSqlConnectionInfo.Create(ACollection: TCollection);
-begin
-  inherited Create(ACollection);
-  FParams := TStringList.Create();
-end;
-
-destructor TSqlConnectionInfo.Destroy();
-begin
-  FParams.Free();
-  inherited Destroy();
-end;
-
-function TSqlConnectionInfo.Clone(): TSqlConnectionInfo;
-var
-  JsonText: string;
-begin
-  Result := TSqlConnectionInfo.Create();
-  JsonText := Json.Serialize(Self);
-  Json.Deserialize(Result, JsonText);
-end;
-
-function TSqlConnectionInfo.GetSqlProvider(): TSqlProvider;
-begin
-  Result := SqlProviders.FindSqlProvider(Provider);
-end;
-
-procedure TSqlConnectionInfo.SetupConnection(SqlConnector: TSQLConnector);
-begin
-  SqlConnector.ConnectorType := ConnectorType;
-  SqlConnector.HostName := HostName;
-  SqlConnector.DatabaseName := DatabaseName;
-  SqlConnector.UserName := UserName;
-  SqlConnector.Password := Password;
-  SqlConnector.CharSet := CharSet;
-  SqlConnector.Params.Assign(Params);
-end;
-
 function TSqlConnectionInfo.CanConnect(ThrowIfNot: Boolean): Boolean;
 begin
-  Result := SqlProviders.FindSqlProvider(Provider).CanConnect(Self, ThrowIfNot);
+  Result := GetSqlProvider().CanConnect(Self, ThrowIfNot);
 end;
 
 
@@ -2466,6 +3051,19 @@ begin
   ;
 end;
 
+procedure TSqlConInfoProxy.FromConnectionInfo(SqlConInfo: TSqlConnectionInfo);
+begin
+  //Id       :=
+  Name     := SqlConInfo.Name;
+  Provider := SqlConInfo.Provider;
+  Server   := SqlConInfo.Server;
+  Database := SqlConInfo.Database;
+  UserName := SqlConInfo.UserName;
+  Password := SqlConInfo.Password;
+  Params.Clear();
+  Params.Text := SqlConInfo.Params.Text;
+end;
+
 function TSqlConInfoProxy.CreateSqlConnectionInfo(): TSqlConnectionInfo;
 begin
   Result := TSqlConnectionInfo.Create(nil);
@@ -2530,16 +3128,20 @@ end;
 
 class constructor SqlProviders.Create();
 begin
-  Providers := TList.Create();
+  Providers := TGenObjectList<TSqlProvider>.Create(True, True); // TList.Create();
 
   Providers.Add(TSqlProviderFirebird.Create());
   Providers.Add(TSqlProviderMsSql.Create());
+  Providers.Add(TSqlProviderMySql.Create());
+  Providers.Add(TSqlProviderPostgreSql.Create());
+  Providers.Add(TSqlProviderOracle.Create());
+  Providers.Add(TSqlProviderSqlite.Create());
 end;
 
 class destructor SqlProviders.Destroy();
 begin
-  Sys.ClearObjectList(Providers);
-  Providers.Free();
+  //Sys.ClearObjectList(Providers);
+  //Providers.Free();
 end;
 
 class function SqlProviders.ProviderTypeToString(ProviderType: TSqlProviderType): string;
@@ -2575,15 +3177,89 @@ begin
 end;
 
 { TSqlProvider }
-
-constructor TSqlProvider.Create();
+constructor TSqlProvider.Create(ProviderType: TSqlProviderType);
 begin
   inherited Create();
+  FProviderType := ProviderType;
+  FName         := ProviderTypeToProviderName(ProviderType);
+
+  // https://forum.lazarus.freepascal.org/index.php?topic=27379.0
+  FLibraryLoader := TSQLDBLibraryLoader.Create(nil);
+  FLibraryLoader.ConnectionType := ConnectorType;
 end;
 
 destructor TSqlProvider.Destroy();
 begin
+  FLibraryLoader.Free();
   inherited Destroy();
+end;
+
+class function TSqlProvider.ProviderTypeToProviderName(ProviderType: TSqlProviderType): string;
+begin
+  Result := 'Unknown';
+
+  case ProviderType of
+    ptFirebird    : Result := SqlProviders.SFirebird  ;
+    ptMsSql       : Result := SqlProviders.SMsSql     ;
+    ptMySql       : Result := SqlProviders.SMySql     ;
+    ptPostgreSql  : Result := SqlProviders.SPostgreSql;
+    ptOracle      : Result := SqlProviders.SOracle    ;
+    ptSqlite      : Result := SqlProviders.SSqlite    ;
+  end;
+end;
+
+class function TSqlProvider.ProviderTypeToConnectorType(ProviderType: TSqlProviderType): string;
+begin
+  Result := 'Unknown';
+
+  case ProviderType of
+    ptFirebird    : Result := 'Firebird'     ;
+    ptMsSql       : Result := 'MSSQLServer'  ;
+    ptMySql       : Result := 'MySQL 8.0'    ;
+    ptPostgreSql  : Result := 'PostgreSQL'   ;
+    ptOracle      : Result := 'Oracle'       ;
+    ptSqlite      : Result := 'SQLite3'      ;
+  end;
+end;
+
+class function TSqlProvider.ProviderNameToProviderType(ProviderName: string): TSqlProviderType;
+begin
+  Result := ptNone;
+
+  if not Sys.IsEmpty(ProviderName) then
+  begin
+         if Sys.IsSameText(ProviderName, SqlProviders.SFirebird   ) then  Result := ptFirebird
+    else if Sys.IsSameText(ProviderName, SqlProviders.SMsSql      ) then  Result := ptMsSql
+    else if Sys.IsSameText(ProviderName, SqlProviders.SMySql      ) then  Result := ptMySql
+    else if Sys.IsSameText(ProviderName, SqlProviders.SPostgreSql ) then  Result := ptPostgreSql
+    else if Sys.IsSameText(ProviderName, SqlProviders.SOracle     ) then  Result := ptOracle
+    else if Sys.IsSameText(ProviderName, SqlProviders.SSqlite     ) then  Result := ptSqlite
+  end;
+end;
+
+class function TSqlProvider.ProviderNameToConnectorType(ProviderName: string): string;
+begin
+  Result := 'Unknown';
+  if not Sys.IsEmpty(ProviderName) then
+  begin
+         if Sys.IsSameText(ProviderName, SqlProviders.SFirebird   ) then  Result := 'Firebird'
+    else if Sys.IsSameText(ProviderName, SqlProviders.SMsSql      ) then  Result := 'MSSQLServer'
+    else if Sys.IsSameText(ProviderName, SqlProviders.SMySql      ) then  Result := 'MySQL 8.0'
+    else if Sys.IsSameText(ProviderName, SqlProviders.SPostgreSql ) then  Result := 'PostgreSQL'
+    else if Sys.IsSameText(ProviderName, SqlProviders.SOracle     ) then  Result := 'Oracle'
+    else if Sys.IsSameText(ProviderName, SqlProviders.SSqlite     ) then  Result := 'SQLite3'
+  end;
+end;
+
+procedure TSqlProvider.ActivateLibraryLoader();
+begin
+  if not FLibraryLoader.Enabled then
+     FLibraryLoader.Enabled := True;
+end;
+
+function TSqlProvider.GetConnectorType: string;
+begin
+  Result := ProviderTypeToConnectorType(ProviderType);
 end;
 
 function TSqlProvider.CanConnect(ConnectionString: string; ThrowIfNot: Boolean): Boolean;
@@ -2612,6 +3288,8 @@ begin
     SqlStore.Free();
   end;
 end;
+
+
 
 function TSqlProvider.GetTablesSql(): string;
 var
@@ -2727,21 +3405,7 @@ end;
 
 constructor TSqlProviderFirebird.Create();
 begin
-  inherited Create();
-  FProviderType := ptFirebird;
-  FName         := SqlProviders.SFirebird;
-  {
-  FTablesSql           := SFirebirdTablesSql;
-  FTableFieldsSql      := SFirebirdFieldsSql;
-  FViewsSql            := SFirebirdViewsSql;
-  FViewFieldsSql       := SFirebirdFieldsSql;
-  FViewFieldsSql       := FViewFieldsSql.Replace('t.RDB$VIEW_BLR is null', 't.RDB$VIEW_BLR is not null', [rfReplaceAll, rfIgnoreCase]);
-  FIndexesSql          := SFirebirdIndexesSql;
-  FTriggersSql         := SFirebirdTriggersSql;
-  FConstraintsSql      := SFirebirdConstraintsSql;
-  FProceduresSql       := SFirebirdProceduresSql;
-  FSequencesSql        := SFirebirdSequencesSql;
-  }
+  inherited Create(ptFirebird);
 end;
 
 destructor TSqlProviderFirebird.Destroy();
@@ -2749,13 +3413,17 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderFirebird.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  // select first N * from TABLE_NAME
+  Result := string.Format('select first %d * from %s', [RowCount, TableName]);
+end;
+
 { TSqlProviderSqlite }
 
 constructor TSqlProviderSqlite.Create();
 begin
-  inherited Create();
-  FProviderType := ptSqlite;
-  FName         := SqlProviders.SSqlite;
+  inherited Create(ptSqlite);
 end;
 
 destructor TSqlProviderSqlite.Destroy();
@@ -2763,27 +3431,17 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderSqlite.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  //  select * from TABLE_NAME limit N
+  Result := string.Format('select * from %s limit %d', [TableName, RowCount]);
+end;
+
 { TSqlProviderMsSql }
 
 constructor TSqlProviderMsSql.Create();
 begin
-  inherited Create();
-  FProviderType := ptMsSql;
-  FName         := SqlProviders.SMsSql;
-  {
-  FTablesSql          := SMsSqlTablesSql;
-  FTableFieldsSql     := SMsSqlFieldsSql;
-  FViewsSql           := SMsSqlViewsSql;
-  FViewFieldsSql      := SMsSqlFieldsSql;
-  FViewFieldsSql      := FViewFieldsSql.Replace('BASE TABLE', 'VIEW', [rfReplaceAll, rfIgnoreCase]);
-
-  FIndexesSql         := SMsSqlIndexesSql;
-  FTriggersSql        := SMsSqlTriggersSql;
-
-  FConstraintsSql     := SMsSqlConstraintsSql;
-  FProceduresSql      := SMsSqlProceduresSql;
-  //FSequencesSql       := SMsSqlSequencesSql;
-  }
+  inherited Create(ptMsSql);
 end;
 
 destructor TSqlProviderMsSql.Destroy();
@@ -2791,13 +3449,17 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderMsSql.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  // select top N * from TABLE_NAME
+  Result := string.Format('select top %d * from %s', [RowCount, TableName]);
+end;
+
 { TSqlProviderMySql }
 
 constructor TSqlProviderMySql.Create();
 begin
-  inherited Create();
-  FProviderType := ptMySql;
-  FName         := SqlProviders.SMySql;
+  inherited Create(ptMySql);
 end;
 
 destructor TSqlProviderMySql.Destroy();
@@ -2805,13 +3467,17 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderMySql.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  // select * from TABLE_NAME limit N
+  Result := string.Format('select * from %s limit %d', [TableName, RowCount]);
+end;
+
 { TSqlProviderPostgreSql }
 
 constructor TSqlProviderPostgreSql.Create();
 begin
-  inherited Create();
-  FProviderType := ptPostgreSql;
-  FName         := SqlProviders.SPostgreSql;
+  inherited Create(ptPostgreSql);
 end;
 
 destructor TSqlProviderPostgreSql.Destroy();
@@ -2819,13 +3485,17 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderPostgreSql.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  // select * from TABLE_NAME limit N
+  Result := string.Format('select * from %s limit %d', [TableName, RowCount]);
+end;
+
 { TSqlProviderOracle }
 
 constructor TSqlProviderOracle.Create();
 begin
-  inherited Create();
-  FProviderType := ptOracle;
-  FName         := SqlProviders.SOracle;
+  inherited Create(ptOracle);
 end;
 
 destructor TSqlProviderOracle.Destroy();
@@ -2833,51 +3503,138 @@ begin
   inherited Destroy();
 end;
 
-{ TSqlStore }
+function TSqlProviderOracle.SelectTop(TableName: string; RowCount: Word): string;
+begin
+  // select * from TABLE_NAME where ROWNUM <= N
+  Result := string.Format('select * from %s where ROWNUM <= %d', [TableName, RowCount]);
+end;
 
+
+
+
+{ TSqlExec }
+constructor TSqlExec.Create(ProviderType: TSqlProviderType; ConnectionString: string; AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+
+  FConnectionInfo := TSqlConnectionInfo.Create();
+  FConnectionInfo.Provider := TSqlProvider.ProviderTypeToProviderName(ProviderType);
+  FConnectionInfo.ConnectionString := ConnectionString;
+
+  FSqlProvider    := FConnectionInfo.GetSqlProvider();
+
+  FSqlConnector   := TSQLConnector.Create(Self);
+  FSqlTransaction := TSQLTransaction.Create(Self);
+  FSqlQuery       := TSQLQuery.Create(Self);
+
+  FSqlConnector.KeepConnection := False;
+  FConnectionInfo.SetupConnection(FSqlConnector);
+
+  FSqlTransaction.Options := [TSQLTransactionOption.stoExplicitStart];     // TSQLTransactionOption = (stoUseImplicit, stoExplicitStart);
+
+  FSqlTransaction.DataBase  := FSqlConnector;
+  //FSqlConnector.Transaction := FSqlTransaction;
+  FSqlQuery.Transaction     := FSqlTransaction;
+  FSqlQuery.DataBase        := FSqlConnector;
+end;
+
+destructor TSqlExec.Destroy();
+begin
+  FConnectionInfo.Free();
+  inherited Destroy();
+end;
+
+function TSqlExec.GetInTransaction: Boolean;
+begin
+  Result := FSqlConnector.Connected and FSqlTransaction.Active;
+end;
+
+procedure TSqlExec.StartTransaction();
+begin
+  if not InTransaction then
+  begin
+    FSqlConnector.Connected := True;
+    FSqlTransaction.StartTransaction();
+  end;
+end;
+
+procedure TSqlExec.Commit();
+begin
+  if InTransaction then
+  begin
+    FSqlTransaction.Commit();
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+procedure TSqlExec.Rollback();
+begin
+  if InTransaction then
+  begin
+    FSqlTransaction.Rollback();
+    FSqlConnector.Connected := False;
+  end;
+end;
+
+
+{ TSqlStore }
 constructor TSqlStore.Create(ConnectionInfo: TSqlConnectionInfo);
 begin
   inherited Create();
   FConnectionInfo := ConnectionInfo.Clone();
   FProvider       := FConnectionInfo.GetSqlProvider();
+end;
+
+destructor TSqlStore.Destroy();
+begin
+  FConnectionInfo.Free();
+  inherited Destroy();
+end;
+
+procedure TSqlStore.CreateConnection();
+begin
+  if Assigned(FSqlQuery) then
+     FreeConnection();
 
   FSqlConnector   := TSQLConnector.Create(nil);
   FSqlTransaction := TSQLTransaction.Create(nil);
   FSqlQuery       := TSQLQuery.Create(nil);
 
-  FSqlConnector.Transaction := FSqlTransaction;
-  FSqlQuery.DataBase        := FSqlConnector;
-
+  FSqlConnector.KeepConnection := False;
   FConnectionInfo.SetupConnection(FSqlConnector);
+
+  FSqlTransaction.DataBase  := FSqlConnector;
+  FSqlConnector.Transaction := FSqlTransaction;
+  //FSqlQuery.Transaction     := FSqlTransaction;
+  FSqlQuery.DataBase        := FSqlConnector;
 end;
 
-destructor TSqlStore.Destroy();
+procedure TSqlStore.FreeConnection();
 begin
-  FSqlQuery.Active := False;
-  FSqlTransaction.Active := False;
-  FSqlConnector.Connected := False;
+  if Assigned(FSqlQuery) then
+  begin
+    FSqlQuery.Active := False;
+    FSqlTransaction.Active := False;
+    FSqlConnector.Connected := False;
 
-  FSqlQuery.Free();
-  FSqlTransaction.Free();
-  FSqlConnector.Free();
+    FSqlQuery.Free();
+    FSqlTransaction.Free();
+    FSqlConnector.Free();
 
-  FConnectionInfo.Free();
-
-  inherited Destroy();
-end;
-
-function TSqlStore.GetInTransaction: Boolean;
-begin
-  Result := FSqlConnector.Connected and FSqlTransaction.Active;
+    FSqlQuery := nil;
+    FSqlTransaction := nil;
+    FSqlConnector := nil;
+  end;
 end;
 
 procedure TSqlStore.StartTransaction();
 begin
-  if FSqlTransaction.Active then
-    Sys.Error('Transaction is already started.');
+  CreateConnection();
+
+  //if FSqlTransaction.Active then
+  //  Sys.Error('Transaction is already started.');
 
   FSqlConnector.Connected := True;
-  //FSqlTransaction.Active := True;
   FSqlTransaction.StartTransaction();
 end;
 
@@ -2889,6 +3646,8 @@ begin
   //FSqlTransaction.Active := False;
   FSqlTransaction.Commit();
   FSqlConnector.Connected := False;
+
+  FreeConnection();
 end;
 
 procedure TSqlStore.Rollback();
@@ -2896,18 +3655,32 @@ begin
   if not FSqlTransaction.Active then
     Sys.Error('Transaction is not active.');
 
-  //FSqlTransaction.Active := False;
   FSqlTransaction.Rollback();
   FSqlConnector.Connected := False;
+
+  FreeConnection();
+end;
+
+function TSqlStore.GetInTransaction: Boolean;
+begin
+  Result := Assigned(FSqlConnector)
+        and Assigned(FSqlTransaction)
+        and FSqlConnector.Connected
+        and FSqlTransaction.Active;
 end;
 
 function TSqlStore.CanConnect(ThrowIfNot: Boolean): Boolean;
 begin
   Result := False;
   try
-    FSqlConnector.Connected := True;
-    FSqlConnector.Connected := False;
-    Result := True;
+    CreateConnection();
+    try
+      FSqlConnector.Connected := True;
+      FSqlConnector.Connected := False;
+      Result := True;
+    finally
+      FreeConnection();
+    end;
   except
     on Ex: Exception do
     begin
@@ -2917,7 +3690,6 @@ begin
     end;
   end;
 end;
-
 
 procedure TSqlStore.PrepareCommand(const SqlText: string; Params: array of const);
 begin
@@ -2940,9 +3712,24 @@ begin
      FSqlQuery.UnPrepare();
 end;
 
-procedure TSqlStore.HandleException(Ex: Exception; SqlText: string; Params: array of const);
+procedure TSqlStore.HandleException(Ex: Exception; SqlText: string);
+var
+  SB: IStringBuilder;
+  Source: string;
+  EventId : string;
+  Text: string;
 begin
-  // TODO:
+  SB := TStrBuilder.Create();
+  SB.AppendLine(Ex.ToString());
+  SB.AppendLine();
+  SB.AppendLine('Error in the following SQL statement');
+  SB.AppendLine(SqlText);
+
+  Source  := Self.ClassName + ' (' + Provider.Name + ')';
+  EventId := '';
+  Text    := SB.ToString();
+
+  Logger.Error(Source, EventId, Text);
 end;
 
 function TSqlStore.Select(const SqlText: string; Params: array of const): TMemTable;
@@ -2974,7 +3761,8 @@ begin
   except
     on E: Exception do
     begin
-      HandleException(E, SqlText, Params);
+      HandleException(E, SqlText);
+      Rollback();
       raise;
     end;
   end;
@@ -3011,7 +3799,8 @@ begin
   except
     on E: Exception do
     begin
-      HandleException(E, SqlText, Params);
+      HandleException(E, SqlText);
+      Rollback();
       raise;
     end;
   end;
@@ -3048,7 +3837,8 @@ begin
   except
     on E: Exception do
     begin
-      HandleException(E, SqlText, Params);
+      HandleException(E, SqlText);
+      Rollback();
       raise;
     end;
   end;
@@ -3085,7 +3875,8 @@ begin
   except
     on E: Exception do
     begin
-      HandleException(E, SqlText, Params);
+      HandleException(E, SqlText);
+      Rollback();
       raise;
     end;
   end;
@@ -3136,7 +3927,8 @@ begin
   except
     on E: Exception do
     begin
-      HandleException(E, SqlText, Params);
+      HandleException(E, SqlText);
+      Rollback();
       raise;
     end;
   end;
@@ -3260,7 +4052,7 @@ end;
 class function DbSys.GetMetaDatabases: TMetaDatabases; static;
 begin
   if FMetaDatabases = nil then
-    FMetaDatabases := TMetaDatabases.Create();
+    FMetaDatabases := TMetaDatabases.Create(True);
   Result := FMetaDatabases;
 end;
 

@@ -123,6 +123,7 @@
         <Filename Value="fr_texteditorframe.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="TTextEditorFrame"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <UnitName Value="fr_TextEditorFrame"/>
       </Unit>

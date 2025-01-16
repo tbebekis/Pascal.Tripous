@@ -8,7 +8,7 @@ select
     RDB$PROCEDURE_INPUTS					 as InputCount,
     RDB$PROCEDURE_OUTPUTS					 as OutputCount,  
     RDB$PROCEDURE_SOURCE					 as Definition,
-    coalesce(RDB$VALID_BLR, 0)             as IsValid 
+    coalesce(RDB$VALID_BLR, 0)               as IsValid 
 from 
     RDB$PROCEDURES    
 where
