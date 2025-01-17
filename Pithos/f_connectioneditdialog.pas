@@ -114,9 +114,9 @@ begin
      mmoParams.Lines.Assign(ConInfoProxy.Params);
 
   // ReadOnly
-  cboProvider.ReadOnly := Mode in [cdmEdit];
-  edtServer.ReadOnly := Mode in [cdmEdit];
-  edtDatabase.ReadOnly := Mode in [cdmEdit];
+  cboProvider.Enabled := not (Mode in [cdmEdit]);
+  edtServer.Enabled := not (Mode in [cdmEdit]);
+  edtDatabase.Enabled := not (Mode in [cdmEdit]);
 
   btnCreateDatabase.Enabled := Mode = cdmCreateDb;
 end;

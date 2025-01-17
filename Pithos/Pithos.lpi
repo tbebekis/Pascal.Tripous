@@ -127,6 +127,11 @@
         <ResourceBaseClass Value="Frame"/>
         <UnitName Value="fr_TextEditorFrame"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\tripous.ui.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Tripous.Ui"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

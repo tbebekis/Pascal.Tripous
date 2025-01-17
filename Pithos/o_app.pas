@@ -20,6 +20,7 @@ uses
   ,Tripous
   ,Tripous.Data
   ,Tripous.MemTable
+  ,Tripous.Ui
   ;
 
 const
@@ -303,7 +304,39 @@ begin
 end;
 
 class procedure App.RemoveDatabase();
+var
+  MetaDatabase: TMetaDatabase;
+  ConInfoProxy: TSqlConInfoProxy;
+  Node: TTreeNode;
+  Message: string;
 begin
+  MetaDatabase := GetTreeNodeMetaDatabase();
+  if Assigned(MetaDatabase) then
+  begin
+    ConInfoProxy := FindConInfoProxy(MetaDatabase);
+    if Assigned(ConInfoProxy) then
+    begin
+      Message :=
+      'This action will remove the database connection' +  sLineBreak +  sLineBreak +
+      '    %s ' +  sLineBreak +  sLineBreak +
+      'from this application.' +  sLineBreak +  sLineBreak +
+      'This action will NOT remove the database.' +  sLineBreak +  sLineBreak +
+      'Do you want to continue?'
+      ;
+
+      Message := Format(Message, [MetaDatabase.DisplayText]);
+
+      if Ui.YesNoBox(Message) then
+      begin
+        Node := TTreeNode(MetaDatabase.Tag);
+        tv.Items.Delete(Node);
+        FSqlStore.ExecSql(ConInfoProxy.GetDeleteSql(), [ConInfoProxy.ToDictionary()]);
+        FConInfoProxyList.Remove(ConInfoProxy);
+        FMetaDatabases.Remove(MetaDatabase);
+      end;
+    end;
+
+  end;
 
 end;
 

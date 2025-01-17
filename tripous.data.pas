@@ -693,6 +693,7 @@ type
     function  ToDictionary(): IDictionary<string, Variant>;
     function  GetInsertIntoSql(): string;
     function  GetUpdateSql(): string;
+    function  GetDeleteSql(): string;
 
     procedure FromConnectionInfo(SqlConInfo: TSqlConnectionInfo);
     procedure ToConnectionInfo(SqlConInfo: TSqlConnectionInfo);
@@ -1023,6 +1024,7 @@ type
     class procedure AssignParams(Params: TParams; A: array of Variant); overload;
     class procedure AssignParams(Params: TParams; const ParamsDic: IDictionary<string, Variant>); overload;
     class procedure AssignStreamToParam(Param: TParam; Stream: TStream);
+    class procedure AssignParam(Params: TParams; ParamName: string; Value: Variant);
 
     { properties }
     class property MetaDatabases: TMetaDatabases read GetMetaDatabases;
@@ -3051,6 +3053,16 @@ begin
   ;
 end;
 
+function TSqlConInfoProxy.GetDeleteSql(): string;
+begin
+  Result :=
+  'delete from Datastores ' +
+  'where                  ' +
+  '  Id       = :Id       ' +
+  ''
+  ;
+end;
+
 procedure TSqlConInfoProxy.FromConnectionInfo(SqlConInfo: TSqlConnectionInfo);
 begin
   //Id       :=
@@ -4778,7 +4790,7 @@ var
   Entry: TGenKeyValue<string, Variant>;
 begin
   for Entry in ParamsDic do
-    Params.ParamByName(Entry.Key).Value := Entry.Value;
+    AssignParam(Params, Entry.Key, Entry.Value);
 end;
 
 class procedure DbSys.AssignStreamToParam(Param: TParam; Stream: TStream);
@@ -4787,6 +4799,15 @@ begin
   Param.Size      := Stream.Size;
   Stream.Position := 0;
   Param.LoadFromStream(Stream, ftBlob);
+end;
+
+class procedure DbSys.AssignParam(Params: TParams; ParamName: string; Value: Variant);
+var
+  Param: TParam;
+begin
+  Param := Params.FindParam(ParamName);
+  if Assigned(Param) then
+    Param.Value := Value;
 end;
 
 
