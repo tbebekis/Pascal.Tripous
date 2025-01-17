@@ -100,6 +100,16 @@ type
   TMetaDatabase = class;
   TSqlStore = class;
 
+
+  { TSQLConnectorEx }
+
+  TSQLConnectorEx = class(TSQLConnector)
+  protected
+    procedure CreateProxy; override;
+  public
+    property Proxy;
+  end;
+
   { TMetaNode }
   TMetaNode = class
   protected
@@ -540,6 +550,8 @@ type
     procedure LoadProcedures();
     procedure LoadConstraints();
     procedure LoadSequences();
+
+    function  ProcessReplacementsInMetadataSql(SqlText: string): string;
   protected
     function GetNodes: TMetaNodeArray;  override;
     procedure DoClear(); override;
@@ -615,7 +627,7 @@ type
     function Clone(): TSqlConnectionInfo;
 
     function  GetSqlProvider(): TSqlProvider;
-    procedure SetupConnection(SqlConnector: TSQLConnector);
+    procedure SetupConnection(SqlConnector: TSQLConnectorEx);
     function  CanConnect(ThrowIfNot: Boolean = False): Boolean;
 
     property Id : LargeUint read FId;
@@ -847,8 +859,26 @@ type
   end;
 
   { TSqlProviderMySql }
-
+  { 1. MySql
+    Go to the folder where MySql is installed, find the libmysql.dll in the \lib subfolder
+    and copy it the the folder of your app's executable.
+    2. MariaDb
+    Go to the folder where MariaDb is installed, find the libmariadb.dll in the \lib subfolder
+    copy it the the folder of your app's executable, and rename it as libmysql.dll
+  }
   TSqlProviderMySql = class(TSqlProvider)
+    {
+  protected
+    function GetTablesSql(): string; override;
+    function GetViewsSql(): string; override;
+    function GetTableFieldsSql(): string; override;
+    function GetViewFieldsSql(): string; override;
+    function GetIndexesSql(): string; override;
+    function GetTriggersSql(): string; override;
+    function GetConstraintsSql(): string; override;
+    function GetProceduresSql(): string; override;
+    function GetSequencesSql(): string; override;
+    }
   public
     constructor Create();
     destructor Destroy(); override;
@@ -880,7 +910,7 @@ type
   TSqlExec = class(TComponent)
   private
     FConnectionInfo : TSqlConnectionInfo;
-    FSqlConnector: TSQLConnector;
+    FSqlConnector: TSQLConnectorEx;
     FSqlProvider: TSqlProvider;
     FSqlQuery: TSQLQuery;
     FSqlTransaction: TSQLTransaction;
@@ -893,7 +923,7 @@ type
     procedure Commit();
     procedure Rollback();
 
-    property SqlConnector: TSQLConnector read FSqlConnector;
+    property SqlConnector: TSQLConnectorEx read FSqlConnector;
     property SqlTransaction: TSQLTransaction read FSqlTransaction;
     property SqlQuery: TSQLQuery read FSqlQuery;
 
@@ -911,7 +941,7 @@ type
     FConnectionInfo  : TSqlConnectionInfo;
     FProvider        : TSqlProvider;
 
-    FSqlConnector    : TSQLConnector;
+    FSqlConnector    : TSQLConnectorEx;
     FSqlQuery        : TSQLQuery;
     FSqlTransaction  : TSQLTransaction;
 
@@ -2081,6 +2111,7 @@ var
   MetaTable: TMetaTable;
 begin
   SqlText := SqlStore.Provider.TablesSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2118,6 +2149,7 @@ var
   MetaField: TMetaField;
 begin
   SqlText := SqlStore.Provider.TableFieldsSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2160,6 +2192,7 @@ var
   MetaView: TMetaView;
 begin
   SqlText := SqlStore.Provider.ViewsSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2200,6 +2233,7 @@ var
   MetaField: TMetaField;
 begin
   SqlText := SqlStore.Provider.ViewFieldsSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2256,6 +2290,7 @@ var
   MetaIndex: TMetaIndex;
 begin
   SqlText := SqlStore.Provider.IndexesSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2317,6 +2352,7 @@ var
   MetaTrigger: TMetaTrigger;
 begin
   SqlText := SqlStore.Provider.TriggersSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2356,6 +2392,7 @@ var
   MetaProcedure: TMetaProcedure;
 begin
   SqlText := SqlStore.Provider.ProceduresSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2398,6 +2435,7 @@ var
   ForeignField: string;
 begin
   SqlText := SqlStore.Provider.ConstraintsSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2492,6 +2530,7 @@ var
   MetaSequence: TMetaSequence;
 begin
   SqlText := SqlStore.Provider.SequencesSql;
+  SqlText := ProcessReplacementsInMetadataSql(SqlText);
 
   if Sys.IsEmpty(SqlText) then
      Exit;
@@ -2518,6 +2557,20 @@ begin
   end;
 
 end;
+
+function TMetaDatabase.ProcessReplacementsInMetadataSql(SqlText: string): string;
+begin
+  Result := SqlText;
+  case SqlStore.Provider.ProviderType of
+    ptFirebird    : ;
+    ptMsSql       : ;
+    ptMySql       : Result := Result.Replace('@SCHEMA_NAME', SqlStore.ConnectionInfo.Database, [rfReplaceAll, rfIgnoreCase]);
+    ptPostgreSql  : ;
+    ptOracle      : ;
+    ptSqlite      : ;
+  end;
+end;
+
 // -------------------------------------------------------
 
 procedure TMetaDatabase.Load();
@@ -2764,7 +2817,7 @@ begin
   Result := GetSqlProvider().ConnectorType;
 end;
 
-procedure TSqlConnectionInfo.SetupConnection(SqlConnector: TSQLConnector);
+procedure TSqlConnectionInfo.SetupConnection(SqlConnector: TSQLConnectorEx);
 var
   SqlProvider : TSqlProvider;
 begin
@@ -3485,6 +3538,7 @@ begin
   Result := string.Format('select * from %s limit %d', [TableName, RowCount]);
 end;
 
+
 { TSqlProviderPostgreSql }
 
 constructor TSqlProviderPostgreSql.Create();
@@ -3535,7 +3589,7 @@ begin
 
   FSqlProvider    := FConnectionInfo.GetSqlProvider();
 
-  FSqlConnector   := TSQLConnector.Create(Self);
+  FSqlConnector   := TSQLConnectorEx.Create(Self);
   FSqlTransaction := TSQLTransaction.Create(Self);
   FSqlQuery       := TSQLQuery.Create(Self);
 
@@ -3608,7 +3662,7 @@ begin
   if Assigned(FSqlQuery) then
      FreeConnection();
 
-  FSqlConnector   := TSQLConnector.Create(nil);
+  FSqlConnector   := TSQLConnectorEx.Create(nil);
   FSqlTransaction := TSQLTransaction.Create(nil);
   FSqlQuery       := TSQLQuery.Create(nil);
 
@@ -4012,6 +4066,17 @@ end;
 function TSqlStore.GetConnectionName: string;
 begin
   Result := FConnectionInfo.Name;
+end;
+
+{ TSQLConnectorEx }
+
+procedure TSQLConnectorEx.CreateProxy;
+begin
+  inherited CreateProxy;
+
+  if Assigned(Proxy) then
+     if Proxy is mysql80conn.TConnectionName then
+        mysql80conn.TConnectionName(Proxy).SkipLibraryVersionCheck:= true;
 end;
 
 

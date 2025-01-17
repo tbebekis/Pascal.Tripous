@@ -597,4 +597,12 @@ object MainForm: TMainForm
       FB3FDB1D76DD
     }
   end
+  object MySQL80Connection1: TMySQL80Connection
+    Connected = False
+    LoginPrompt = False
+    KeepConnection = False
+    SkipLibraryVersionCheck = False
+    Left = 455
+    Top = 135
+  end
 end

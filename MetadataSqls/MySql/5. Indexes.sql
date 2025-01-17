@@ -9,7 +9,7 @@ select
 from 
     INFORMATION_SCHEMA.STATISTICS 
 where 
-    TABLE_SCHEMA not in ('sys', 'mysql', 'information_schema', 'performance_schema') 
+    TABLE_SCHEMA = '@SCHEMA_NAME'
  order by 
     TABLE_NAME, 
     INDEX_NAME, 

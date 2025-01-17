@@ -11,4 +11,4 @@ from
             on  tr.EVENT_OBJECT_SCHEMA = t.TABLE_SCHEMA 
             and tr.EVENT_OBJECT_TABLE = t.TABLE_NAME
 where 
-    t.TABLE_SCHEMA not in ('sys', 'mysql', 'information_schema', 'performance_schema') 
+    t.TABLE_SCHEMA = '@SCHEMA_NAME'

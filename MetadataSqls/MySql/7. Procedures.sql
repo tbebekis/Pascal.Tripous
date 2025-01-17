@@ -6,8 +6,8 @@ select
 from 
     INFORMATION_SCHEMA.ROUTINES
 where 
-    (ROUTINE_TYPE = 'PROCEDURE' or ROUTINE_TYPE = 'FUNCTION')
-    and ROUTINE_SCHEMA not in ('sys', 'mysql', 'information_schema', 'performance_schema') 
+    ROUTINE_SCHEMA = '@SCHEMA_NAME'
+    and  (ROUTINE_TYPE = 'PROCEDURE' or ROUTINE_TYPE = 'FUNCTION')
 order by
     ROUTINE_SCHEMA, 
     ROUTINE_NAME

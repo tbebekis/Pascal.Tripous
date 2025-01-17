@@ -5,6 +5,6 @@ select
 from 
     INFORMATION_SCHEMA.VIEWS 
 where 
-	TABLE_SCHEMA not in ('sys', 'mysql', 'information_schema', 'performance_schema')        
+	TABLE_SCHEMA = '@SCHEMA_NAME'       
 order by 
     TABLE_SCHEMA, TABLE_NAME

@@ -18,7 +18,7 @@ uses
   , LCLType
 
   , Tripous
-  , Tripous.Data
+  , Tripous.Data, mysql80conn
   , o_App
   ;
 
@@ -38,6 +38,7 @@ type
     mnuISql: TMenuItem;
     mnuShowFieldList: TMenuItem;
     mnuShowMetadata: TMenuItem;
+    MySQL80Connection1: TMySQL80Connection;
     Separator5: TMenuItem;
     Separator4: TMenuItem;
     Separator3: TMenuItem;

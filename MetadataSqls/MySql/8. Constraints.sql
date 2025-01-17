@@ -31,7 +31,7 @@ from
             and Constraints.constraint_name = Refs.constraint_name 
             and Constraints.table_name = Refs.table_name
 where
-    Constraints.constraint_schema not in ('sys', 'mysql', 'information_schema', 'performance_schema') 
+    Constraints.constraint_schema = '@SCHEMA_NAME'
 order by
     KeyColumns.table_name, 
     Constraints.constraint_name, 

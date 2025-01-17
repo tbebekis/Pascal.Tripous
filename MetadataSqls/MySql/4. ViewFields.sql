@@ -17,8 +17,8 @@ from
         inner join INFORMATION_SCHEMA.VIEWS v 
             on  c.TABLE_SCHEMA = v.TABLE_SCHEMA 
             and c.TABLE_NAME = v.TABLE_NAME
-where 
-    v.TABLE_SCHEMA not in ('sys', 'mysql', 'information_schema', 'performance_schema')        
+where     
+    v.TABLE_SCHEMA = '@SCHEMA_NAME'
  order by 
     c.TABLE_SCHEMA, 
     c.TABLE_NAME, 
