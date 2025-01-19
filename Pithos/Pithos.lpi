@@ -132,6 +132,13 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Ui"/>
       </Unit>
+      <Unit>
+        <Filename Value="fr_sqleditorframe.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SqlEditorFrame"/>
+        <ResourceBaseClass Value="Frame"/>
+        <UnitName Value="fr_SqlEditorFrame"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

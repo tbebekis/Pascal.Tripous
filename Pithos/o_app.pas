@@ -112,7 +112,8 @@ uses
   Tripous.Logs
   ,f_ConnectionEditDialog
   ,fr_ISqlFrame
-  ,fr_TextEditorFrame
+  //,fr_TextEditorFrame
+  ,fr_SqlEditorFrame
   ;
 
 { TSqlPageInfo }
@@ -484,7 +485,7 @@ begin
           InitialText := TMetaView(MetaNode).Fields.GetFieldListText(False);
 
        Page  := Pager.AddTabSheet();
-       TTTextEditorFrame.Create(Page, Title, InitialText);
+       TSqlEditorFrame.Create(Page, Title, InitialText);
        Pager.ActivePage := Page;
      end;
 
@@ -506,7 +507,7 @@ begin
     if not Sys.IsEmpty(InitialText) then
     begin
       Page  := Pager.AddTabSheet();
-      TTTextEditorFrame.Create(Page, Title, InitialText);
+      TSqlEditorFrame.Create(Page, Title, InitialText);
       Pager.ActivePage := Page;
     end;
   end;

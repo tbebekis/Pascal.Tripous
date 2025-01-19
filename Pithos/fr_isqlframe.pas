@@ -41,6 +41,8 @@ type
     btnNext: TToolButton;
     btnExec: TToolButton;
     btnShowIdColumns: TToolButton;
+    ToolButton1: TToolButton;
+    ToolButton2: TToolButton;
   private class var
     FStatementCounter: Integer;
     FSelectCounter: Integer;
@@ -61,6 +63,8 @@ type
     FMetaDatabase: TMetaDatabase;
     FPage: TTabSheet;
     FSqlHistory: TSqlHistory;
+
+    FIdColumnsVisible : Boolean;
 
     procedure AnyClick(Sender: TObject);
     procedure SqlHistory_CurrentSqlTextChanged(Sender: TObject);
@@ -97,6 +101,8 @@ type
   public
     constructor CreatePage(AParent: TPageControl; Table: TDataset);
     destructor Destroy(); override;
+
+    procedure ToggleShowIdColumns(Value: Boolean);
   end;
 
 { TGridPage }
@@ -114,6 +120,7 @@ begin
   Grid.BeginUpdate();
   try
     Grid.DataSource := DS;
+    Grid.AutoAdjustColumns();
   finally
     Grid.EndUpdate();
   end;
@@ -124,6 +131,19 @@ destructor TGridPage.Destroy();
 begin
   Table.Free();
   inherited Destroy();
+end;
+
+procedure TGridPage.ToggleShowIdColumns(Value: Boolean);
+var
+  i : Integer;
+  Column: TColumn;
+begin
+  for i := 0 to Grid.Columns.Count - 1 do
+  begin
+    Column := Grid.Columns[i];
+    if Column.FieldName.EndsWith('Id', True) then
+       Column.Visible := not Value;
+  end;
 end;
 
 
@@ -156,7 +176,10 @@ begin
   btnExec.OnClick := AnyClick;
   btnShowIdColumns.OnClick := AnyClick;
 
+  FIdColumnsVisible := True;
   EnableCommands();
+
+  edtSql.Clear();
 
   if not Sys.IsEmpty(InitialSql) then
   begin
@@ -192,9 +215,17 @@ begin
 end;
 
 procedure TISqlFrame.ToggleShowIdColumns();
+var
+  i : Integer;
+  Page: TGridPage;
 begin
-  btnShowIdColumns.Down := not btnShowIdColumns.Down;
-  // TODO: ToggleShowIdColumns();
+  FIdColumnsVisible := not FIdColumnsVisible;
+  btnShowIdColumns.Down := FIdColumnsVisible;
+  for i := 0 to pagerGrids.PageCount - 1 do
+  begin
+    Page := pagerGrids.Pages[i] as TGridPage;
+    Page.ToggleShowIdColumns(FIdColumnsVisible);
+  end;
 end;
 
 procedure TISqlFrame.EnableCommands();
@@ -247,8 +278,6 @@ begin
         TAsync.Run(SqlExecInfo, DoExecute);
 
         Application.ProcessMessages();
-
-
       end;
     end;
   end;

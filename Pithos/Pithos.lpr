@@ -12,7 +12,8 @@ uses
   Interfaces, // this includes the LCL widgetset
   Forms, f_MainForm, Tripous.Crypt, Tripous.Data, Tripous.FilterParser,
   Tripous.Logs, Tripous.MemTable, Tripous, fr_ISqlFrame, o_App,
-  f_ConnectionEditDialog, o_SqlHistory, o_Temp, fr_TextEditorFrame, Tripous.Ui;
+  f_ConnectionEditDialog, o_SqlHistory, o_Temp, fr_TextEditorFrame, Tripous.Ui,
+  fr_SqlEditorFrame;
 
 {$R *.res}
 

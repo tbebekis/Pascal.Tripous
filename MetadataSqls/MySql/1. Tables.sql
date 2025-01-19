@@ -3,8 +3,7 @@ select
 	TABLE_NAME				as TableName
 from 
     INFORMATION_SCHEMA.TABLES
-where 
-  
+where   
 	TABLE_SCHEMA = '@SCHEMA_NAME'   
 	and TABLE_TYPE = 'BASE TABLE'
  order by 

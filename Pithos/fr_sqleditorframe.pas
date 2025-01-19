@@ -1,4 +1,4 @@
-unit fr_TextEditorFrame;
+unit fr_SqlEditorFrame;
 
 {$MODE DELPHI}{$H+}
 
@@ -10,7 +10,7 @@ uses
   , Forms
   , Controls
   , ComCtrls
-  , StdCtrls
+  , StdCtrls, SynHighlighterSQL, SynEdit
 
   , Tripous
   , Tripous.Data
@@ -20,12 +20,12 @@ uses
 
 type
 
-  { TTextEditorFrame }
-
-  TTextEditorFrame = class(TFrame)
+  { TSqlEditorFrame }
+  TSqlEditorFrame = class(TFrame)
     btnExit: TToolButton;
     ImageList: TImageList;
-    mmoText: TMemo;
+    mmoText: TSynEdit;
+    SynSQLSyn1: TSynSQLSyn;
     ToolBar: TToolBar;
   private
     FId: Integer;
@@ -45,9 +45,11 @@ implementation
 
 {$R *.lfm}
 
-{ TTextEditorFrame }
+{ TSqlEditorFrame }
 
-constructor TTextEditorFrame.Create(Page: TTabSheet; Title: string; InitialText: string);
+
+
+constructor TSqlEditorFrame.Create(Page: TTabSheet; Title: string; InitialText: string);
 begin
   inherited Create(Page);
   FPage := Page;
@@ -60,15 +62,17 @@ begin
 
   btnExit.OnClick := AnyClick;
 
+  mmoText.Clear();
+
   mmoText.Text := InitialText;
 end;
 
-destructor TTextEditorFrame.Destroy();
+destructor TSqlEditorFrame.Destroy();
 begin
   inherited Destroy();
 end;
 
-procedure TTextEditorFrame.AnyClick(Sender: TObject);
+procedure TSqlEditorFrame.AnyClick(Sender: TObject);
 begin
   if btnExit = Sender then
   begin
