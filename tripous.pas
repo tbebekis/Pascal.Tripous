@@ -80,6 +80,7 @@ const
 type
  TMatchObjectProc = function (Item: TObject): Boolean;
 
+ TObjectArray      = array of TObject;
  TArrayOfVariant   = array of Variant;
  TArrayOfVarRec    = array of TVarRec;
  TArrayOfPointer   = array of Pointer;
@@ -104,7 +105,21 @@ type
  TCompareMethod<T> = function(constref A, B: T): Integer of object;
  TCompareFunc<T> = function(constref A, B: T): Integer;
 
+ { TEnumeratorBase }
+ TEnumeratorBase = class
+ private
+   FLength: SizeInt;
+   FPosition : SizeInt;
+ protected
+   FItemList: TObjectArray;
+ public
+   constructor Create(ItemList: TObjectArray);
 
+   function MoveNext: Boolean;
+   procedure Reset();
+
+   property Position: SizeInt read FPosition;
+ end;
 
 
   ISyncObject = interface(IInterface)
@@ -920,6 +935,8 @@ type
 
   { Sys }
   Sys = class
+  public
+     const FieldAliasSep: string = '__';
   private class var
     FInvariantFormatSettings    : TFormatSettings;
     FAppFolder                  : string;
@@ -958,9 +975,11 @@ type
     class function  LPad(const S: string; C: WideChar; Len: Integer): string;
     class function  RPad(const S: string; C: WideChar; Len: Integer): string;
 
-    class function  Split(S: string; Delim: Char):  TStringList;  overload;
+    class function  Split(S: string; Delim: Char):  TStringArray;  overload;
     class procedure Split(S: string; Delim: Char; List: TStringList); overload;
     class procedure Split(S: string; Delim: string; var LeftArg: string; var RightArg: string); overload;
+    class function  SplitToList(S: string; Delim: Char): TStrings; overload;
+    class function  AsCommaText(A: array of string): string;
 
     class function  QS(const S: string): string;     { QuotedStr }
     class function  AppendCRLF(const S: string): string;
@@ -1088,13 +1107,20 @@ type
     }
 
     { miscs }
-    class function CreateSyncObject: ISyncObject;
-    class function InMainThread(): Boolean;
+    class function  CreateSyncObject: ISyncObject;
+    class function  InMainThread(): Boolean;
     class procedure ProcessMessages();
     class procedure ClearObjectList(List: TList);
 
+    class function  FieldPath(TableName: string; FieldName: string): string;
+    class function  FieldAlias(TableName: string; FieldName: string): string;
+
+
+
     class function  LoadResourceTextFile(const ResourceName: string): string;
     class procedure SaveResourceFile(const ResourceName: string; const FilePath: string);
+
+    class function  CollectionToArray(Collection: TCollection): TObjectArray;
 
     class procedure CreateSqliteDatabase(const FilePath: string);
 
@@ -1132,6 +1158,25 @@ uses
   ;
 
 
+{ TEnumeratorBase }
+constructor TEnumeratorBase.Create(ItemList: TObjectArray);
+begin
+  inherited Create();
+  FItemList := ItemList;
+  FPosition := -1;
+  FLength := Length(FItemList);
+end;
+
+function TEnumeratorBase.MoveNext: Boolean;
+begin
+  Inc(FPosition);
+  Result := FPosition < FLength;
+end;
+
+procedure TEnumeratorBase.Reset();
+begin
+  FPosition := -1;
+end;
 
 
 
@@ -4927,10 +4972,12 @@ begin
   else Result := S;
 end;
 (*----------------------------------------------------------------------------*)
-class function Sys.Split(S: string; Delim: Char): TStringList;
+class function Sys.Split(S: string; Delim: Char): TStringArray;
+var
+  A: TStringArray;
 begin
-  Result := TStringList.Create();
-  Split(S, Delim, Result);
+  A := S.Split([Delim], TStringSplitOptions.ExcludeEmpty);
+  Result := A;
 end;
 (*----------------------------------------------------------------------------*)
 class procedure  Sys.Split(S: string; Delim: Char; List: TStringList);
@@ -4938,9 +4985,18 @@ var
   A: TStringArray;
   Item: string;
 begin
-  A := S.Split([Delim], TStringSplitOptions.ExcludeEmpty);
+  A := Sys.Split(S, Delim);
   for Item in A do
     List.Add(Item);
+end;
+
+class function Sys.SplitToList(S: string; Delim: Char): TStrings;
+var
+  List: TStringList;
+begin
+  List := TStringList.Create();
+  Sys.Split(S, Delim, List);
+  Result := List;
 end;
 
 {
@@ -4985,6 +5041,23 @@ begin
   begin
     LeftArg   := S;
     RightArg  := '';
+  end;
+end;
+
+
+
+class function Sys.AsCommaText(A: array of string): string;
+var
+  List: TStringList;
+  Item: string;
+begin
+  List := TStringList.Create();
+  try
+    for Item in A do
+      List.Add(Item);
+    Result := List.CommaText;
+  finally
+    List.Free();
   end;
 end;
 
@@ -6099,6 +6172,26 @@ begin
   end;
 end;
 
+class function Sys.FieldPath(TableName: string; FieldName: string): string;
+begin
+  if Sys.IsEmpty(FieldName) then
+    Result := ''
+  else if Sys.IsEmpty(TableName) then
+    Result := FieldName
+  else
+    Result := TableName + '.' + FieldName;
+end;
+
+class function Sys.FieldAlias(TableName: string; FieldName: string): string;
+begin
+  if Sys.IsEmpty(FieldName) then
+    Result := ''
+  else if Sys.IsEmpty(TableName) then
+    Result := FieldName
+  else
+    Result := TableName + Sys.FieldAliasSep + FieldName;
+end;
+
 class function Sys.LoadResourceTextFile(const ResourceName: string): string;
 var
   RS : TResourceStream;
@@ -6135,6 +6228,15 @@ begin
   finally
     RS.Free;
   end;
+end;
+
+class function Sys.CollectionToArray(Collection: TCollection): TObjectArray;
+var
+  i : Integer;
+begin
+  SetLength(Result, Collection.Count);
+  for i := 0 to Collection.Count - 1 do
+      Result[i] := Collection.Items[i];
 end;
 
 class procedure Sys.CreateSqliteDatabase(const FilePath: string);

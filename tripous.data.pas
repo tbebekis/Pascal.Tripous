@@ -100,56 +100,6 @@ type
   TMetaDatabase = class;
   TSqlStore = class;
 
-  { TSelectSqlParser }
-  { A simple SELECT Sql parser. It parses a SELECT statement into its constituents parts.
-    The SELECT statement can contain nested sub-SELECTs or column names in double quotes or angle brackets.}
-  TSelectSqlParser = class
-  private
-    type
-      TToken = (toNone, toSelect, toFrom, toWhere, toGroupBy, toHaving, toOrderBy);
-  private
-      FTokens : array of string; // = ['select', 'from', 'where', 'group by', 'having', 'order by'];
-      FText: string;
-      FSelect: string;
-      FFrom: string;
-      FWhere: string;
-      FGroupBy: string;
-      FHaving: string;
-      FOrderBy: string;
-
-      FCurToken: TToken;
-      FCurPos: Integer;
-      FLastPos: Integer;
-      FTextLength : Integer;
-
-      { Skips characters by increasing the current position until the SkipChar is found.}
-      function  SkipToChar(SkipChar: Char): Integer;
-      { Returns true if sToken is at the current position in text }
-      function  FindTokenAtCurrentPos(sToken: string): Boolean;
-      { Performs a "token change". Makes the NewToken the curToken,
-        copies a part of the text string setting the last clause string
-        and adjusts curPos, lastPos and curToken. }
-      procedure TokenChange(NewToken: TToken; sNewToken: string);
-      { The actual parsing procedure. Returns true only when finds
-        one of the token strings (SELECT, FROM, WHERE etc).}
-      function  NextTokenEnd(): Boolean;
-      { Parses the passed in text }
-      procedure DoParse(Text: string);
-  public
-    constructor Create(Text: string = '');
-
-    { Parses Text into the constituent parts of a SELECT SQL statement. }
-    procedure Parse(Text: string);
-    procedure Clear();
-    function ToString(): string; override;
-
-    property Select   : string   read FSelect   write FSelect ;
-    property From     : string   read FFrom     write FFrom   ;
-    property Where    : string   read FWhere    write FWhere  ;
-    property GroupBy  : string   read FGroupBy  write FGroupBy;
-    property Having   : string   read FHaving   write FHaving ;
-    property OrderBy  : string   read FOrderBy  write FOrderBy;
-  end;
 
 
   { TSQLConnectorEx }
@@ -1139,176 +1089,6 @@ begin
 end;
 
 
-{ TSelectSqlParser }
-constructor TSelectSqlParser.Create(Text: string);
-begin
-  inherited Create();
-
-   FTokens    := ['select', 'from', 'where', 'group by', 'having', 'order by'];
-   Parse(Text);
-end;
-
-function TSelectSqlParser.SkipToChar(SkipChar: Char): Integer;
-var
-  C: Char;
-
-begin
-  Inc(FCurPos);
-
-  while FCurPos <= Length(FText) - 1 do
-  begin
-    C := FText[FCurPos];
-    if C = SkipChar then
-    begin
-      Inc(FCurPos);
-      break;
-    end;
-
-    Inc(FCurPos);
-  end;
-
-  Result := FCurPos;
-
-end;
-
-function TSelectSqlParser.FindTokenAtCurrentPos(sToken: string): Boolean;
-begin
-  Result := False;
-  if FCurPos + Length(sToken) <= Length(FText) - 1 then
-  try
-    Result := string.Compare(FText, FCurPos, sToken, 1, Length(sToken), [coIgnoreCase]) = 0;
-  except
-  end;
-end;
-
-procedure TSelectSqlParser.TokenChange(NewToken: TToken; sNewToken: string);
-var
-  Len : Integer;
-  StartPos: Integer;
-begin
-  StartPos := FLastPos - 1;
-  Len      := FCurPos - FLastPos;
-
-  case FCurToken of
-    toSelect  : Select  := Trim(FText.Substring(StartPos, Len));
-    toFrom    : From    := Trim(FText.Substring(StartPos, Len));
-    toWhere   : Where   := Trim(FText.Substring(StartPos, Len));
-    toGroupBy : GroupBy := Trim(FText.Substring(StartPos, Len));
-    toHaving  : Having  := Trim(FText.Substring(StartPos, Len));
-    toOrderBy : OrderBy := Trim(FText.Substring(StartPos, Len));
-  end;
-
-  FCurPos   := FCurPos + Length(sNewToken);
-  FLastPos  := FCurPos;
-  FCurToken := NewToken;
-
-end;
-
-function TSelectSqlParser.NextTokenEnd(): Boolean;
-var
-  ParenCount: Integer;
-  C: Char;
-  i : Integer;
-  NewToken: TToken;
-begin
-
-  ParenCount := 0;
-
-  FTextLength := Length(FText);
-
-  while FCurPos <= FTextLength - 1 do
-  begin
-    C := FText[FCurPos];
-
-    if C = '"' then
-       FCurPos := SkipToChar('"')
-    else if C = '[' then
-       FCurPos := SkipToChar(']')
-    else if C = '(' then
-    begin
-      Inc(FCurPos);
-      Inc(ParenCount);
-    end else if C = ')' then
-    begin
-      Inc(FCurPos);
-      Dec(ParenCount);
-      if ParenCount < 0 then
-        Sys.Error('TSelectSqlParser: Wrong parentheses');
-    end else if (not (FText[FCurPos] in [#0..#32])) and ((FCurPos - 1 >= 1) and (FText[FCurPos - 1] in [#0..#32])) then
-    begin
-
-      if ParenCount = 0 then
-      begin
-        for i := 0 to Length(FTokens) - 1 do
-        begin
-          if FindTokenAtCurrentPos(FTokens[i]) then
-          begin
-            NewToken := TToken(i + 1);
-            TokenChange(NewToken, FTokens[i]);
-            Exit(True);  //=>
-          end;
-        end;
-      end;
-
-      Inc(FCurPos);
-    end else begin
-      Inc(FCurPos);
-    end;
-
-  end;
-
-  Exit(False);
-
-end;
-
-procedure TSelectSqlParser.DoParse(Text: string);
-begin
-  FCurPos    := 1;
-  FLastPos   := 1;
-
-  FCurToken  := toNone;
-  FText := ' ' + Text + ' ';
-
-  while FCurToken <= toOrderBy do
-  begin
-    if not NextTokenEnd() then
-       break;
-  end;
-
-  TokenChange(toNone, '');
-end;
-
-procedure TSelectSqlParser.Parse(Text: string);
-begin
-  Clear();
-  if not Sys.IsEmpty(Text) then
-    DoParse(Text);
-end;
-
-procedure TSelectSqlParser.Clear();
-begin
-  Select   := '';
-  From     := '';
-  Where    := '';
-  GroupBy  := '';
-  Having   := '';
-  OrderBy  := '';
-end;
-
-function TSelectSqlParser.ToString(): string;
-var
-  SB: IStringBuilder;
-begin
-  SB := TStrBuilder.Create();
-  SB.AppendLine(Format('select   : %s'   , [Select ]));
-  SB.AppendLine(Format('from     : %s'   , [From   ]));
-  SB.AppendLine(Format('where    : %s'   , [Where  ]));
-  SB.AppendLine(Format('group by : %s'   , [GroupBy]));
-  SB.AppendLine(Format('having   : %s'   , [Having ]));
-  SB.AppendLine(Format('order by : %s'   , [OrderBy]));
-
-  Result := SB.ToString();
-end;
 
 
 { TMetaNode }
@@ -1517,7 +1297,6 @@ end;
 function TMetaIndex.GetDefinition(): string;
 var
   MetaNode: TMetaNode;
-  List: TStringList;
   FieldList: string;
   Unique : string;
 begin
@@ -1525,13 +1304,7 @@ begin
   MetaNode := GetParentTableOrView();
   if Assigned(MetaNode) and (MetaNode is TMetaTable) then
   begin
-    List := Sys.Split(Fields, ';');
-    try
-      FieldList := List.CommaText;
-    finally
-      List.Free();
-    end;
-
+    FieldList := Sys.AsCommaText(Sys.Split(Fields, ';'));
     Unique := '';
     if IsUnique then
        Unique := 'unique';
@@ -1751,20 +1524,13 @@ end;
 function TMetaPrimaryKey.GetDefinition(): string;
 var
   MetaNode: TMetaNode;
-  List: TStringList;
   FieldList: string;
 begin
   Result := '';
   MetaNode := GetParentTableOrView();
   if Assigned(MetaNode) and (MetaNode is TMetaTable) then
   begin
-    List := Sys.Split(Fields, ';');
-    try
-      FieldList := List.CommaText;
-    finally
-      List.Free();
-    end;
-
+    FieldList := Sys.AsCommaText(Sys.Split(Fields, ';'));
     Result := Format('alter table %s add constraint %s primary key (%s)', [MetaNode.Name, Name, FieldList]);
   end;
 
@@ -1831,7 +1597,6 @@ end;
 function TMetaForeignKey.GetDefinition(): string;
 var
   MetaNode: TMetaNode;
-  List: TStringList;
   FieldList: string;
   ForeignFieldList: string;
 begin
@@ -1840,20 +1605,8 @@ begin
   MetaNode := GetParentTableOrView();
   if Assigned(MetaNode) and (MetaNode is TMetaTable) then
   begin
-
-    List := Sys.Split(Fields, ';');
-    try
-      FieldList := List.CommaText;
-    finally
-      List.Free();
-    end;
-
-     List := Sys.Split(ForeignFields, ';');
-    try
-      ForeignFieldList := List.CommaText;
-    finally
-      List.Free();
-    end;
+    FieldList := Sys.AsCommaText(Sys.Split(Fields, ';'));
+    ForeignFieldList := Sys.AsCommaText(Sys.Split(ForeignFields, ';'));
 
     // alter table TABLE_NAME add constraint CONSTRAINT_NAME foreign key (FIELD_LIST) references FOREIGN_TABLE(FOREIGN_FIELD_LIST);
     Result := Format('alter table %s add constraint %s foreign key (%s) references %s(%s)',
@@ -3064,6 +2817,7 @@ var
   List: TStrings;
   i : Integer;
   Key, Value: string;
+
 begin
 
   FDatabase := '';
@@ -3078,41 +2832,46 @@ begin
 
   if not Sys.IsEmpty(FConnectionString) then
   begin
-    List := Sys.Split(FConnectionString, ';');
-    for i := 0 to List.Count - 1 do
-    begin
-      Key   := List.Names[i];
-      Value := Trim(List.Values[Key]);
-      Key   := Trim(Key);
+    List := Sys.SplitToList(FConnectionString, ';');
+    try
+      for i := 0 to List.Count - 1 do
+      begin
+        Key   := List.Names[i];
+        Value := Trim(List.Values[Key]);
+        Key   := Trim(Key);
 
-      if      Sys.IsSameText(Key, 'Provider')  then
-        FProvider := Value
-      else if Sys.IsSameText(Key, 'Database')
-           or Sys.IsSameText(Key, 'DatabaseName')
-           or Sys.IsSameText(Key, 'Database Name')
-           or Sys.IsSameText(Key, 'Initial Catalog')  then
-        FDatabase := Value
-      else if Sys.IsSameText(Key, 'Host')
-           or Sys.IsSameText(Key, 'HostName')
-           or Sys.IsSameText(Key, 'Server')
-           or Sys.IsSameText(Key, 'DataSource')
-           or Sys.IsSameText(Key, 'Data Source') then
-        FServer := Value
-      else if Sys.IsSameText(Key, 'User')
-           or Sys.IsSameText(Key, 'UserName')
-           or Sys.IsSameText(Key, 'User Name')
-           or Sys.IsSameText(Key, 'UserId')
-           or Sys.IsSameText(Key, 'User Id')
-           or Sys.IsSameText(Key, 'Uid') then
-         FUserName := Value
-      else if Sys.IsSameText(Key, 'Password')
-           or Sys.IsSameText(Key, 'Psw')  then
-         FPassword := Value
-      else if Sys.IsSameText(Key, 'CharSet')  then
-         FCharSet := Value
-      else
-         FParams.Add(List[i]);
+        if      Sys.IsSameText(Key, 'Provider')  then
+          FProvider := Value
+        else if Sys.IsSameText(Key, 'Database')
+             or Sys.IsSameText(Key, 'DatabaseName')
+             or Sys.IsSameText(Key, 'Database Name')
+             or Sys.IsSameText(Key, 'Initial Catalog')  then
+          FDatabase := Value
+        else if Sys.IsSameText(Key, 'Host')
+             or Sys.IsSameText(Key, 'HostName')
+             or Sys.IsSameText(Key, 'Server')
+             or Sys.IsSameText(Key, 'DataSource')
+             or Sys.IsSameText(Key, 'Data Source') then
+          FServer := Value
+        else if Sys.IsSameText(Key, 'User')
+             or Sys.IsSameText(Key, 'UserName')
+             or Sys.IsSameText(Key, 'User Name')
+             or Sys.IsSameText(Key, 'UserId')
+             or Sys.IsSameText(Key, 'User Id')
+             or Sys.IsSameText(Key, 'Uid') then
+           FUserName := Value
+        else if Sys.IsSameText(Key, 'Password')
+             or Sys.IsSameText(Key, 'Psw')  then
+           FPassword := Value
+        else if Sys.IsSameText(Key, 'CharSet')  then
+           FCharSet := Value
+        else
+           FParams.Add(List[i]);
+      end;
+    finally
+      List.Free();
     end;
+
   end;
 
 end;
