@@ -21,6 +21,7 @@ uses
   ,base64
   ,Variants
   ,TypInfo
+  ,Character
   ,DB
   ,Generics.Defaults
   ,bufdataset
@@ -193,6 +194,36 @@ type
 
     class procedure Run(Param: TObject; OnExecute: TParamEvent);
   end;
+
+  { TListerItem }
+  TListerItem = class(TCollectionItem)
+  private
+    FItemId: string;
+    FTag: TObject;
+    FTitle: string;
+    FvTag: Variant;
+  protected
+    function  GetDisplayName: string; override;
+  public
+    constructor Create(ItemId: string; Title: string; ACollection: TCollection = nil); overload;
+    constructor Create(ItemId: string; Title: string; Tag: TObject; ACollection: TCollection = nil); overload;
+
+    property Tag  : TObject read FTag write FTag;
+    property vTag : Variant read FvTag write FvTag;
+  published
+    property ItemId : string read FItemId write FItemId;
+    property Title  : string read FTitle write FTitle;
+  end;
+
+ { TListerItems }
+ TListerItems = class(TCollection)
+ public
+   constructor Create();
+
+   function Add(ItemId: string; Title: string): TListerItem; overload;
+   function Add(ItemId: string; Title: string; Tag: TObject): TListerItem; overload;
+   function Add(ItemId: string; Title: string; vTag: Variant): TListerItem; overload;
+ end;
 
 
   IStringBuilder = interface
@@ -935,8 +966,9 @@ type
 
   { Sys }
   Sys = class
-  public
-     const FieldAliasSep: string = '__';
+  public const
+    FieldAliasSep: string = '__';
+    WhiteSpace = [#0..' '];
   private class var
     FInvariantFormatSettings    : TFormatSettings;
     FAppFolder                  : string;
@@ -992,6 +1024,8 @@ type
     class function  PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
 
     class function  ToText(const List: IList<string>): string;
+
+    class function  SplitCamelCase(Text: string): string;
 
     { double to string convertions }
     class function  DoubleToStr(Value: Extended; Digits: integer): string;
@@ -1112,10 +1146,10 @@ type
     class procedure ProcessMessages();
     class procedure ClearObjectList(List: TList);
 
+    class function GetEnumName(P: PTypeInfo; Ordinal: Integer): string;
+
     class function  FieldPath(TableName: string; FieldName: string): string;
     class function  FieldAlias(TableName: string; FieldName: string): string;
-
-
 
     class function  LoadResourceTextFile(const ResourceName: string): string;
     class procedure SaveResourceFile(const ResourceName: string; const FilePath: string);
@@ -1241,6 +1275,58 @@ end;
 
 
 
+
+{ TListerItem }
+function TListerItem.GetDisplayName: string;
+begin
+  if not Sys.IsEmpty(Title) then
+    Result := Title
+  else
+    Result := inherited GetDisplayName;
+end;
+
+constructor TListerItem.Create(ItemId: string; Title: string; Tag: TObject; ACollection: TCollection);
+begin
+  inherited Create(ACollection);
+  Self.ItemId := ItemId;
+  Self.Title  := Title;
+  Self.Tag    := Tag;
+end;
+
+constructor TListerItem.Create(ItemId: string; Title: string; ACollection: TCollection);
+begin
+  Create(ItemId, Title, nil, ACollection);
+end;
+
+{ TListerItems }
+
+constructor TListerItems.Create();
+begin
+  inherited Create(TListerItem);
+end;
+
+function TListerItems.Add(ItemId: string; Title: string): TListerItem;
+begin
+  Result := TListerItem(inherited Add());
+  Result.ItemId := ItemId;
+  Result.Title := Title;
+end;
+
+function TListerItems.Add(ItemId: string; Title: string; vTag: Variant): TListerItem;
+begin
+  Result := TListerItem(inherited Add());
+  Result.ItemId := ItemId;
+  Result.Title := Title;
+  Result.vTag := vTag;
+end;
+
+function TListerItems.Add(ItemId: string; Title: string; Tag: TObject): TListerItem;
+begin
+  Result := TListerItem(inherited Add());
+  Result.ItemId := ItemId;
+  Result.Title := Title;
+  Result.Tag := Tag;
+end;
 
 
 
@@ -5254,6 +5340,29 @@ begin
   Result := SB.ToString();
 end;
 
+class function Sys.SplitCamelCase(Text: string): string;
+var
+  C: Char;
+  i : Integer;
+  A : TCharArray;
+begin
+  Result := '';
+  A := Text.ToCharArray();
+  for i := 0 to Length(A) - 1 do
+  begin
+    C := A[i];
+    if IsUpper(C) then
+    begin
+      if i > 0 then
+        if not IsUpper(A[i - 1]) then
+           Result := Result + ' ';
+    end;
+
+    Result := Result + C;
+  end;
+
+end;
+
 (*----------------------------------------------------------------------------*)
 class function Sys.DoubleToStr(Value: Extended; Digits: integer): string;
 begin
@@ -6170,6 +6279,11 @@ begin
     end;
     List.Delete(List.Count - 1);
   end;
+end;
+
+class function Sys.GetEnumName(P: PTypeInfo; Ordinal: Integer): string;
+begin
+  Result := TypInfo.GetEnumName(P, Ordinal);
 end;
 
 class function Sys.FieldPath(TableName: string; FieldName: string): string;

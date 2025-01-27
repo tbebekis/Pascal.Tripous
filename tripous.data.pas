@@ -10,6 +10,8 @@ interface
 uses
    Classes
   ,SysUtils
+  ,DateUtils
+  ,LazSysUtils
   ,Variants
   ,DB
   ,SQLDBLib
@@ -797,9 +799,16 @@ type
 
     function  SelectTop(TableName: string; RowCount: Word = 400): string; virtual; abstract;
 
-    //public virtual bool CanConnect(string ConnectionString, bool ThrowIfNot = false)
     function CanConnect(ConnectionString: string; ThrowIfNot: Boolean = False): Boolean; overload;
     function CanConnect(ConInfo: TSqlConnectionInfo; ThrowIfNot: Boolean = False): Boolean; overload;
+
+    { Returns the current date and time of the database serve }
+    function GetServerDateTime(Store: TSqlStore): TDateTime; virtual;
+    { Quotes and formats a date value as a string, properly for use with an Sql statement }
+    function  QSDate(Value: TDateTime): string; virtual;
+    { Quotes and formats a date-time value as a string, properly for use with an Sql statement }
+    function  QSDateTime(Value: TDateTime): string; virtual;
+
 
     property Name: string read FName;
     property ProviderType: TSqlProviderType read FProviderType;
@@ -823,6 +832,9 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
+
+    { Returns the current date and time of the database serve }
+    function GetServerDateTime(Store: TSqlStore): TDateTime; override;
 
     function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
@@ -883,6 +895,9 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    { Returns the current date and time of the database serve }
+    function GetServerDateTime(Store: TSqlStore): TDateTime; override;
+
     function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
@@ -893,6 +908,9 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    { Returns the current date and time of the database serve }
+    function GetServerDateTime(Store: TSqlStore): TDateTime; override;
+
     function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
 
@@ -902,6 +920,13 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
+
+    { Returns the current date and time of the database serve }
+    function GetServerDateTime(Store: TSqlStore): TDateTime; override;
+    { Quotes and formats a date value as a string, properly for use with an Sql statement }
+    function  QSDate(Value: TDateTime): string; override;
+    { Quotes and formats a date-time value as a string, properly for use with an Sql statement }
+    function  QSDateTime(Value: TDateTime): string; override;
 
     function  SelectTop(TableName: string; RowCount: Word = 400): string; override;
   end;
@@ -1067,6 +1092,12 @@ type
     class property BlobFieldTypes  : TSetOfFieldType read GetBlobFieldTypess;
   end;
 
+  { Sql }
+  Sql = class
+  public
+  //static public bool IsMasked(string Value)
+    class function IsMasked(Value: string): Boolean;
+  end;
 
 
 implementation
@@ -3339,6 +3370,23 @@ begin
   end;
 end;
 
+function TSqlProvider.GetServerDateTime(Store: TSqlStore): TDateTime;
+begin
+  Result := NowUTC();  // LocalTimeToUniversal(Now);
+end;
+
+function TSqlProvider.QSDate(Value: TDateTime): string;
+begin
+  Result := FormatDateTime('yyyy-mm-dd', Value);
+  Result := Sys.QS(Result);
+end;
+
+function TSqlProvider.QSDateTime(Value: TDateTime): string;
+begin
+  Result := FormatDateTime('yyyy-mm-dd hh:nn:ss', Value);
+  Result := Sys.QS(Result);
+end;
+
 
 
 function TSqlProvider.GetTablesSql(): string;
@@ -3463,6 +3511,12 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderFirebird.GetServerDateTime(Store: TSqlStore): TDateTime;
+begin
+  Result := inherited GetServerDateTime(Store);
+  Result := Store.SelectResult('select current_timestamp from rdb$database', Result);
+end;
+
 function TSqlProviderFirebird.SelectTop(TableName: string; RowCount: Word): string;
 begin
   // select first N * from TABLE_NAME
@@ -3517,6 +3571,12 @@ begin
   inherited Destroy();
 end;
 
+function TSqlProviderMySql.GetServerDateTime(Store: TSqlStore): TDateTime;
+begin
+  Result := inherited GetServerDateTime(Store);
+  Result := Store.SelectResult('select current_timestamp', Result);
+end;
+
 function TSqlProviderMySql.SelectTop(TableName: string; RowCount: Word): string;
 begin
   // select * from TABLE_NAME limit N
@@ -3525,7 +3585,6 @@ end;
 
 
 { TSqlProviderPostgreSql }
-
 constructor TSqlProviderPostgreSql.Create();
 begin
   inherited Create(ptPostgreSql);
@@ -3534,6 +3593,12 @@ end;
 destructor TSqlProviderPostgreSql.Destroy();
 begin
   inherited Destroy();
+end;
+
+function TSqlProviderPostgreSql.GetServerDateTime(Store: TSqlStore): TDateTime;
+begin
+  Result := inherited GetServerDateTime(Store);
+  Result := Store.SelectResult('select current_timestamp', Result);
 end;
 
 function TSqlProviderPostgreSql.SelectTop(TableName: string; RowCount: Word): string;
@@ -3552,6 +3617,31 @@ end;
 destructor TSqlProviderOracle.Destroy();
 begin
   inherited Destroy();
+end;
+
+function TSqlProviderOracle.GetServerDateTime(Store: TSqlStore): TDateTime;
+var
+  SqlText: string;
+begin
+  Result  := inherited GetServerDateTime(Store);
+  SqlText := 'SELECT TO_CHAR(SYSDATE, ''YYYY-MM-DD HH24:MI:SS'') FROM Dual'; // select current_timestamp  FROM dual
+  Result  := Store.SelectResult(SqlText, Result);
+end;
+
+function TSqlProviderOracle.QSDate(Value: TDateTime): string;
+var
+  S : string;
+begin
+  S := FormatDateTime('yyyy-mm-dd', Value);
+  Result := Format('to_date(''%s'', ''YYYY-MM-DD'')', [S]);
+end;
+
+function TSqlProviderOracle.QSDateTime(Value: TDateTime): string;
+var
+  S : string;
+begin
+  S := FormatDateTime('yyyy-mm-dd hh:nn:ss', Value);
+  Result := Format('to_date(''%s'', ''YYYY-MM-DD:HH24:MI:SS'')', [S]);
 end;
 
 function TSqlProviderOracle.SelectTop(TableName: string; RowCount: Word): string;
@@ -4849,6 +4939,20 @@ begin
   Param := Params.FindParam(ParamName);
   if Assigned(Param) then
     Param.Value := Value;
+end;
+
+
+{ Sql }
+
+class function Sql.IsMasked(Value: string): Boolean;
+begin
+  if Sys.IsEmpty(Value) then
+     Exit(False);
+
+  if Value.Contains('*') or Value.Contains('?') or  Value.Contains('%') then
+    Result := True
+  else
+    Result := False;
 end;
 
 

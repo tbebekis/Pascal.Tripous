@@ -7,7 +7,12 @@ interface
 
 uses
   Classes
-  , SysUtils
+  ,SysUtils
+  ,DateUtils
+  ,DB
+  ,SQLDB
+
+  ,TypInfo
 
   ,Tripous
   ,Tripous.MemTable
@@ -115,6 +120,33 @@ type
   { Indicates that the user selects the criterion value by using a LocatorBox Ui to issue a lookup select }
   sfmLocator = 8
   );
+
+  { DateRanges }
+  DateRanges = class
+  public const
+    PrefixFrom = 'FROM_DATE_RANGE_';
+    PrefixTo = 'TO_DATE_RANGE_';
+    WhereRanges = [drCustom,
+                   drToday,
+                   drYesterday,
+                   drLastWeek,
+                   drLastTwoWeeks,
+                   drLastMonth,
+                   drLastTwoMonths,
+                   drLastThreeMonths,
+                   drLastSemester,
+                   drLastYear,
+                   drLastTwoYears];
+
+  public
+    { Converts a TDateRange value to two DateTime values.  }
+    class function ToDates(Range: TDateRange; Today: TDateTime; var FromDate: TDateTime; var ToDate: TDateTime): Boolean;
+    { True if Range denotes a past time (Today included)   }
+    class function IsPast(Range: TDateRange): Boolean;
+
+    { Creates an array of ListerItem items based on WhereRanges. NOTE: For use with ComboBoxes, etc. }
+    class function GetWhereRangeItems(): TListerItems;
+  end;
 
 
   { TSqlFilterDef }
@@ -252,11 +284,86 @@ type
 
   { TSelectSqlColumn }
   TSelectSqlColumn = class(TCollectionItem)
+  private
+    FAggregate: TAggregateFunctionType;
+    FAggregateFormat: string;
+    FDecimals: Integer;
+    FDisplayIndex: Integer;
+    FDisplayType: TColumnDisplayType;
+    FFormatString: string;
+    FGroupIndex: Integer;
+    FName: string;
+    FReadOnly: Boolean;
+    FTitle: string;
+    FTitleKey: string;
+    FVisible: Boolean;
+    FWidth: Integer;
   public
     constructor Create(ACollection: TCollection = nil); override;
     destructor Destroy(); override;
+
+    { Throws an exception if this descriptor is not fully defined  }
+    procedure CheckDescriptor();
+    { Returns a format string. It uses the FormatString property first, and then the Decimals property.    }
+    function  GetDisplayFormat(): string;
+  published
+    { The name of the field this column represents }
+    property Name: string read FName write FName;
+    property DisplayType: TColumnDisplayType read FDisplayType write FDisplayType;  // cdtDefault
+
+    property Title: string read FTitle write FTitle;
+    property TitleKey: string read FTitleKey write FTitleKey;
+
+    property Visible: Boolean read FVisible write FVisible;                         // True
+    property Width: Integer read FWidth write FWidth;                               // 90
+    property ReadOnly: Boolean read FReadOnly write FReadOnly;                      // True
+    property DisplayIndex: Integer read FDisplayIndex write FDisplayIndex;          // 0
+    property GroupIndex: Integer read FGroupIndex write FGroupIndex;                // -1 , -1 means not defined
+    property Decimals: Integer read FDecimals write FDecimals;                      // -1 , -1 means not defined
+    property FormatString: string read FFormatString write FFormatString;
+
+    property Aggregate: TAggregateFunctionType read FAggregate write FAggregate;    // aftNone
+    property AggregateFormat: string read FAggregateFormat write FAggregateFormat;
   end;
 
+  { TSelectSqlColumnsEnumerator }
+  TSelectSqlColumnsEnumerator = class(TEnumeratorBase)
+  private
+    function GetCurrent: TSelectSqlColumn;
+  public
+    property Current: TSelectSqlColumn read GetCurrent;
+  end;
+
+  { TSelectSqlColumns }
+  TSelectSqlColumns = class(TPersistent)
+  private
+    FList: TCollection;
+    function GetCount: Integer;
+    function GetItem(Index: Integer): TSelectSqlColumn;
+  public
+    constructor Create();
+    destructor Destroy(); override;
+
+    procedure CheckDescriptors();
+
+    procedure Clear();
+
+    function Add(FieldName: string; TitleKey: string = ''; DisplayType: TColumnDisplayType = cdtDefault ): TSelectSqlColumn; overload;
+
+    procedure Add(Item: TSelectSqlColumn); overload;
+    procedure Remove(Item: TSelectSqlColumn);
+
+    function  IndexOf(Item: TSelectSqlColumn): Integer;
+    function  Contains(const FieldName: string): Boolean;
+    function  Find(const FieldName: string): TSelectSqlColumn;
+
+    function GetEnumerator(): TSelectSqlColumnsEnumerator;
+
+    property Items[Index: Integer]: TSelectSqlColumn read GetItem ; default;
+    property Count: Integer read GetCount;
+  published
+    property List: TCollection read FList write FList;
+  end;
 
   { TSelectSqlParser }
   { A simple SELECT Sql parser. It parses a SELECT statement into its constituents parts.
@@ -310,26 +417,84 @@ type
   end;
 
   { TSelectSql }
-  TSelectSql = class
+  TSelectSql = class(TCollectionItem)
+  public const
+     LB = sLineBreak;
+     SPACE = ' ';
+     SPACES = '  ';
+     DefaultName = 'SelectSql';
   private
+    FColumns: TSelectSqlColumns;
+    FFilters: TSqlFilterDefs;
     FCompanyAware: boolean;
     FConnectionName: string;
+    FDateRange: TDateRange;
+    FDateRangeColumn: string;
+
     FFrom: string;
     FGroupBy: string;
     FHaving: string;
     FName: string;
     FOrderBy: string;
     FSelect: string;
+    FTable: TMemTable;
+    FTag: TObject;
     FTitle: string;
     FTitleKey: string;
     FWhere: string;
     FWhereUser: string;
-    procedure Parse(SqlText: string);
-    function  GetSqlText: string;
+
+    function  GetIsEmpty: Boolean;
     procedure SetSqlText(Value: string);
   public
-    constructor Create(SqlText: string);
+    constructor Create(ACollection: TCollection = nil); override; overload;
+    constructor Create(SqlText: string); overload;
     destructor Destroy(); override;
+
+    { Adds a Carriage Return (LineBreak) after S }
+    class  function CR(S: string): string;
+    { Replaces any trailing comma with space in S, ignoring trailing spaces.   }
+    class  procedure ReplaceLastComma(var S: string);
+    { Concatenates Clause + Delimiter + Plus }
+    class  function AddTo(Clause: string; Delimiter: string; Plus: string): string;
+    { Concatenates Keyword + Clause  }
+    class  function NormalizeClause(Clause: string; Keyword: string): string;
+    { Returns true if Value contains any of the mask characters (%, ?, *)  }
+    class  function IsMasked(Value: string): Boolean;
+
+    { Constructs a DateTime param pair (date range params) suitable for thw WHERE part in a SelectSql }
+    class  function DateRangeConstructWhereParams(Range: TDateRange; FieldName: string): string;
+    { Replaces any DateTime param pair (date range params) found in SqlText with actual values.  }
+    class procedure DateRangeReplaceWhereParams(var SqlText: string; Provider: TSqlProvider);
+
+    { Throws an exception if this descriptor is not fully defined }
+    procedure CheckDescriptor();
+    procedure Clear();
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSelectSql;
+
+    { Concatenates Keyword + Clause for all clauses }
+    function  GetSqlText: string;
+
+    procedure AddToWhere(Plus: string); overload;
+    procedure AddToWhere(Plus: string; Delimiter: string);  overload;
+    procedure OrToWhere(Plus: string);
+    procedure AddToGroupBy(Plus: string);
+    procedure AddToHaving(Plus: string);
+    procedure AddToOrderBy(Plus: string);
+
+    { Returns concatenated the SELECT and FROM clauses only. }
+    function  SelectFromToString(): string;
+
+    { Parses StatementText and assigns its clause properties. }
+    procedure Parse(SqlText: string);
+    { Creates a select * from TableName statement and then calls Parse() }
+    procedure ParseFromTableName(TableName: string);
+    { Tries to get the main table name from the statement }
+    function  GetMainTableName(): string;
+
+    { Sets-up the column types, the captions and the visibility of Table.Columns. }
+    procedure SetupTable(Table: TDataset);
 
     property Select   : string   read FSelect   write FSelect ;
     property From     : string   read FFrom     write FFrom   ;
@@ -338,6 +503,13 @@ type
     property GroupBy  : string   read FGroupBy  write FGroupBy;
     property Having   : string   read FHaving   write FHaving ;
     property OrderBy  : string   read FOrderBy  write FOrderBy;
+
+    { Returns true if the statement is empty }
+    property IsEmpty  : Boolean  read GetIsEmpty;
+    { The DataTable that results after the select execution }
+    property Table    : TMemTable read FTable write FTable;
+    { A user defined value. }
+    property Tag      : TObject   read FTag write FTag;
   published
     property Name: string read FName write FName;
     property Title: string read FTitle write FTitle;
@@ -346,10 +518,110 @@ type
     property Text: string read GetSqlText write SetSqlText;
     property CompanyAware: boolean read FCompanyAware write FCompanyAware;
     property ConnectionName: string read FConnectionName write FConnectionName;
+
+    { A fully qualified (i.e. TABLE_NAME.FIELD_NAME) column of type date or datetime.
+      It works in conjuction with DateRange property in order to produce
+      a fixed part in the WHERE clause of this select statement. }
+    property DateRangeColumn: string read FDateRangeColumn write FDateRangeColumn; // ''
+    { It works in conjuction with DateRangeColumn property in order to produce
+      a fixed part in the WHERE clause of this select statement. }
+    property DateRange: TDateRange read FDateRange write FDateRange;               // drLastWeek
+
+    { The list of column descriptors of columns to display.
+      If null or empty, then all columns are displayed.
+      Else only the columns defined in this list are displayed.}
+    property Columns: TSelectSqlColumns read FColumns write FColumns;
+    { The filter descriptors used to generate the "user where" clause.
+      User's where is appended to the WHERE clause.    }
+    property Filters: TSqlFilterDefs read FFilters write FFilters;
+
+(*
+
+*)
   end;
 
 
 implementation
+
+{ DateRanges }
+
+class function DateRanges.ToDates(Range: TDateRange; Today: TDateTime; var FromDate: TDateTime; var ToDate: TDateTime): Boolean;
+begin
+  Result := True;
+
+  FromDate := Today;
+  ToDate := Today;
+
+  case Range of
+    drToday              : ;
+    drYesterday          : begin FromDate := FromDate - 1; ToDate := ToDate - 1; end;
+    drTomorrow           : begin FromDate := FromDate + 1; ToDate := ToDate + 1; end;
+
+    drLastWeek           : FromDate := FromDate - 7;
+    drLastTwoWeeks       : FromDate := FromDate - 14;
+    drLastMonth          : FromDate := FromDate - 30;
+    drLastTwoMonths      : FromDate := FromDate - 60;
+    drLastThreeMonths    : FromDate := FromDate - 90;
+    drLastSemester       : FromDate := FromDate - 180;
+    drLastYear           : FromDate := FromDate - 365;
+    drLastTwoYears       : FromDate := FromDate - 730;
+
+    drNextWeek           : ToDate := ToDate + 7;
+    drNextTwoWeeks       : ToDate := ToDate + 14;
+    drNextMonth          : ToDate := ToDate + 30;
+    drNextTwoMonths      : ToDate := ToDate + 60;
+    drNextThreeMonths    : ToDate := ToDate + 90;
+    drNextSemester       : ToDate := ToDate + 180;
+    drNextYear           : ToDate := ToDate + 365;
+    drNextTwoYears       : ToDate := ToDate + 730;
+    else
+      Result := False;
+  end;
+end;
+
+class function DateRanges.IsPast(Range: TDateRange): Boolean;
+begin
+  Result := Range in [
+    drToday,
+    drYesterday,
+
+    drLastWeek,
+    drLastTwoWeeks,
+    drLastMonth,
+    drLastTwoMonths,
+    drLastThreeMonths,
+    drLastSemester,
+    drLastYear,
+    drLastTwoYears
+  ];
+end;
+
+class function DateRanges.GetWhereRangeItems(): TListerItems;
+var
+  P : PTypeInfo;
+  EnumName: string;
+  Range : TDateRange;
+  Title : string;
+  Ordinal: Integer;
+  ItemId : string;
+begin
+  P := TypeInfo(TDateRange);
+  //TypeName := P^.Name;
+  Result := TListerItems.Create();
+
+  for Range in WhereRanges do
+  begin
+    Ordinal := Ord(Range);
+    ItemId  := IntToStr(Ordinal);
+
+    EnumName := GetEnumName(P, Ordinal);
+    EnumName := EnumName.Remove(1, 2);
+    Title := Sys.SplitCamelCase(EnumName);
+    Result.Add(ItemId, Title, Ordinal);
+  end;
+end;
+
+
 
 { TSqlFilterDef }
 
@@ -587,11 +859,141 @@ end;
 constructor TSelectSqlColumn.Create(ACollection: TCollection);
 begin
   inherited Create(ACollection);
+
+  Visible := True;
+  Width   := 90;
+  ReadOnly:= True;
+  DisplayIndex  := 0;
+  GroupIndex    := -1;
+  Decimals      := -1;
+  Aggregate     := aftNone;
 end;
 
 destructor TSelectSqlColumn.Destroy();
 begin
   inherited Destroy();
+end;
+
+procedure TSelectSqlColumn.CheckDescriptor();
+begin
+  if Sys.IsEmpty(Name) then
+    Sys.Error('TSelectSqlColumn Name is empty');
+end;
+
+function TSelectSqlColumn.GetDisplayFormat(): string;
+begin
+  Result := '';
+
+  if not Sys.IsEmpty(FormatString) then
+    Result := FormatString
+  else if Decimals > 0 then
+  begin
+    Result := '#,#';
+    Result := Result + '0.'.PadRight(Decimals, '0');
+  end;
+end;
+
+{ TSelectSqlColumnsEnumerator }
+
+function TSelectSqlColumnsEnumerator.GetCurrent: TSelectSqlColumn;
+begin
+  Result := FItemList[Position] as TSelectSqlColumn;
+end;
+
+
+{ TSelectSqlColumns }
+constructor TSelectSqlColumns.Create();
+begin
+  inherited Create();
+  FList := TCollection.Create(TSelectSqlColumn);
+end;
+
+destructor TSelectSqlColumns.Destroy();
+begin
+  FList.Free();
+  inherited Destroy();
+end;
+
+function TSelectSqlColumns.GetCount: Integer;
+begin
+  Result := FList.Count;
+end;
+
+function TSelectSqlColumns.GetItem(Index: Integer): TSelectSqlColumn;
+begin
+  Result := FList.Items[Index] as TSelectSqlColumn;
+end;
+
+procedure TSelectSqlColumns.CheckDescriptors();
+var
+  Item: TSelectSqlColumn;
+begin
+  for Item in Self do
+    Item.CheckDescriptor();
+end;
+
+procedure TSelectSqlColumns.Clear();
+begin
+  FList.Clear();
+end;
+
+function TSelectSqlColumns.Add(FieldName: string; TitleKey: string; DisplayType: TColumnDisplayType): TSelectSqlColumn;
+begin
+  Result := TSelectSqlColumn.Create(FList);
+  Result.Name := FieldName;
+  Result.TitleKey := TitleKey;
+  Result.DisplayType := DisplayType;
+end;
+
+procedure TSelectSqlColumns.Add(Item: TSelectSqlColumn);
+begin
+  Item.Collection := FList;
+end;
+
+procedure TSelectSqlColumns.Remove(Item: TSelectSqlColumn);
+var
+  Index: Integer;
+begin
+  Index := IndexOf(Item);
+  if Index >= 0 then
+     FList.Delete(Index);
+end;
+
+function TSelectSqlColumns.IndexOf(Item: TSelectSqlColumn): Integer;
+var
+  i : Integer;
+begin
+  Result := -1;
+  for i := 0 to FList.Count - 1 do
+  begin
+    if Item = FList.Items[i] then
+      Exit(i); // =>
+  end;
+end;
+
+function TSelectSqlColumns.Contains(const FieldName: string): Boolean;
+begin
+  Result := Find(FieldName) <> nil;
+end;
+
+function TSelectSqlColumns.Find(const FieldName: string): TSelectSqlColumn;
+var
+  i : Integer;
+  Item : TSelectSqlColumn;
+begin
+  Result := nil;
+
+  for i := 0 to FList.Count - 1 do
+  begin
+    Item := FList.Items[i] as TSelectSqlColumn;
+    if Sys.IsSameText(FieldName, Item.Name) then
+      Exit(Item);  // =>
+  end;
+end;
+
+function TSelectSqlColumns.GetEnumerator(): TSelectSqlColumnsEnumerator;
+begin
+   Result := TSelectSqlColumnsEnumerator.Create(Sys.CollectionToArray(Self.List));
 end;
 
 
@@ -774,20 +1176,222 @@ end;
 
 { TSelectSql }
 
+constructor TSelectSql.Create(ACollection: TCollection = nil);
+begin
+  inherited Create(ACollection);
+
+  FColumns := TSelectSqlColumns.Create();
+  FFilters := TSqlFilterDefs.Create();
+
+  DateRange := drLastWeek;
+  DateRangeColumn := '';
+end;
+
 constructor TSelectSql.Create(SqlText: string);
 begin
-  inherited Create();
+  Create(nil);
   Text := SqlText;
 end;
 
 destructor TSelectSql.Destroy();
 begin
+  if Assigned(FColumns) then FColumns.Free();
+  FFilters.Free();
   inherited Destroy();
+end;
+
+class function TSelectSql.CR(S: string): string;
+begin
+  Result := S.TrimRight() + LB;
+end;
+
+class procedure TSelectSql.ReplaceLastComma(var S: string);
+var
+  i : Integer;
+begin
+  i := Length(S);
+
+  if i > 0 then
+  begin
+    while (i > 0) and (S[i] in Sys.WhiteSpace) do
+      Dec(i);
+
+    if S[i] = ',' then
+      S[i] := ' ';
+  end;
+end;
+
+class function TSelectSql.AddTo(Clause: string; Delimiter: string; Plus: string): string;
+begin
+
+  if Sys.IsEmpty(Plus) then
+     Plus := '';
+
+  if (not Sys.IsEmpty(Clause)) and (not Sys.IsEmpty(Delimiter)) then
+  begin
+    Clause := Clause.TrimRight();
+    Delimiter := Delimiter.Trim();
+    Plus := Plus.Trim();
+
+    if Clause.EndsWith(Delimiter, True) or Plus.StartsWith(Delimiter, True) then
+       Exit(CR(Clause) + SPACES + Plus)
+    else
+       Exit(CR(Clause) + SPACES + Delimiter + SPACE + Plus);
+  end;
+
+  Result := SPACES + Plus.Trim();
+
+end;
+
+class function TSelectSql.NormalizeClause(Clause: string; Keyword: string): string;
+begin
+  if (not Sys.IsEmpty(Clause)) and  (not Sys.IsEmpty(Keyword)) then
+  begin
+    Clause := Clause.Trim();
+    Keyword := Keyword.Trim();
+
+    if not Clause.StartsWith(Keyword, True) then
+      Exit(CR(Keyword) + SPACES + Clause);
+  end;
+
+  if not Sys.IsEmpty(Clause) then
+     Result := Clause
+  else
+     Result := '';
+end;
+
+class function TSelectSql.IsMasked(Value: string): Boolean;
+begin
+  Result := Sql.IsMasked(Value);
+end;
+
+class function TSelectSql.DateRangeConstructWhereParams(Range: TDateRange; FieldName: string): string;
+var
+  sFrom : string;
+  sTo   : string;
+begin
+  sFrom := ':' + DateRanges.PrefixFrom + Sys.GetEnumName(TypeInfo(TDateRange), Ord(Range));
+  sTo   := ':' + DateRanges.PrefixTo   + Sys.GetEnumName(TypeInfo(TDateRange), Ord(Range));
+
+  Result := Format(' ((%s >= %s) and (%s <= %s)) ', [FieldName, sFrom, FieldName, sTo]) ;
+end;
+
+class procedure TSelectSql.DateRangeReplaceWhereParams(var SqlText: string; Provider: TSqlProvider);
+var
+  P        : PTypeInfo;
+  EnumName : string;
+  Ordinal  : Integer;
+  sFrom    : string;
+  sTo      : string;
+  Range    : TDateRange;
+
+  function Replace(Range: TDateRange; S: string): string;
+  var
+    FromDate: TDateTime;
+    ToDate  : TDateTime;
+
+    sFromValue : string;
+    sToValue   : string;
+  begin
+    FromDate := Date();
+    ToDate   := Date();
+
+    DateRanges.ToDates(Range, Date(),  FromDate, ToDate);
+
+    sFromValue := Provider.QSDateTime(StartOfTheDay(FromDate));
+    sToValue   := Provider.QSDateTime(EndOfTheDay(ToDate));
+
+    S := S.Replace(sFrom, sFromValue);
+    S := S.Replace(sTo, sToValue);
+
+    Result := S;
+  end;
+
+begin
+  if not SqlText.Contains(DateRanges.PrefixFrom) then
+    Exit; // =>
+
+  sFrom := '';
+  sTo   := '';
+
+  P := TypeInfo(TDateRange);
+
+  for Range in DateRanges.WhereRanges do
+  begin
+    Ordinal  := Ord(Range);
+    EnumName := GetEnumName(P, Ordinal);
+    EnumName := EnumName.Remove(1, 2);
+
+    sFrom := ':' + DateRanges.PrefixFrom + EnumName;
+
+    if SqlText.Contains(sFrom) then
+    begin
+      sTo := ':' + DateRanges.PrefixTo + EnumName;
+      SqlText := Replace(Range, SqlText);
+      Exit; // =>
+    end;
+  end;
+
+end;
+
+procedure TSelectSql.CheckDescriptor();
+begin
+
+end;
+
+procedure TSelectSql.Clear();
+begin
+
+end;
+
+procedure TSelectSql.Assign(Source: TPersistent);
+begin
+  inherited Assign(Source);
+end;
+
+function TSelectSql.Clone(): TSelectSql;
+begin
+
 end;
 
 function TSelectSql.GetSqlText: string;
 begin
   // TODO: TSelectSql.GetSqlText
+end;
+
+procedure TSelectSql.AddToWhere(Plus: string);
+begin
+
+end;
+
+procedure TSelectSql.AddToWhere(Plus: string; Delimiter: string);
+begin
+
+end;
+
+procedure TSelectSql.OrToWhere(Plus: string);
+begin
+
+end;
+
+procedure TSelectSql.AddToGroupBy(Plus: string);
+begin
+
+end;
+
+procedure TSelectSql.AddToHaving(Plus: string);
+begin
+
+end;
+
+procedure TSelectSql.AddToOrderBy(Plus: string);
+begin
+
+end;
+
+function TSelectSql.SelectFromToString(): string;
+begin
+
 end;
 
 procedure TSelectSql.SetSqlText(Value: string);
@@ -822,6 +1426,26 @@ begin
       Parser.Free();
     end;
   end;
+end;
+
+procedure TSelectSql.ParseFromTableName(TableName: string);
+begin
+
+end;
+
+function TSelectSql.GetMainTableName(): string;
+begin
+
+end;
+
+procedure TSelectSql.SetupTable(Table: TDataset);
+begin
+
+end;
+
+function TSelectSql.GetIsEmpty: Boolean;
+begin
+  Result := Sys.IsEmpty(Text);
 end;
 
 end.
