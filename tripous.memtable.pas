@@ -109,6 +109,8 @@ type
 
   { TMemTable }
   TMemTable = class(TDataSet)
+  private class var
+    FTableNameCounter : Integer;
   protected
     type
       PRecInfo = ^TRecInfo;
@@ -421,6 +423,8 @@ type
     class function  Min(const A, B: Integer): Integer;
     class function  Max(const A, B: Integer): Integer;
     class function  NewGuid(UseBrackets: Boolean = True): string;
+    class function  NextTableName(): string;
+
 
     { properties }
     property MasterSource      : TDataSource read GetMasterDataSource write SetMasterDataSource;
@@ -3030,6 +3034,12 @@ begin
     if Result[Length(Result)] = '}' then
       System.Delete(Result, Length(Result), 1);
   end;
+end;
+
+class function TMemTable.NextTableName(): string;
+begin
+  Inc(FTableNameCounter);
+  Result :=  'Table_' + IntToStr(FTableNameCounter);
 end;
 
 

@@ -3,6 +3,7 @@ unit Tripous.DataDefs;
 {$mode DELPHI}{$H+}
 {$WARN 4104 off : Implicit string type conversion from "$1" to "$2"}
 {$WARN 4105 off : Implicit string type conversion with potential data loss from "$1" to "$2"}
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses
@@ -170,6 +171,7 @@ type
     FTitle: string;
     FTitleKey: string;
     FUseRange: Boolean;
+    procedure Clear();
     function GetAggregateFunc: string;
   public
     class var
@@ -181,6 +183,9 @@ type
     { construction }
     class constructor Create();
     class destructor Destroy();
+
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSqlFilterDef;
 
     { Throws exception if this instance is not a valid one. }
     procedure CheckDescriptor();
@@ -259,6 +264,9 @@ type
     procedure SetMultiChoise(Value: Boolean);
     procedure CheckDescriptors();
 
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSqlFilterDefs;
+
     procedure Clear();
 
     function Add(TableName: string; FieldName: string; TitleKey: string; DataType: TDataFieldType; Mode: TSqlFilterMode = sfmSimple): TSqlFilterDef; overload;
@@ -302,6 +310,10 @@ type
     constructor Create(ACollection: TCollection = nil); override;
     destructor Destroy(); override;
 
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSelectSqlColumn;
+    procedure Clear();
+
     { Throws an exception if this descriptor is not fully defined  }
     procedure CheckDescriptor();
     { Returns a format string. It uses the FormatString property first, and then the Decimals property.    }
@@ -343,6 +355,9 @@ type
   public
     constructor Create();
     destructor Destroy(); override;
+
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSelectSqlColumns;
 
     procedure CheckDescriptors();
 
@@ -445,7 +460,6 @@ type
     FWhereUser: string;
 
     function  GetIsEmpty: Boolean;
-    procedure SetSqlText(Value: string);
   public
     constructor Create(ACollection: TCollection = nil); override; overload;
     constructor Create(SqlText: string); overload;
@@ -473,15 +487,16 @@ type
     procedure Assign(Source: TPersistent); override;
     function  Clone(): TSelectSql;
 
-    { Concatenates Keyword + Clause for all clauses }
-    function  GetSqlText: string;
-
     procedure AddToWhere(Plus: string); overload;
     procedure AddToWhere(Plus: string; Delimiter: string);  overload;
     procedure OrToWhere(Plus: string);
     procedure AddToGroupBy(Plus: string);
     procedure AddToHaving(Plus: string);
     procedure AddToOrderBy(Plus: string);
+
+    { Concatenates Keyword + Clause for all clauses }
+    function  GetSqlText: string;
+    procedure SetSqlText(Value: string);
 
     { Returns concatenated the SELECT and FROM clauses only. }
     function  SelectFromToString(): string;
@@ -494,7 +509,7 @@ type
     function  GetMainTableName(): string;
 
     { Sets-up the column types, the captions and the visibility of Table.Columns. }
-    procedure SetupTable(Table: TDataset);
+    procedure SetupTable(Table: TMemTable);
 
     property Select   : string   read FSelect   write FSelect ;
     property From     : string   read FFrom     write FFrom   ;
@@ -534,10 +549,6 @@ type
     { The filter descriptors used to generate the "user where" clause.
       User's where is appended to the WHERE clause.    }
     property Filters: TSqlFilterDefs read FFilters write FFilters;
-
-(*
-
-*)
   end;
 
 
@@ -658,6 +669,70 @@ begin
   ValidAggregateFunctions.Free();
 end;
 
+procedure TSqlFilterDef.Clear();
+begin
+  FieldPath             := '';
+  Title                 := '';
+  TitleKey              := '';
+
+  DataType              := dftUnknown;
+  Mode                  := sfmNone;
+
+  UseRange              := False;
+  Locator               := '';
+  PutInHaving           := False;
+  AggregateFunc         := '';
+
+  EnumSql               := '';
+  EnumResultField       := '';
+  EnumIsMultiChoise     := False;
+  EnumOptionList.Clear();
+
+  EnumIncludeAll        := False;
+  EnumDisplayLabels     := '';
+  InitialValue          := '';
+end;
+
+procedure TSqlFilterDef.Assign(Source: TPersistent);
+var
+  Src : TSqlFilterDef;
+begin
+  Clear();
+
+  if Source is TSqlFilterDef then
+  begin
+    Src := Source as TSqlFilterDef;
+
+    FieldPath              := Src.FieldPath        ;
+    Title                  := Src.Title            ;
+    TitleKey               := Src.TitleKey         ;
+
+    DataType               := Src.DataType         ;
+    Mode                   := Src.Mode             ;
+
+    UseRange               := Src.UseRange         ;
+    Locator                := Src.Locator          ;
+    PutInHaving            := Src.PutInHaving      ;
+    AggregateFunc          := Src.AggregateFunc    ;
+
+    EnumSql                := Src.EnumSql          ;
+    EnumResultField        := Src.EnumResultField  ;
+    EnumIsMultiChoise      := Src.EnumIsMultiChoise;
+    EnumOptionList.Assign(Src.EnumOptionList);
+
+    EnumIncludeAll         := Src.EnumIncludeAll   ;
+    EnumDisplayLabels      := Src.EnumDisplayLabels;
+    InitialValue           := Src.InitialValue     ;
+  end;
+
+end;
+
+function TSqlFilterDef.Clone(): TSqlFilterDef;
+begin
+  Result := TSqlFilterDef.Create(nil);
+  Result.Assign(Self);
+end;
+
 procedure TSqlFilterDef.CheckDescriptor();
 var
   FirstPart : string;
@@ -762,6 +837,22 @@ begin
     Item.CheckDescriptor();
 end;
 
+procedure TSqlFilterDefs.Assign(Source: TPersistent);
+var
+  Item: TSqlFilterDef;
+begin
+  Clear();
+  if Source is  TSqlFilterDefs then
+    for Item in TSqlFilterDefs(Source) do
+      Add(Item.Clone());
+end;
+
+function TSqlFilterDefs.Clone(): TSqlFilterDefs;
+begin
+  Result := TSqlFilterDefs.Create();
+  Result.Assign(Self);
+end;
+
 procedure TSqlFilterDefs.Clear();
 begin
    FList.Clear();
@@ -860,18 +951,66 @@ constructor TSelectSqlColumn.Create(ACollection: TCollection);
 begin
   inherited Create(ACollection);
 
-  Visible := True;
-  Width   := 90;
-  ReadOnly:= True;
-  DisplayIndex  := 0;
-  GroupIndex    := -1;
-  Decimals      := -1;
-  Aggregate     := aftNone;
+  Clear();
 end;
 
 destructor TSelectSqlColumn.Destroy();
 begin
   inherited Destroy();
+end;
+
+procedure TSelectSqlColumn.Assign(Source: TPersistent);
+var
+  Src: TSelectSqlColumn;
+begin
+  Clear();
+  if Source is TSelectSqlColumn then
+  begin
+    Src := Source as TSelectSqlColumn;
+
+    Name             := Src.Name            ;
+    DisplayType      := Src.DisplayType     ;
+
+    Title            := Src.Title           ;
+    TitleKey         := Src.TitleKey        ;
+
+    Visible          := Src.Visible         ;
+    Width            := Src.Width           ;
+    ReadOnly         := Src.ReadOnly        ;
+    DisplayIndex     := Src.DisplayIndex    ;
+    GroupIndex       := Src.GroupIndex      ;
+    Decimals         := Src.Decimals        ;
+    FormatString     := Src.FormatString    ;
+
+    Aggregate        := Src.Aggregate       ;
+    AggregateFormat  := Src.AggregateFormat ;
+  end;
+end;
+
+function TSelectSqlColumn.Clone(): TSelectSqlColumn;
+begin
+  Result := TSelectSqlColumn.Create(nil);
+  Result.Assign(Self);
+end;
+
+procedure TSelectSqlColumn.Clear();
+begin
+  Name             := '';
+  DisplayType      := cdtDefault;
+
+  Title            := '';
+  TitleKey         := '';
+
+  Visible          := True;
+  Width            := 90;
+  ReadOnly         := True;
+  DisplayIndex     := 0;
+  GroupIndex       := -1;
+  Decimals         := -1;
+  FormatString     := '';
+
+  Aggregate        := aftNone;
+  AggregateFormat  := '';
 end;
 
 procedure TSelectSqlColumn.CheckDescriptor();
@@ -913,6 +1052,23 @@ begin
   FList.Free();
   inherited Destroy();
 end;
+
+procedure TSelectSqlColumns.Assign(Source: TPersistent);
+var
+  Item:  TSelectSqlColumn;
+begin
+  Clear();
+  if Source is  TSelectSqlColumns then
+    for Item in  TSelectSqlColumns(Source) do
+      Add(Item.Clone());
+end;
+
+function TSelectSqlColumns.Clone(): TSelectSqlColumns;
+begin
+  Result := TSelectSqlColumns.Create();
+  Result.Assign(Self);
+end;
+
 
 function TSelectSqlColumns.GetCount: Integer;
 begin
@@ -1335,68 +1491,190 @@ begin
 end;
 
 procedure TSelectSql.CheckDescriptor();
+var
+  Column: TSelectSqlColumn;
+  Filter: TSqlFilterDef;
 begin
+  if Sys.IsEmpty(Name) or Sys.IsEmpty(Select) or Sys.IsEmpty(From) then
+     Sys.Error('SelectSql Name or SQL statement is empty') ;
 
+  for Column in Columns do
+    Column.CheckDescriptor();
+
+  for Filter in Filters do
+    Filter.CheckDescriptor();
 end;
 
 procedure TSelectSql.Clear();
 begin
+  Select    := '';
+  From      := '';
+  Where     := '';
+  WhereUser := '';
+  GroupBy   := '';
+  Having    := '';
+  OrderBy   := '';
 
+  CompanyAware := False;
+  ConnectionName := '';
+
+  DateRangeColumn := '';
+  DateRange := TDateRange.drCustom;
+
+  Columns.Clear();
+  Filters.Clear();
 end;
 
 procedure TSelectSql.Assign(Source: TPersistent);
+var
+  Src: TSelectSql;
 begin
-  inherited Assign(Source);
+  Clear();
+  if Source is TSelectSql then
+  begin
+    Src := Source as TSelectSql;
+
+    Name         := Src.Name;
+
+    TitleKey     := Src.TitleKey;
+
+    Select       := Src.Select;
+    From         := Src.From;
+    Where        := Src.Where;
+    WhereUser    := Src.WhereUser;
+    GroupBy      := Src.GroupBy;
+    Having       := Src.Having;
+    OrderBy      := Src.OrderBy;
+
+    CompanyAware    := Src.CompanyAware;
+    ConnectionName  := Src.ConnectionName;
+
+    DateRangeColumn := Src.DateRangeColumn;
+    DateRange       := Src.DateRange;
+
+    Columns.Assign(Src.Columns);
+    Filters.Assign(Src.Filters);
+  end;
+
 end;
 
 function TSelectSql.Clone(): TSelectSql;
 begin
-
-end;
-
-function TSelectSql.GetSqlText: string;
-begin
-  // TODO: TSelectSql.GetSqlText
+  Result := TSelectSql.Create();
+  Result.Assign(Self);
 end;
 
 procedure TSelectSql.AddToWhere(Plus: string);
 begin
-
+  Where := AddTo(Where, 'and', Plus);
 end;
 
 procedure TSelectSql.AddToWhere(Plus: string; Delimiter: string);
 begin
-
+   Where := AddTo(Where, Delimiter, Plus);
 end;
 
 procedure TSelectSql.OrToWhere(Plus: string);
 begin
-
+  Where := AddTo(Where, 'or', Plus);
 end;
 
 procedure TSelectSql.AddToGroupBy(Plus: string);
 begin
-
+  GroupBy := AddTo(GroupBy, ',' ,Plus);
 end;
 
 procedure TSelectSql.AddToHaving(Plus: string);
 begin
-
+  Having := AddTo(Having, 'and', Plus);
 end;
 
 procedure TSelectSql.AddToOrderBy(Plus: string);
 begin
-
+ OrderBy := AddTo(OrderBy, ',', Plus);
 end;
 
-function TSelectSql.SelectFromToString(): string;
+function TSelectSql.GetSqlText: string;
+var
+  sSelect   : string;
+  sFrom     : string;
+  sWhere    : string;
+  sCompany  : string;
+  Range     : string;
+  sGroupBy  : string;
+  sHaving   : string;
+  sOrderBy  : string;
 begin
+  // select
+  sSelect := NormalizeClause(Select, 'select') + SPACES;
+
+  // from
+  sFrom := NormalizeClause(From, 'from') + SPACES;
+
+  // where
+  if Sys.IsEmpty(Where) then
+    sWhere := ''
+  else
+    sWhere := Where.Trim();
+
+  if CompanyAware then
+  begin
+    sCompany := SysConfig.CompanyFieldName + Format(' = %s%s', [ SysConfig.VariablesPrefix, SysConfig.CompanyFieldName]);
+    if not sWhere.Contains(sCompany.Trim()) then
+      if Length(sWhere) = 0 then
+         sWhere := sCompany
+      else
+         sWhere := AddTo(sWhere, 'and', sCompany);
+  end;
+
+  if (not Sys.IsEmpty(DateRangeColumn)) and DateRanges.IsPast(DateRange) then
+  begin
+    Range := DateRangeConstructWhereParams(DateRange, DateRangeColumn);
+    if not sWhere.Contains(Range.Trim()) then
+      if Length(sWhere) = 0 then
+         sWhere := Range
+      else
+         sWhere := AddTo(sWhere, 'and', Range);
+  end;
+
+  if (not Sys.IsEmpty(WhereUser)) and (Length(WhereUser.Trim()) > 0) then
+  begin
+    if not sWhere.Contains(WhereUser.Trim()) then
+      if Length(sWhere) = 0 then
+         sWhere := WhereUser
+      else
+         sWhere := AddTo(sWhere, 'and', WhereUser);
+  end;
+
+
+  sWhere := NormalizeClause(sWhere, 'where');
+
+
+  // group by
+  sGroupBy := NormalizeClause(GroupBy, 'group by');
+
+  // having
+  sHaving := NormalizeClause(Having, 'having');
+
+  // order by
+  sOrderBy := NormalizeClause(OrderBy, 'order by');
+
+  Result := sSelect.TrimRight() + LB + sFrom.TrimRight();
+  if (sWhere.Trim().Length   > 0) then Result := Result + LB + sWhere.TrimRight() + SPACES;
+  if (sGroupBy.Trim().Length > 0) then Result := Result + LB + sGroupBy.TrimRight() + SPACES;
+  if (sHaving.Trim().Length  > 0) then Result := Result + LB + sHaving.TrimRight() + SPACES;
+  if (sOrderBy.Trim().Length > 0) then Result := Result + LB + sOrderBy.TrimRight() + SPACES;
 
 end;
 
 procedure TSelectSql.SetSqlText(Value: string);
 begin
   Parse(Value);
+end;
+
+function TSelectSql.SelectFromToString(): string;
+begin
+  Result := NormalizeClause(Select, 'select') + LB + NormalizeClause(From, 'from');
 end;
 
 procedure TSelectSql.Parse(SqlText: string);
@@ -1430,16 +1708,59 @@ end;
 
 procedure TSelectSql.ParseFromTableName(TableName: string);
 begin
-
+  Parse('select * from ' + TableName);
 end;
 
 function TSelectSql.GetMainTableName(): string;
+var
+  S : string;
+  Parts: TStringArray;
 begin
+  Result := '';
 
+  S := From.Trim();
+
+  if not Sys.IsEmpty(S) then
+  begin
+    while S.Contains('  ') do
+      S := S.Replace('  ', ' ');
+
+    Parts := S.Split([' ']);
+    if Length(Parts) > 0 then
+      Result := Parts[0];
+  end;
 end;
 
-procedure TSelectSql.SetupTable(Table: TDataset);
+procedure TSelectSql.SetupTable(Table: TMemTable);
+var
+  SqlColumn: TSelectSqlColumn;
+  Field : TField;
 begin
+  // table name
+  if Sys.IsEmpty(Table.TableName) or Table.TableName.StartsWith('Table_', True) then
+  begin
+    if (not Sys.IsEmpty(Name)) and (not Sys.IsSameText(DefaultName, Name)) then
+       Table.TableName := Name
+    else
+       Table.TableName := TMemTable.NextTableName();
+  end;
+
+  if Assigned(Columns) and (Columns.Count > 0) then
+  begin
+    for Field in Table.Fields do
+    begin
+      SqlColumn := Columns.Find(Field.FieldName);
+      if not Assigned(SqlColumn) then
+      begin
+        Field.Visible := False;
+      end else begin
+        Field.Visible      := True;
+        Field.DisplayLabel := SqlColumn.Title;
+        Field.Tag          := Ord(SqlColumn.DisplayType);
+      end;
+    end;
+
+  end;
 
 end;
 

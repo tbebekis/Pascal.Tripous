@@ -626,7 +626,9 @@ type
     constructor Create(ACollection: TCollection = nil); override;
     destructor Destroy(); override;
 
+    procedure Assign(Source: TPersistent); override;
     function Clone(): TSqlConnectionInfo;
+    procedure Clear();
 
     function  GetSqlProvider(): TSqlProvider;
     procedure SetupConnection(SqlConnector: TSQLConnectorEx);
@@ -654,6 +656,14 @@ type
     property AutoCreateGenerators: Boolean read FAutoCreateGenerators write FAutoCreateGenerators;
   end;
 
+  { TSqlConnectionInfoListEnumerator }
+  TSqlConnectionInfoListEnumerator = class(TEnumeratorBase)
+  private
+    function GetCurrent: TSqlConnectionInfo;
+  public
+    property Current: TSqlConnectionInfo read GetCurrent;
+  end;
+
   { TSqlConnectionInfoList }
   TSqlConnectionInfoList = class(TPersistent)
   private
@@ -666,6 +676,8 @@ type
     constructor Create();
     destructor Destroy(); override;
 
+    procedure Assign(Source: TPersistent); override;
+    function  Clone(): TSqlConnectionInfoList;
     procedure Clear();
 
     procedure Load(FilePath: string = DefaultFilePath);
@@ -677,6 +689,8 @@ type
     function  IndexOf(Item: TSqlConnectionInfo): Integer;
     function  Contains(const Name: string): Boolean;
     function  Find(const Name: string): TSqlConnectionInfo;
+
+    function GetEnumerator(): TSqlConnectionInfoListEnumerator;
 
     property Items[Index: Integer]: TSqlConnectionInfo read GetItem ; default;
     property Count: Integer read GetCount;
@@ -2801,20 +2815,45 @@ begin
   inherited Destroy();
 end;
 
+procedure TSqlConnectionInfo.Assign(Source: TPersistent);
+var
+  Src: TSqlConnectionInfo;
+begin
+  Clear();
+  if Source is TSqlConnectionInfo then
+  begin
+    Src := Source as TSqlConnectionInfo;
+
+    Name                   := Src.Name                  ;
+    Provider               := Src.Provider              ;
+    AutoCreateGenerators   := Src.AutoCreateGenerators  ;
+    ConnectionString       := Src.ConnectionString      ;
+  end;
+end;
+
 function TSqlConnectionInfo.Clone(): TSqlConnectionInfo;
 //var
 //  JsonText: string;
 begin
   Result := TSqlConnectionInfo.Create();
-  Result.Name     := Name;
-  Result.Provider := Provider;
-  Result.AutoCreateGenerators := AutoCreateGenerators;
-  Result.ConnectionString := ConnectionString;
-(*
+  Result.Assign(Self);
 
+(*
+Result.Name     := Name;
+Result.Provider := Provider;
+Result.AutoCreateGenerators := AutoCreateGenerators;
+Result.ConnectionString := ConnectionString;
 *)
   //JsonText := Json.Serialize(Self);
   //Json.Deserialize(Result, JsonText);
+end;
+
+procedure TSqlConnectionInfo.Clear();
+begin
+  Name                   := '';
+  Provider               := '';
+  AutoCreateGenerators   := False;
+  ConnectionString       := '';
 end;
 
 function TSqlConnectionInfo.GetSqlProvider(): TSqlProvider;
@@ -2912,6 +2951,13 @@ begin
   Result := GetSqlProvider().CanConnect(Self, ThrowIfNot);
 end;
 
+{ TSqlConnectionInfoListEnumerator }
+
+function TSqlConnectionInfoListEnumerator.GetCurrent: TSqlConnectionInfo;
+begin
+    Result := FItemList[Position] as TSqlConnectionInfo;
+end;
+
 
 
 { TSqlConnectionInfoList }
@@ -2936,6 +2982,22 @@ destructor TSqlConnectionInfoList.Destroy();
 begin
   fSqlConnections.Free();
   inherited Destroy();
+end;
+
+procedure TSqlConnectionInfoList.Assign(Source: TPersistent);
+var
+  Item:  TSqlConnectionInfo;
+begin
+  Clear();
+  if Source is  TSqlConnectionInfoList then
+    for Item in  TSqlConnectionInfoList(Source) do
+      Add(Item.Clone());
+end;
+
+function TSqlConnectionInfoList.Clone(): TSqlConnectionInfoList;
+begin
+  Result := TSqlConnectionInfoList.Create();
+  Result.Assign(Self);
 end;
 
 procedure TSqlConnectionInfoList.Clear();
@@ -2998,6 +3060,11 @@ begin
     if Sys.IsSameText(Name, ConInfo.Name) then
       exit(ConInfo);
   end;
+end;
+
+function TSqlConnectionInfoList.GetEnumerator(): TSqlConnectionInfoListEnumerator;
+begin
+  Result := TSqlConnectionInfoListEnumerator.Create(Sys.CollectionToArray(Self.SqlConnections));
 end;
 
 

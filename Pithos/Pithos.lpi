@@ -136,8 +136,13 @@
         <Filename Value="fr_sqleditorframe.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="SqlEditorFrame"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Frame"/>
         <UnitName Value="fr_SqlEditorFrame"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\tripous.datadefs.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
   </ProjectOptions>

@@ -964,6 +964,21 @@ type
     property OwnsIstance : Boolean read get_OwnsInstance;
   end;
 
+  { SysConfig }
+
+  SysConfig = class
+  private
+    class var FVariablesPrefix: string;
+    class var FCompanyFieldName: string;
+  public
+    { construction }
+    class constructor Create();
+    class destructor Destroy();
+
+    class property CompanyFieldName: string read FCompanyFieldName write FCompanyFieldName;   // CompanyId
+    class property VariablesPrefix: string read FVariablesPrefix write FVariablesPrefix;      // :@
+  end;
+
   { Sys }
   Sys = class
   public const
@@ -4790,6 +4805,19 @@ end;
 class function HexConverter.LoadGraphicFromStream(Stream: TStream; var Graphic: TGraphic): Boolean;
 begin
   Result := Depictor.LoadGraphicFromStream(Stream, Graphic) <> gtNone;
+end;
+
+{ SysConfig }
+
+class constructor SysConfig.Create();
+begin
+  CompanyFieldName := 'CompanyId';
+  VariablesPrefix  := ':@';
+end;
+
+class destructor SysConfig.Destroy();
+begin
+
 end;
 
 
