@@ -64,8 +64,6 @@ type
     FMetaDatabases: TMetaDatabases;
     FConnectionInfo: TSqlConnectionInfo;
     FSqlStore : TSqlStore;
-    FSqlPageCounter: Integer;
-    FTextPageCounter: Integer;
 
     tv: TTreeView;
     Pager: TPageControl;
@@ -96,8 +94,6 @@ type
     class procedure AddDatabaseNode(MetaDatabase: TMetaDatabase);
     class procedure ReloadSelectedDatabase(Node: TTreeNode = nil);
     class procedure ReloadDatabase(MetaDatabase: TMetaDatabase);
-    class function  NextSqlPageId(): Integer;
-    class function  NextTextPageId(): Integer;
 
     class procedure SelectTableOrView();
 
@@ -109,11 +105,10 @@ type
 implementation
 
 uses
-  Tripous.Logs
+   Tripous.Logs
   ,f_ConnectionEditDialog
-  ,fr_ISqlFrame
-  //,fr_TextEditorFrame
-  ,fr_SqlEditorFrame
+  ,f_ISqlForm
+  ,f_SqlEditorForm
   ;
 
 { TSqlPageInfo }
@@ -404,17 +399,6 @@ begin
     MetaDatabase := MetaNode as TMetaDatabase;
     ReloadDatabase(MetaDatabase);
   end;
-
-  {
-  if not Assigned(Node) then
-     Node := tv.Selected;
-
-  if Assigned(Node) then
-  begin
-     MetaDatabase := GetTreeNodeMetaDatabase(Node);
-     ReloadDatabase(MetaDatabase);
-  end;
-  }
 end;
 
 class function  App.GetTreeNodeMetaNode(Node: TTreeNode): TMetaNode;
@@ -449,7 +433,6 @@ end;
 class procedure App.AddISqlPage(InitialSql: string);
 var
   MetaDatabase: TMetaDatabase;
-  Page: TTabSheet;
 begin
   MetaDatabase := GetTreeNodeMetaDatabase(nil);
   if Assigned(MetaDatabase) then
@@ -459,10 +442,7 @@ begin
 
     Application.ProcessMessages();
 
-    Page  := Pager.AddTabSheet();
-    TISqlFrame.Create(Page, MetaDatabase, InitialSql);
-
-    Pager.ActivePage := Page;
+    TISqlForm.CreateAsChild(Pager, MetaDatabase, InitialSql);
   end;
 
 end;
@@ -470,60 +450,19 @@ end;
 class procedure App.AddFieldListPage();
 var
   MetaNode: TMetaNode;
-  InitialText: string;
-  Title: string;
-  Page: TTabSheet;
 begin
   MetaNode := GetTreeNodeMetaNode();
   if Assigned(MetaNode) then
-     if (MetaNode.NodeType = ntTable) or (MetaNode.NodeType = ntView) then
-     begin
-       Title := MetaNode.Name + ' Fields';
-       if (MetaNode.NodeType = ntTable) then
-          InitialText := TMetaTable(MetaNode).Fields.GetFieldListText(False)
-       else
-          InitialText := TMetaView(MetaNode).Fields.GetFieldListText(False);
-
-       Page  := Pager.AddTabSheet();
-       TSqlEditorFrame.Create(Page, Title, InitialText);
-       Pager.ActivePage := Page;
-     end;
-
+     TSqlEditorForm.CreateAsChildForFieldList(Pager, MetaNode);
 end;
 
 class procedure App.AddMetadataPage();
 var
   MetaNode: TMetaNode;
-  InitialText: string;
-  Title: string;
-  Page: TTabSheet;
 begin
   MetaNode := GetTreeNodeMetaNode();
   if Assigned(MetaNode) then
-  begin
-    Title := MetaNode.Name + ' Definition';
-
-    InitialText := MetaNode.GetDefinition();
-    if not Sys.IsEmpty(InitialText) then
-    begin
-      Page  := Pager.AddTabSheet();
-      TSqlEditorFrame.Create(Page, Title, InitialText);
-      Pager.ActivePage := Page;
-    end;
-  end;
-
-end;
-
-class function App.NextSqlPageId(): Integer;
-begin
-  Inc(FSqlPageCounter);
-  Result := FSqlPageCounter;
-end;
-
-class function App.NextTextPageId(): Integer;
-begin
-  Inc(FTextPageCounter);
-  Result := FTextPageCounter;
+     TSqlEditorForm.CreateAsChildForMetadata(Pager, MetaNode);
 end;
 
 class function App.GetIconIndex(MetaNodeType: TMetaNodeType): Integer;

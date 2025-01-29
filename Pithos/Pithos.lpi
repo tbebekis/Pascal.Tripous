@@ -89,30 +89,9 @@
         <UnitName Value="Tripous"/>
       </Unit>
       <Unit>
-        <Filename Value="fr_isqlframe.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="ISqlFrame"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <UnitName Value="fr_ISqlFrame"/>
-      </Unit>
-      <Unit>
         <Filename Value="o_app.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="o_App"/>
-      </Unit>
-      <Unit>
-        <Filename Value="f_connectioneditdialog.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="ConnectionEditDialog"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="f_ConnectionEditDialog"/>
-      </Unit>
-      <Unit>
-        <Filename Value="o_sqlhistory.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="o_SqlHistory"/>
       </Unit>
       <Unit>
         <Filename Value="o_temp.pas"/>
@@ -120,29 +99,36 @@
         <UnitName Value="o_Temp"/>
       </Unit>
       <Unit>
-        <Filename Value="fr_texteditorframe.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="TTextEditorFrame"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <UnitName Value="fr_TextEditorFrame"/>
-      </Unit>
-      <Unit>
         <Filename Value="..\tripous.ui.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Tripous.Ui"/>
       </Unit>
       <Unit>
-        <Filename Value="fr_sqleditorframe.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="SqlEditorFrame"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-        <UnitName Value="fr_SqlEditorFrame"/>
-      </Unit>
-      <Unit>
         <Filename Value="..\tripous.datadefs.pas"/>
         <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\Forms\f_baseform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="BaseForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="f_BaseForm"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\Forms\f_sqleditorform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SqlEditorForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="f_SqlEditorForm"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\Forms\f_isqlform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ISqlForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="f_ISqlForm"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -154,7 +140,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value=".."/>
+      <OtherUnitFiles Value="..;..\Forms"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

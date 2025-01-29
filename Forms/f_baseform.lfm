@@ -1,0 +1,8 @@
+object BaseForm: TBaseForm
+  Left = 294
+  Height = 392
+  Top = 250
+  Width = 518
+  Caption = 'BaseForm'
+  LCLVersion = '4.0.0.2'
+end

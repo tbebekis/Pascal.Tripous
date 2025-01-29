@@ -1,18 +1,15 @@
-object SqlEditorFrame: TSqlEditorFrame
-  Left = 0
-  Height = 484
-  Top = 0
-  Width = 573
-  ClientHeight = 484
-  ClientWidth = 573
-  TabOrder = 0
-  DesignLeft = 359
-  DesignTop = 10
-  object ToolBar: TToolBar
+inherited SqlEditorForm: TSqlEditorForm
+  Left = 353
+  Height = 478
+  Width = 581
+  Caption = 'SqlEditorForm'
+  ClientHeight = 478
+  ClientWidth = 581
+  object ToolBar: TToolBar[0]
     Left = 0
     Height = 34
     Top = 0
-    Width = 573
+    Width = 581
     AutoSize = True
     ButtonHeight = 32
     ButtonWidth = 32
@@ -33,11 +30,11 @@ object SqlEditorFrame: TSqlEditorFrame
       ShowHint = True
     end
   end
-  inline mmoText: TSynEdit
+  inline mmoText: TSynEdit[1]
     Left = 0
-    Height = 450
+    Height = 444
     Top = 34
-    Width = 573
+    Width = 581
     Align = alClient
     Font.Height = -13
     Font.Name = 'Courier New'
@@ -538,11 +535,11 @@ object SqlEditorFrame: TSqlEditorFrame
       end
     end
   end
-  object ImageList: TImageList
+  object ImageList: TImageList[2]
     Height = 24
     Width = 24
-    Left = 224
-    Top = 216
+    Left = 252
+    Top = 244
     Bitmap = {
       4C7A010000001800000018000000B00400000000000078DAADD5F94FD3771CC7
       F1CF98665BD40988201398020E645E43BC66D4D86F2994D28B1EF4A20705E450
@@ -585,11 +582,11 @@ object SqlEditorFrame: TSqlEditorFrame
       FB3FDB1D76DD
     }
   end
-  object SynSQLSyn1: TSynSQLSyn
+  object SynSQLSyn1: TSynSQLSyn[3]
     DefaultFilter = 'SQL Files (*.sql)|*.sql'
     Enabled = False
     SQLDialect = sqlSybase
-    Left = 363
-    Top = 190
+    Left = 391
+    Top = 218
   end
 end

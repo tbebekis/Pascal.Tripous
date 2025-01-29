@@ -1,18 +1,16 @@
-object ISqlFrame: TISqlFrame
-  Left = 0
-  Height = 607
-  Top = 0
-  Width = 860
-  ClientHeight = 607
-  ClientWidth = 860
-  TabOrder = 0
-  DesignLeft = 664
-  DesignTop = 298
+object ISqlForm: TISqlForm
+  Left = 353
+  Height = 594
+  Top = 250
+  Width = 823
+  Caption = 'ISqlForm'
+  ClientHeight = 594
+  ClientWidth = 823
   object ToolBar: TToolBar
     Left = 0
     Height = 34
     Top = 0
-    Width = 860
+    Width = 823
     AutoSize = True
     ButtonHeight = 32
     ButtonWidth = 32
@@ -64,6 +62,7 @@ object ISqlFrame: TISqlFrame
       Hint = 'Show/Hide Id Columns'
       Top = 2
       AllowAllUp = True
+      Down = True
       Grouped = True
       ImageIndex = 3
       Style = tbsCheck
@@ -85,9 +84,9 @@ object ISqlFrame: TISqlFrame
   end
   inline edtSql: TSynEdit
     Left = 0
-    Height = 438
+    Height = 425
     Top = 34
-    Width = 860
+    Width = 823
     Align = alClient
     Font.CharSet = ANSI_CHARSET
     Font.Height = -13
@@ -594,8 +593,8 @@ object ISqlFrame: TISqlFrame
     Cursor = crVSplit
     Left = 0
     Height = 6
-    Top = 472
-    Width = 860
+    Top = 459
+    Width = 823
     Align = alBottom
     Beveled = True
     ResizeAnchor = akBottom
@@ -603,27 +602,20 @@ object ISqlFrame: TISqlFrame
   object pagerGrids: TPageControl
     Left = 0
     Height = 129
-    Top = 478
-    Width = 860
+    Top = 465
+    Width = 823
     Align = alBottom
     TabOrder = 3
   end
-  object SynSQLSyn1: TSynSQLSyn
-    DefaultFilter = 'SQL Files (*.sql)|*.sql'
-    Enabled = False
-    SQLDialect = sqlSybase
-    Left = 335
-    Top = 162
-  end
   object DS: TDataSource
-    Left = 127
-    Top = 138
+    Left = 155
+    Top = 166
   end
   object ImageListISql: TImageList
     Height = 24
     Width = 24
-    Left = 211
-    Top = 109
+    Left = 239
+    Top = 137
     Bitmap = {
       4C7A050000001800000018000000670F00000000000078DAED9A775814D7FAC7
       47B1608B6014F5DADBC558A2B190E4979B5C15455111900E4A5150D1AB0614DB
@@ -750,5 +742,12 @@ object ISqlFrame: TISqlFrame
       C330F42B0535C9FF654634F116E3884992F7ACEDA6AB54F7E93427688DFD7EC9
       B1A98B8C5CFA0D1C36ABF13BD54EA0A764FC0D93F89FBEFF0F258655BA
     }
+  end
+  object SynSQLSyn1: TSynSQLSyn
+    DefaultFilter = 'SQL Files (*.sql)|*.sql'
+    Enabled = False
+    SQLDialect = sqlSybase
+    Left = 363
+    Top = 190
   end
 end

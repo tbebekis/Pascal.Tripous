@@ -8,6 +8,7 @@ object MainForm: TMainForm
   ClientWidth = 1156
   Menu = MainMenu
   Position = poDesktopCenter
+  LCLVersion = '4.0.0.2'
   WindowState = wsMaximized
   object ToolBar: TToolBar
     Left = 0
@@ -184,7 +185,7 @@ object MainForm: TMainForm
       end
       object ToolButton1: TToolButton
         Left = 33
-        Height = 32
+        Height = 8
         Top = 2
         Caption = 'ToolButton1'
         Style = tbsSeparator
