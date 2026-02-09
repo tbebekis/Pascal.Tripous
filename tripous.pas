@@ -255,7 +255,7 @@ type
     procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
 
     procedure Append(const Fmt: SBString; const Args: array of const); overload;
-    procedure AppendFormat(const Fmt: SBString; const Args: array of const);
+    procedure AppendFormat(const Fmt: SBString; const Args: array of const); overload;
 
     procedure AppendLine(const Value: SBString); overload;
     procedure AppendLine(); overload;
@@ -287,6 +287,23 @@ type
 
     function ToString(): SBString;  overload;  reintroduce;
     function ToString(aStartIndex: Integer; aLength: Integer): SBString;  overload;   reintroduce;
+
+    { string overloads }
+    procedure Append(const AValue: string); overload;
+    procedure Append(const AValue: string; StartIndex: Integer; Count: Integer); overload;
+
+    procedure Append(const Fmt: string; const Args: array of const); overload;
+    procedure AppendFormat(const Fmt: string; const Args: array of const); overload;
+
+    procedure AppendLine(const Value: string); overload;
+
+    { string overloads }
+    procedure Insert(Index: Integer; const AValue: string); overload;
+    procedure Insert(Index: Integer; const AValue: string; const aRepeatCount: Integer); overload;
+
+    { string overloads }
+    function ToUtf8String: string; overload;
+    function ToUtf8String(aStartIndex: Integer; aLength: Integer): string; overload;
 
     property Chars[index: Integer]: SBChar read GetC write SetC; default;
     property Length: Integer read GetLength write SetLength;
@@ -326,6 +343,11 @@ type
    constructor Create(const AValue: SBString); overload;
    constructor Create(const AValue: SBString; aCapacity: Integer); overload;
 
+   { string overloads }
+   constructor Create(const AValue: string); overload;
+   constructor Create(const AValue: string; aCapacity: Integer); overload;
+
+
    procedure Append(const AValue: Boolean); overload;
    procedure Append(const AValue: Byte); overload;
    procedure Append(const AValue: SBChar); overload;
@@ -344,10 +366,19 @@ type
    procedure Append(const AValue: SBString; StartIndex: Integer; Count: Integer); overload;
 
    procedure Append(const Fmt: SBString; const Args: array of const); overload;
-   procedure AppendFormat(const Fmt: SBString; const Args: array of const);
+   procedure AppendFormat(const Fmt: SBString; const Args: array of const); overload;
 
    procedure AppendLine(const Value: SBString); overload;
    procedure AppendLine(); overload;
+
+   { string overloads }
+   procedure Append(const AValue: string); overload;
+   procedure Append(const AValue: string; StartIndex: Integer; Count: Integer); overload;
+
+   procedure Append(const Fmt: string; const Args: array of const); overload;
+   procedure AppendFormat(const Fmt: string; const Args: array of const); overload;
+
+   procedure AppendLine(const Value: string); overload;
 
    procedure Clear();
    procedure CopyTo(SourceIndex: Integer; var Destination: TSBCharArray; DestinationIndex: Integer; Count: Integer);
@@ -371,12 +402,20 @@ type
    procedure Insert(Index: Integer; const AValue: UInt64); overload;
    procedure Insert(Index: Integer; const AValue: SBString; const aRepeatCount: Integer); overload;
 
+   { string overloads }
+   procedure Insert(Index: Integer; const AValue: string); overload;
+   procedure Insert(Index: Integer; const AValue: string; const aRepeatCount: Integer); overload;
+
    procedure Remove(StartIndex: Integer; RemLength: Integer);
    procedure Replace(const OldChar, NewChar: SBChar); overload;
    procedure Replace(const OldChar, NewChar: SBChar; StartIndex: Integer; Count: Integer); overload;
 
    function ToString(): SBString; overload; reintroduce;
    function ToString(aStartIndex: Integer; aLength: Integer): SBString; overload; reintroduce;
+
+   { string overloads }
+   function ToUtf8String: string; overload;
+   function ToUtf8String(aStartIndex: Integer; aLength: Integer): string; overload;
 
    property Chars[index: Integer]: SBChar read GetC write SetC; default;
    property Length: Integer read GetLength write SetLength;
@@ -1167,7 +1206,7 @@ type
     class function  FieldAlias(TableName: string; FieldName: string): string;
 
     class function  LoadResourceTextFile(const ResourceName: string): string;
-    class procedure SaveResourceFile(const ResourceName: string; const FilePath: string);
+    class procedure SaveResourceFile(const ResourceName: string; const FilePath: string; Overwrite: Boolean = False);
 
     class function  CollectionToArray(Collection: TCollection): TObjectArray;
 
@@ -1189,14 +1228,19 @@ type
 
 
 
+  { TStrBuilder helpers }
+  function StrToSB(const S: string): SBString; inline;
+  function SBToStr(const S: SBString): string; inline;
+
 
 
 implementation
 
-{$R tripous.rc}
+
 
 uses
-   laz2_XMLRead
+   LResources
+  ,laz2_XMLRead
   ,laz2_XMLWrite
   ,jsonscanner
   ,fpjson
@@ -1345,6 +1389,23 @@ end;
 
 
 
+ /// <summary>
+/// Converts a Lazarus/FPC UTF-8 `string` to UTF-16 `SBString` (internal builder text).
+/// </summary>
+function StrToSB(const S: string): SBString; inline;
+begin
+  Result := UnicodeString(UTF8Decode(S));
+end;
+
+/// <summary>
+/// Converts UTF-16 `SBString` (internal builder text) to a Lazarus/FPC UTF-8 `string`.
+/// </summary>
+function SBToStr(const S: SBString): string; inline;
+begin
+  Result := UTF8Encode(UnicodeString(S));
+end;
+
+
 
 
 
@@ -1375,6 +1436,7 @@ constructor TStrBuilder.Create(const AValue: SBString);
 begin
   Create(aValue,DefaultCapacity);
 end;
+
 
 { Property getter/setter }
 
@@ -1777,6 +1839,68 @@ begin
       Length:=OLen+Delta;
   end;
   Move(New[1],FData[Index],NVLen*SizeOf(SBChar));
+end;
+
+
+
+{ --- overloads for UTF-8 string --- }
+
+constructor TStrBuilder.Create(const AValue: string);
+begin
+  Create(StrToSB(AValue));
+end;
+
+constructor TStrBuilder.Create(const AValue: string; aCapacity: Integer);
+begin
+  Create(StrToSB(AValue), aCapacity);
+end;
+
+{ --- Append overloads for UTF-8 string --- }
+procedure TStrBuilder.Append(const AValue: string);
+begin
+  Append(StrToSB(AValue));
+end;
+
+procedure TStrBuilder.Append(const AValue: string; StartIndex: Integer; Count: Integer);
+begin
+  Append(StrToSB(AValue), StartIndex, Count);
+end;
+
+procedure TStrBuilder.Append(const Fmt: string; const Args: array of const);
+begin
+  Append(StrToSB(Fmt), Args);
+end;
+
+procedure TStrBuilder.AppendFormat(const Fmt: string; const Args: array of const);
+begin
+  AppendFormat(StrToSB(Fmt), Args);
+end;
+
+procedure TStrBuilder.AppendLine(const Value: string);
+begin
+  AppendLine(StrToSB(Value));
+end;
+
+{ --- Insert overloads for UTF-8 string --- }
+procedure TStrBuilder.Insert(Index: Integer; const AValue: string);
+begin
+  Insert(Index, StrToSB(AValue));
+end;
+
+procedure TStrBuilder.Insert(Index: Integer; const AValue: string; const aRepeatCount: Integer);
+begin
+  Insert(Index, StrToSB(AValue), aRepeatCount);
+end;
+
+{ --- Output overloads --- }
+function TStrBuilder.ToUtf8String: string;
+begin
+  Result := SBToStr(ToString());
+end;
+
+function TStrBuilder.ToUtf8String(aStartIndex: Integer; aLength: Integer): string;
+begin
+  Result := SBToStr(ToString(aStartIndex, aLength));
 end;
 
 
@@ -6336,6 +6460,21 @@ end;
 
 class function Sys.LoadResourceTextFile(const ResourceName: string): string;
 var
+  S: TLazarusResourceStream;
+begin
+  S := TLazarusResourceStream.Create(ResourceName, nil);
+  try
+    Result := '';
+    SetLength(Result, S.Size);
+    if S.Size > 0 then
+      S.ReadBuffer(Result[1], S.Size);
+  finally
+    S.Free;
+  end;
+end;
+(*
+class function Sys.LoadResourceTextFile(const ResourceName: string): string;
+var
   RS : TResourceStream;
   SS : TStringStream;
 begin
@@ -6353,7 +6492,37 @@ begin
     RS.Free;
   end;
 end;
+*)
 
+class procedure Sys.SaveResourceFile(const ResourceName, FilePath: string; Overwrite: Boolean = False);
+var
+  RS: TLazarusResourceStream;
+  FS: TFileStream;
+  Folder: string;
+begin
+  if (not Overwrite) and FileExists(FilePath) then
+    Exit;
+
+  Folder := ExtractFileDir(FilePath);
+  if (Folder <> '') then
+    ForceDirectories(Folder);
+
+  RS := TLazarusResourceStream.Create(ResourceName, nil);
+  try
+    RS.Position := 0;
+
+    FS := TFileStream.Create(FilePath, fmCreate);
+    try
+      FS.CopyFrom(RS, 0); // 0 = copy all bytes
+    finally
+      FS.Free;
+    end;
+
+  finally
+    RS.Free;
+  end;
+end;
+(*
 class procedure Sys.SaveResourceFile(const ResourceName: string; const FilePath: string);
 var
   RS: TResourceStream;
@@ -6371,11 +6540,13 @@ begin
     RS.Free;
   end;
 end;
+*)
 
 class function Sys.CollectionToArray(Collection: TCollection): TObjectArray;
 var
   i : Integer;
 begin
+  Result := nil;
   SetLength(Result, Collection.Count);
   for i := 0 to Collection.Count - 1 do
       Result[i] := Collection.Items[i];
@@ -6389,7 +6560,8 @@ end;
 
 
 
-
+initialization
+{$I sqliteempty.lrs}
 
 
 

@@ -1116,10 +1116,11 @@ type
 
 implementation
 
-{$R MetadataSqls\Resources.RC}
+
 
 uses
-   Tripous.Logs
+   LResources
+   ,Tripous.Logs
    ;
 
 
@@ -1297,7 +1298,7 @@ begin
   for Item in FList do
      SB.AppendLine(Item.GetText(NamesOnly));
 
-  Result := SB.ToString();
+  Result := SB.ToUtf8String();
 end;
 
 procedure TMetaFields.DoClear();
@@ -1763,7 +1764,7 @@ begin
   end;
   SB.AppendLine(')');
 
-  Result := SB.ToString();
+  Result := SB.ToUtf8String();
 end;
 
 procedure TMetaTable.DoClear();
@@ -3935,7 +3936,7 @@ begin
 
   Source  := Self.ClassName + ' (' + Provider.Name + ')';
   EventId := '';
-  Text    := SB.ToString();
+  Text    := SB.ToUtf8String();
 
   Logger.Error(Source, EventId, Text);
 end;
@@ -5037,7 +5038,7 @@ end;
 
 
 initialization
-  //
+{$I metadatasqls.lrs}
 
 end.
 
