@@ -12,6 +12,8 @@ uses
    Classes
   ,SysUtils
   ,StrUtils
+  ,ExtCtrls
+  ,Forms
   ,DateUtils
   ,FileUtil
   ,LazSysUtils
@@ -346,7 +348,6 @@ type
    { string overloads }
    constructor Create(const AValue: string); overload;
    constructor Create(const AValue: string; aCapacity: Integer); overload;
-
 
    procedure Append(const AValue: Boolean); overload;
    procedure Append(const AValue: Byte); overload;
@@ -865,6 +866,9 @@ type
 
     class procedure LoadFromFile(FilePath: string; Instance: TObject);
     class procedure SaveToFile(FilePath: string; Instance: TObject);
+
+    class procedure SaveToFileSafe(const FilePath: string; Instance: TObject); overload;
+    class procedure SaveToFileSafe(const FilePath, JsonText: string); overload;
   end;
 
   { Xml }
@@ -1143,6 +1147,9 @@ type
     class procedure SaveToFile(const FileName: string; const Data: string);
     class procedure WriteToFile(const FileName, S: string);
 
+    class procedure WriteUtf8TextFile(const FileName, Text: string; WriteBOM: Boolean = False);
+    class function  ReadUtf8TextFile(const FileName: string): string;
+
     class function  LoadTextFromStream(Stream: TStream): string;
     class procedure SaveTextToStream(Stream: TStream; Data: string);
 
@@ -1153,7 +1160,7 @@ type
     class procedure CreateFolders(const FolderPath: string);
 
     class function  FolderExists(const Folder: string): Boolean;
-    class function  FolderDelete(Folder: string): Boolean;
+    class function  FolderDelete(const Folder: string): Boolean;
     class function  FolderCopy(Source, Dest: string; Overwrite: Boolean = True): Boolean;
     class function  FolderMove(Source, Dest: string; Overwrite: Boolean = True): Boolean;
 
@@ -1164,6 +1171,8 @@ type
     class function  SetFileDate(const FileName: string; NewDate: TDateTime): boolean;
     class function  GetFileSize(const FileName: string): Int64;
     class function  GetFolderSize(const Path: string): Int64;
+
+    class function WaitForFileAvailable(const FileName: string; TimeoutMilliseconds: Integer = 30 * 1000; CheckIntervalMilliseconds: Integer = 300): Boolean;
 
     { stream utils }
     class procedure WS(Stream: TStream; V: Integer); overload;
@@ -1211,6 +1220,10 @@ type
     class function  CollectionToArray(Collection: TCollection): TObjectArray;
 
     class procedure CreateSqliteDatabase(const FilePath: string);
+
+    class procedure RunOnce(MSecs: Integer; EventMethod: TParamEvent; Info: TObject = nil); overload;
+    class procedure RunOnce(MSecs: Integer; ProcMethod: TProcedureMethod); overload;
+    class procedure RunOnce(MSecs: Integer; Proc: TParamProc; Info: TObject = nil); overload;
 
     { properties }
     class property InvariantFormatSettings    : TFormatSettings read FInvariantFormatSettings;
@@ -1331,6 +1344,9 @@ begin
     T.Free();
   end;
 end;
+
+
+
 
 
 
@@ -3650,6 +3666,73 @@ begin
   Sys.SaveToFile(FilePath, JsonText);
 end;
 
+class procedure Json.SaveToFileSafe(const FilePath: string;  Instance: TObject);
+var
+  JsonText: string;
+begin
+  JsonText := Serialize(Instance);
+  SaveToFileSafe(FilePath, JsonText);
+end;
+
+class procedure Json.SaveToFileSafe(const FilePath, JsonText: string);
+var
+  TempFilePath: string;
+  BackupFilePath: string;
+  SS: TStringStream;
+  J: TJSONData;
+begin
+  if Trim(FilePath) = '' then
+    raise Exception.Create('Json.SaveToFileSafe: FilePath is empty');
+
+  if Trim(JsonText) = '' then
+    raise Exception.Create('Json.SaveToFileSafe: Refusing to save empty JSON');
+
+  // Validate JSON parses BEFORE touching disk files
+  J := nil;
+  try
+    J := GetJSON(JsonText);
+  finally
+    FreeAndNil(J);
+  end;
+
+  TempFilePath := FilePath + '.tmp';
+  BackupFilePath := FilePath + '.bak';
+
+  // Write temp file (same folder => rename is atomic on same filesystem)
+  SS := TStringStream.Create(JsonText, TEncoding.UTF8);
+  try
+    SS.SaveToFile(TempFilePath);
+  finally
+    SS.Free;
+  end;
+
+  // Backup current file (best-effort but safer to require success if file exists)
+  if FileExists(FilePath) then
+  begin
+    if FileExists(BackupFilePath) then
+      DeleteFile(BackupFilePath);
+
+    if not RenameFile(FilePath, BackupFilePath) then
+      raise Exception.Create(Format('Json.SaveToFileSafe: Failed to create .bak backup: %s', [BackupFilePath]));
+  end;
+
+  // Replace: rename tmp -> target
+  if not RenameFile(TempFilePath, FilePath) then
+  begin
+    // Try restore backup if we moved original away
+    if (not FileExists(FilePath)) and FileExists(BackupFilePath) then
+      RenameFile(BackupFilePath, FilePath);
+
+    raise Exception.Create(Format('Json.SaveToFileSafe: Failed to replace JSON file: %s', [FilePath]));
+  end;
+
+  // Optional: keep .bak for recovery, or delete it if you prefer
+  // If you want to delete backup after success, uncomment:
+  if FileExists(BackupFilePath) then
+    DeleteFile(BackupFilePath);
+
+end;
+
 class procedure Json.LoadFromFile(FilePath: string; Instance: TObject);
 var
   JsonText : string;
@@ -5385,6 +5468,68 @@ begin
   end;
 end;
 
+class procedure Sys.WriteUtf8TextFile(const FileName, Text: string; WriteBOM: Boolean);
+const
+  UTF8_BOM: array[0..2] of Byte = ($EF, $BB, $BF);
+var
+  FS: TFileStream;
+  Len: SizeInt;
+begin
+  FS := TFileStream.Create(FileName, fmCreate);
+  try
+    if WriteBOM then
+      FS.WriteBuffer(UTF8_BOM[0], Length(UTF8_BOM));
+
+    Len := Length(Text);
+    if Len > 0 then
+      FS.WriteBuffer(Text[1], Len);
+  finally
+    FS.Free;
+  end;
+
+end;
+
+class function Sys.ReadUtf8TextFile(const FileName: string): string;
+const
+  UTF8_BOM: array[0..2] of Byte = ($EF, $BB, $BF);
+var
+  FS: TFileStream;
+  Size: Int64;
+  Buffer: TBytes;
+  StartIndex: Integer;
+begin
+  Buffer := [];
+  Result := '';
+
+  if not FileExists(FileName) then
+    Exit;
+
+  FS := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+  try
+    Size := FS.Size;
+    if Size = 0 then
+      Exit;
+
+    SetLength(Buffer, Size);
+    FS.ReadBuffer(Buffer[0], Size);
+
+    // Check for UTF-8 BOM
+    if (Size >= 3) and
+       (Buffer[0] = UTF8_BOM[0]) and
+       (Buffer[1] = UTF8_BOM[1]) and
+       (Buffer[2] = UTF8_BOM[2]) then
+      StartIndex := 3
+    else
+      StartIndex := 0;
+
+    if StartIndex < Size then
+      SetString(Result, PChar(@Buffer[StartIndex]), Size - StartIndex);
+
+  finally
+    FS.Free;
+  end;
+end;
+
 class function Sys.LoadTextFromStream(Stream: TStream): string;
 begin
   Result := '';
@@ -5969,9 +6114,12 @@ begin
 end;
 
 (*----------------------------------------------------------------------------*)
-class function Sys.FolderDelete(Folder: string): Boolean;
+class function Sys.FolderDelete(const Folder: string): Boolean;
 begin
-  Result := DeleteDirectory(Folder, True) and RemoveDir(Folder);
+  if not DirectoryExists(Folder) then
+    Exit(True);
+
+  Result := DeleteDirectory(Folder, True);
 end;
 (*----------------------------------------------------------------------------*)
 class function Sys.FolderCopy(Source, Dest: string; Overwrite: Boolean): Boolean;
@@ -6149,6 +6297,83 @@ begin
     end;
   finally
     SysUtils.FindClose(SearchRec);
+  end;
+
+end;
+
+class function Sys.WaitForFileAvailable(const FileName: string;
+  TimeoutMilliseconds: Integer; CheckIntervalMilliseconds: Integer): Boolean;
+var
+  StartTick: QWord;
+  PrevSize, CurSize: Int64;
+  PrevDT, CurDT: TDateTime;
+  StableCount: Integer;
+
+  function TimedOut: Boolean;
+  begin
+    Result := (TimeoutMilliseconds > 0) and
+              ((GetTickCount64 - StartTick) > QWord(TimeoutMilliseconds));
+  end;
+
+  function TryOpenForRead: Boolean;
+  var
+    FS: TFileStream;
+  begin
+    Result := False;
+    try
+      // fmShareDenyNone: allows others to read/write too; on Windows,
+      // if the writer locked it exclusively, this will fail.
+      FS := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+      try
+        Result := True;
+      finally
+        FS.Free;
+      end;
+    except
+      Result := False;
+    end;
+  end;
+
+begin
+  Result := False;
+
+  StartTick := GetTickCount64;
+  PrevSize := -1;
+  PrevDT := 0;
+  StableCount := 0;
+
+  while True do
+  begin
+    if FileExists(FileName) then
+    begin
+      // 1) If we can open for read, great (especially meaningful on Windows).
+      if TryOpenForRead then
+      begin
+        // 2) Stability check (helps on Linux / network shares / slow flush):
+        CurSize := Sys.GetFileSize(FileName);
+        CurDT := Sys.GetFileDate(FileName);
+
+        if (CurSize = PrevSize) and (CurDT = PrevDT) then
+          Inc(StableCount)
+        else
+          StableCount := 0;
+
+        PrevSize := CurSize;
+        PrevDT := CurDT;
+
+        // Two consecutive stable checks is a good compromise.
+        if StableCount >= 1 then
+        begin
+          Result := True;
+          Exit;
+        end;
+      end;
+    end;
+
+    if TimedOut then
+      Exit(False);
+
+    Sleep(CheckIntervalMilliseconds);
   end;
 
 end;
@@ -6494,7 +6719,8 @@ begin
 end;
 *)
 
-class procedure Sys.SaveResourceFile(const ResourceName, FilePath: string; Overwrite: Boolean = False);
+class procedure Sys.SaveResourceFile(const ResourceName: string;
+  const FilePath: string; Overwrite: Boolean);
 var
   RS: TLazarusResourceStream;
   FS: TFileStream;
@@ -6556,6 +6782,100 @@ class procedure Sys.CreateSqliteDatabase(const FilePath: string);
 begin
   if not FileExists(FilePath) then
     SaveResourceFile('SqliteEmptyDb', FilePath);
+end;
+
+type
+
+  { TRunOnceTime }
+
+  TRunOnceTime = class(TTimer)
+  private
+    procedure DoFree(Data: PtrInt);
+  protected
+    EventMethod: TParamEvent;
+    ProcMethod: TProcedureMethod;
+    Proc: TParamProc;
+    Info: TObject;
+
+    procedure Execute(Sender: TObject);
+  public
+    constructor Create(MSecs: Integer; EventMethod: TParamEvent; Info: TObject); overload;
+    constructor Create(MSecs: Integer; ProcMethod: TProcedureMethod); overload;
+    constructor Create(MSecs: Integer; Proc: TParamProc; Info: TObject); overload;
+  end;
+
+
+
+procedure TRunOnceTime.Execute(Sender: TObject);
+begin
+  Enabled := False;
+
+  if Assigned(EventMethod) then
+    EventMethod(Info)
+  else if Assigned(ProcMethod) then
+    ProcMethod()
+  else if Assigned(Proc) then
+    Proc(Info);
+
+  Application.QueueAsyncCall(DoFree, 0);  // free μετά το timer callstack
+end;
+
+procedure TRunOnceTime.DoFree(Data: PtrInt);
+begin
+  Free;
+end;
+
+constructor TRunOnceTime.Create(MSecs: Integer; EventMethod: TParamEvent; Info: TObject);
+begin
+  inherited Create(nil);
+  Enabled := False;
+  Interval := MSecs;
+  Self.EventMethod := EventMethod;
+  Self.Info := Info;
+  Self.OnTimer := Execute;
+end;
+
+constructor TRunOnceTime.Create(MSecs: Integer; ProcMethod: TProcedureMethod);
+begin
+  inherited Create(nil);
+  Enabled := False;
+  Interval := MSecs;
+  Self.ProcMethod := ProcMethod;
+  Self.OnTimer := Execute;
+end;
+
+constructor TRunOnceTime.Create(MSecs: Integer; Proc: TParamProc; Info: TObject);
+begin
+  inherited Create(nil);
+  Enabled := False;
+  Interval := MSecs;
+  Self.Proc := Proc;
+  Self.Info := Info;
+  Self.OnTimer := Execute;
+end;
+
+class procedure Sys.RunOnce(MSecs: Integer; EventMethod: TParamEvent; Info: TObject);
+var
+  Timer: TRunOnceTime;
+begin
+  Timer := TRunOnceTime.Create(MSecs, EventMethod, Info);
+  Timer.Enabled := True;
+end;
+
+class procedure Sys.RunOnce(MSecs: Integer; ProcMethod: TProcedureMethod);
+var
+  Timer: TRunOnceTime;
+begin
+  Timer := TRunOnceTime.Create(MSecs, ProcMethod);
+  Timer.Enabled := True;
+end;
+
+class procedure Sys.RunOnce(MSecs: Integer; Proc: TParamProc; Info: TObject);
+var
+  Timer: TRunOnceTime;
+begin
+  Timer := TRunOnceTime.Create(MSecs, Proc, Info);
+  Timer.Enabled := True;
 end;
 
 

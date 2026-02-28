@@ -425,7 +425,6 @@ type
     class function  NewGuid(UseBrackets: Boolean = True): string;
     class function  NextTableName(): string;
 
-
     { properties }
     property MasterSource      : TDataSource read GetMasterDataSource write SetMasterDataSource;
     property MasterFieldNames  : string read GetMasterFieldNames write SetMasterFieldNames;       { ; delimited list }
@@ -1338,7 +1337,8 @@ begin
   if FBlobCount > 0 then
     FreeBlobs(RecBuf);
 
-  FreeMem(RecBuf, FRecBufSize);
+  if Assigned(RecBuf) then
+    FreeMem(RecBuf, FRecBufSize);
   RecBuf := nil;
 end;
 

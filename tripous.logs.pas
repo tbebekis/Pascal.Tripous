@@ -458,6 +458,8 @@ type
     class destructor Destroy();
 
     class procedure Initialize(Memo: TCustomMemo; UseLogListenerToo: Boolean = True);
+    class procedure Finalize();
+
     class procedure Clear();
     class procedure Append(Text: string);
     class procedure AppendLine(Text: string); overload;
@@ -2163,7 +2165,7 @@ class procedure Logger.Remove(Listener: TLogListener);
 begin
   Lock();
   try
-    if not FListeners.IndexOf(Listener) <> -1 then
+    if FListeners.IndexOf(Listener) <> -1 then
       FListeners.Remove(Listener);
   finally
     UnLock();
@@ -2728,6 +2730,8 @@ end;
 
 class destructor LogBox.Destroy();
 begin
+  Finalize();
+
   FLogTextList.Free();
   FLock.Free();
 end;
@@ -2761,6 +2765,12 @@ begin
     LogListener := TLogBoxListener.Create(nil);
 end;
 
+class procedure LogBox.Finalize();
+begin
+  if Assigned(LogListener) then
+     FreeAndNil(LogListener);
+end;
+
 class procedure LogBox.DoClear();
 begin
   if Assigned(mmoLog) then
@@ -2768,103 +2778,124 @@ begin
 end;
 
 class procedure LogBox.ScrollToLastLine();
+var
+  L: Integer;
 begin
-  //LogBox.mmoLog.CaretPos := Point(0, LogBox.mmoLog.Lines.Count - 1);
+  if not Assigned(mmoLog) then
+    Exit;
 
-  //mmoLog.SelStart := MaxInt;
+  L := Length(mmoLog.Text);
+  mmoLog.SelStart := L;
+  mmoLog.SelLength := 0;
 
-  //mmoLog.SelStart  := Length(mmoLog.Lines.Text)-1;
-  //mmoLog.SelLength := 0;
-
-  mmoLog.VertScrollBar.Position := MaxInt;
-  mmoLog.SelStart := MaxInt;
+   if Assigned(mmoLog.VertScrollBar) then
+    mmoLog.VertScrollBar.Position := mmoLog.VertScrollBar.Range;
 end;
 
 class procedure LogBox.Clear();
 begin
-  Lock();
-  try
-    TThread.Synchronize(TThread.CurrentThread, DoClear);  // Addr(DoClear)
-  finally
-    UnLock();
-  end;
+  if Assigned(mmoLog) then
+     TThread.Queue(nil, DoClear);
 end;
 
 class procedure LogBox.DoAppend();
 var
   Text: string;
 begin
-  if Assigned(mmoLog) then
-  begin
+  if not Assigned(mmoLog) then Exit;
+
+  Text := '';
+  Lock();
+  try
     if FLogTextList.Count > 0 then
     begin
       Text := FLogTextList[0];
       FLogTextList.Delete(0);
-
-      if mmoLog.Lines.Count > 0 then
-        mmoLog.Lines[LogBox.mmoLog.Lines.Count - 1] := mmoLog.Lines[mmoLog.Lines.Count - 1] + Text
-      else
-        mmoLog.Append(Text);
-
-      ScrollToLastLine();
     end;
+  finally
+    UnLock();
   end;
 
+  if Text = '' then Exit;
+
+  if mmoLog.Lines.Count > 0 then
+    mmoLog.Lines[mmoLog.Lines.Count - 1] := mmoLog.Lines[mmoLog.Lines.Count - 1] + Text
+  else
+    mmoLog.Append(Text);
+
+  ScrollToLastLine();
 end;
 
 class procedure LogBox.Append(Text: string);
 begin
+  if (Trim(Text) = '') or (not Assigned(mmoLog)) then
+    Exit;
+
   Lock();
   try
     FLogTextList.Add(Text);
-    TThread.Synchronize(TThread.CurrentThread, DoAppend);  // Addr(DoAppend)
   finally
     UnLock();
   end;
+
+  TThread.Queue(nil, DoAppend);
 end;
 
 class procedure LogBox.DoAppendLine();
 var
   Text: string;
 begin
-  if Assigned(mmoLog) then
-  begin
+  if not Assigned(mmoLog) then Exit;
+
+  Text := '';
+  Lock();
+  try
     if FLogTextList.Count > 0 then
     begin
       Text := FLogTextList[0];
       FLogTextList.Delete(0);
-      mmoLog.Append(Text);
-
-      ScrollToLastLine();
     end;
+  finally
+    UnLock();
   end;
+
+  mmoLog.Append(Text);
+  ScrollToLastLine();
 end;
 
 class procedure LogBox.AppendLine(Text: string);
 begin
+  if not Assigned(mmoLog) then
+    Exit;
+
   Lock();
   try
+    if Trim(Text) = '' then
+      Text := ''
+    else if Text = '-------------------------------------------------------------------' then
+      Text := Text
+    else
+      Text := Format('[%s] %s', [FormatDateTime('yyyy-mm-dd hh:nn:ss', Now), Text]);
+
     FLogTextList.Add(Text);
-    TThread.Synchronize(TThread.CurrentThread, DoAppendLine);  // Addr(DoAppendLine)
   finally
     UnLock();
   end;
+
+  TThread.Queue(nil, DoAppendLine);
 end;
 
 class procedure LogBox.AppendLine(Ex: Exception);
-var
-  Text: string;
 begin
-  Text := Ex.ToString(); // Ex.ClassName + ': ' + Ex.Message;
-  AppendLine(Text);
+  if Assigned(Ex) then
+    AppendLine(Ex.ToString())
+  else
+    AppendLine('Exception: <nil>');
 end;
 
 class procedure LogBox.AppendLine();
-var
-  Text: string;
 begin
-  Text := '-------------------------------------------------------------------';
-  AppendLine(Text);
+  AppendLine('-------------------------------------------------------------------');
 end;
 
 

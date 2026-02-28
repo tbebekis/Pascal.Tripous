@@ -7,7 +7,7 @@ object MainForm: TMainForm
   ClientHeight = 571
   ClientWidth = 627
   Position = poScreenCenter
-  LCLVersion = '3.4.0.0'
+  LCLVersion = '4.4.0.0'
   object Panel1: TPanel
     Left = 0
     Height = 234
@@ -22,14 +22,14 @@ object MainForm: TMainForm
       Height = 232
       Top = 1
       Width = 625
-      ActivePage = tabDic
+      ActivePage = tabList
       Align = alClient
-      TabIndex = 1
+      TabIndex = 0
       TabOrder = 0
       object tabList: TTabSheet
         Caption = 'List'
-        ClientHeight = 204
-        ClientWidth = 617
+        ClientHeight = 202
+        ClientWidth = 615
         object btnListAddRange: TButton
           Left = 8
           Height = 25
@@ -40,7 +40,7 @@ object MainForm: TMainForm
         end
         object edtListNames: TEdit
           Left = 136
-          Height = 23
+          Height = 28
           Top = 32
           Width = 208
           TabOrder = 1
@@ -56,7 +56,7 @@ object MainForm: TMainForm
         end
         object edtListGiantRange: TEdit
           Left = 136
-          Height = 23
+          Height = 28
           Top = 56
           Width = 208
           Alignment = taRightJustify
@@ -114,7 +114,7 @@ object MainForm: TMainForm
         end
         object edtListFirstOrDefault: TEdit
           Left = 136
-          Height = 23
+          Height = 28
           Top = 144
           Width = 208
           TabOrder = 10
@@ -122,7 +122,7 @@ object MainForm: TMainForm
         end
         object edtListWhere: TEdit
           Left = 136
-          Height = 23
+          Height = 28
           Top = 168
           Width = 208
           TabOrder = 11
@@ -131,8 +131,8 @@ object MainForm: TMainForm
       end
       object tabDic: TTabSheet
         Caption = 'Dictionary'
-        ClientHeight = 204
-        ClientWidth = 617
+        ClientHeight = 202
+        ClientWidth = 615
         object btnDicClear: TButton
           Left = 24
           Height = 25
@@ -159,14 +159,14 @@ object MainForm: TMainForm
         end
         object Label1: TLabel
           Left = 144
-          Height = 15
+          Height = 16
           Top = 57
-          Width = 19
+          Width = 22
           Caption = 'Key'
         end
         object edtDicKey: TEdit
           Left = 171
-          Height = 23
+          Height = 28
           Top = 54
           Width = 125
           TabOrder = 3
@@ -174,14 +174,14 @@ object MainForm: TMainForm
         end
         object Label2: TLabel
           Left = 307
-          Height = 15
+          Height = 16
           Top = 58
-          Width = 28
+          Width = 34
           Caption = 'Value'
         end
         object edtDicValue: TEdit
           Left = 355
-          Height = 23
+          Height = 28
           Top = 54
           Width = 125
           TabOrder = 4
@@ -197,7 +197,7 @@ object MainForm: TMainForm
         end
         object edtDicAddEntries: TEdit
           Left = 171
-          Height = 23
+          Height = 28
           Top = 88
           Width = 125
           Alignment = taRightJustify
