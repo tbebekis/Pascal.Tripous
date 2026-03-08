@@ -1,0 +1,295 @@
+object MainForm: TMainForm
+  Left = 409
+  Height = 555
+  Top = 370
+  Width = 769
+  Caption = 'MainForm'
+  ClientHeight = 555
+  ClientWidth = 769
+  Position = poDesktopCenter
+  LCLVersion = '4.4.0.0'
+  object Panel1: TPanel
+    Left = 0
+    Height = 312
+    Top = 0
+    Width = 769
+    Align = alClient
+    ClientHeight = 312
+    ClientWidth = 769
+    TabOrder = 0
+    object Pager: TPageControl
+      Left = 1
+      Height = 310
+      Top = 1
+      Width = 767
+      ActivePage = tabGit
+      Align = alClient
+      TabIndex = 1
+      TabOrder = 0
+      object tabCli: TTabSheet
+        Caption = 'CLI'
+        ClientHeight = 280
+        ClientWidth = 757
+        object btnRunExe: TButton
+          Left = 8
+          Height = 25
+          Top = 16
+          Width = 195
+          Caption = 'RunExe'
+          TabOrder = 0
+        end
+        object btnRunExeStdErr: TButton
+          Left = 8
+          Height = 25
+          Top = 49
+          Width = 195
+          Caption = 'RunExe StdErr'
+          TabOrder = 1
+        end
+        object brnRunExeStdOut: TButton
+          Left = 8
+          Height = 25
+          Top = 79
+          Width = 195
+          Caption = 'RunExe StdOut'
+          TabOrder = 2
+        end
+        object btnRunExeQuotedArgs: TButton
+          Left = 8
+          Height = 25
+          Top = 112
+          Width = 195
+          Caption = 'RunExe QuotedArgs'
+          TabOrder = 3
+        end
+        object btnRunExeManyArgs: TButton
+          Left = 9
+          Height = 25
+          Top = 140
+          Width = 194
+          Caption = 'RunExe ManyArgs'
+          TabOrder = 4
+        end
+        object btnRunExeSingleQuotes: TButton
+          Left = 9
+          Height = 25
+          Top = 170
+          Width = 194
+          Caption = 'RunExe Single Quotes'
+          TabOrder = 5
+        end
+        object btnRunExeWithInput: TButton
+          Left = 216
+          Height = 25
+          Top = 18
+          Width = 195
+          Caption = 'RunExe With Input'
+          TabOrder = 6
+        end
+        object btnRunExeNoInput: TButton
+          Left = 216
+          Height = 25
+          Top = 49
+          Width = 195
+          Caption = 'RunExe No Input'
+          TabOrder = 7
+        end
+        object btnRunExeTimeout: TButton
+          Left = 217
+          Height = 25
+          Top = 79
+          Width = 195
+          Caption = 'RunExe Timeout'
+          TabOrder = 8
+        end
+        object btnRunShell: TButton
+          Left = 424
+          Height = 25
+          Top = 18
+          Width = 195
+          Caption = 'RunShell'
+          TabOrder = 9
+        end
+        object btnRunShellChain: TButton
+          Left = 424
+          Height = 25
+          Top = 51
+          Width = 195
+          Caption = 'RunShell Chain'
+          TabOrder = 10
+        end
+        object btnRunShellBatch: TButton
+          Left = 424
+          Height = 25
+          Top = 80
+          Width = 195
+          Caption = 'RunShell Batch'
+          TabOrder = 11
+        end
+        object btnRunShellBatchStopOnError: TButton
+          Left = 424
+          Height = 25
+          Top = 112
+          Width = 195
+          Caption = 'RunShell Batch StopOnError'
+          TabOrder = 12
+        end
+        object btnRunShellBatchOnErrorContinue: TButton
+          Left = 424
+          Height = 25
+          Top = 143
+          Width = 195
+          Caption = 'RunShell OnError Continue'
+          TabOrder = 13
+        end
+      end
+      object tabGit: TTabSheet
+        Caption = 'Git and Github'
+        ClientHeight = 280
+        ClientWidth = 757
+        object btnGitVersion: TButton
+          Left = 24
+          Height = 25
+          Top = 120
+          Width = 195
+          Caption = 'Git Version'
+          TabOrder = 0
+        end
+        object btnGitIsRepo: TButton
+          Left = 24
+          Height = 25
+          Top = 147
+          Width = 195
+          Caption = 'Git Is Repo'
+          TabOrder = 1
+        end
+        object Label1: TLabel
+          Left = 17
+          Height = 16
+          Top = 9
+          Width = 70
+          Caption = 'Folder Path'
+        end
+        object edtFolderPath: TEdit
+          Left = 136
+          Height = 28
+          Top = 3
+          Width = 400
+          TabOrder = 2
+        end
+        object btnGitHasUncommited: TButton
+          Left = 24
+          Height = 25
+          Top = 176
+          Width = 195
+          Caption = 'Git Has Uncommited'
+          TabOrder = 3
+        end
+        object btnGitEnsureIsRepo: TButton
+          Left = 24
+          Height = 25
+          Top = 208
+          Width = 195
+          Caption = 'Git Ensure Is Repo'
+          TabOrder = 4
+        end
+        object btnGitCommitIfNeeded: TButton
+          Left = 24
+          Height = 25
+          Top = 240
+          Width = 195
+          Caption = 'Git Commit If Needed'
+          TabOrder = 5
+        end
+        object btnGitPush: TButton
+          Left = 228
+          Height = 25
+          Top = 120
+          Width = 195
+          Caption = 'Git Push'
+          TabOrder = 6
+        end
+        object btnGitGetGlobalCredHelper: TButton
+          Left = 228
+          Height = 25
+          Top = 147
+          Width = 195
+          Caption = 'Git Get Global Cred Helper'
+          TabOrder = 7
+        end
+        object btnGitHasGlobalCredHelper: TButton
+          Left = 228
+          Height = 25
+          Top = 176
+          Width = 195
+          Caption = 'Git Has Global Cred Helper'
+          TabOrder = 8
+        end
+        object Label2: TLabel
+          Left = 17
+          Height = 16
+          Top = 40
+          Width = 104
+          Caption = 'Github Username'
+        end
+        object edtGithubUserName: TEdit
+          Left = 136
+          Height = 28
+          Top = 35
+          Width = 400
+          TabOrder = 9
+          Text = 'tbebekis'
+        end
+        object Label3: TLabel
+          Left = 17
+          Height = 16
+          Top = 72
+          Width = 37
+          Caption = 'Token'
+        end
+        object edtToken: TEdit
+          Left = 136
+          Height = 28
+          Top = 65
+          Width = 400
+          TabOrder = 10
+        end
+        object btnGithubHasCredentials: TButton
+          Left = 228
+          Height = 25
+          Top = 208
+          Width = 195
+          Caption = 'Github Has Credentials'
+          TabOrder = 11
+        end
+        object btnGithubEnsureHasCredentials: TButton
+          Left = 228
+          Height = 25
+          Top = 239
+          Width = 195
+          Caption = 'Github Ensure Has Credentials'
+          TabOrder = 12
+        end
+      end
+    end
+  end
+  object edtLog: TMemo
+    Left = 0
+    Height = 237
+    Top = 318
+    Width = 769
+    Align = alBottom
+    Color = 15066597
+    TabOrder = 1
+  end
+  object splitContent: TSplitter
+    Cursor = crVSplit
+    Left = 0
+    Height = 6
+    Top = 312
+    Width = 769
+    Align = alBottom
+    Beveled = True
+    ResizeAnchor = akBottom
+  end
+end
